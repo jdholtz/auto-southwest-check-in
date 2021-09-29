@@ -1,25 +1,31 @@
+#!/usr/bin/python
+
 from datetime import datetime, timedelta
 import sys
 import pytz
 import requests
+from scripts import reservation
 
-def check_in(confirmation_number, first_name, last_name):
+
+def set_up_check_in(confirmation_number, first_name, last_name):
     print(confirmation_number, first_name, last_name)
     checkin_time = get_checkin_time()
     print(checkin_time)
+    reservation.check_in(confirmation_number, first_name, last_name)
 
 def get_checkin_time():
     flight_info = get_flight_info()
-    flight_time = convert_to_utc_tz(flight_info)
+    flight_time = convert_to_utc(flight_info)
     checkin_time = flight_time - timedelta(1)
 
     return checkin_time
 
 def get_flight_info():
     headers = {"X-Channel-Id": "IOS", "X-Api-Key": "l7xx4eafc61ff199477ebe6dca005f47a7f1"}
-    url = "https://mobile.southwest.com/api/mobile-air-booking/v1/mobile-air-booking/page/view-reservation/{}?first-name={}&last-name={}".format(confirmation_number, first_name, last_name)
+    params = { "first-name": first_name, "last-name": last_name}
+    url = "https://mobile.southwest.com/api/mobile-air-booking/v1/mobile-air-booking/page/view-reservation/" + confirmation_number
 
-    response = requests.get(url, headers=headers)
+    response = requests.get(url, headers=headers, params=params)
 
     # Only gets first flight listed
     # Todo: Add functionality for round-trip flights
@@ -30,7 +36,7 @@ def get_flight_info():
 
     return [flight_date, departure_airport]
 
-def convert_to_utc_tz(flight_info):
+def convert_to_utc(flight_info):
     airport_timezone = get_airport_timezone(flight_info)
     time = datetime.strptime(flight_info[0], "%Y-%m-%d %H:%M")
     local_time = airport_timezone.localize(time)
@@ -53,4 +59,4 @@ if __name__ == "__main__":
     first_name = arguments[2]
     last_name = arguments[3]
 
-    check_in(confirmation_number, first_name, last_name)
+    set_up_check_in(confirmation_number, first_name, last_name)

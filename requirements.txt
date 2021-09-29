@@ -1,4 +1,3 @@
 datetime
 pytz
 requests
-sys
