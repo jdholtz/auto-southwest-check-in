@@ -21,15 +21,14 @@ def get_checkin_time():
     return checkin_time
 
 def get_flight_info():
-    headers = {"X-Channel-Id": "IOS", "X-Api-Key": "l7xx4eafc61ff199477ebe6dca005f47a7f1"}
-    params = { "first-name": first_name, "last-name": last_name}
-    url = "https://mobile.southwest.com/api/mobile-air-booking/v1/mobile-air-booking/page/view-reservation/" + confirmation_number
+    info = { "first-name": first_name, "last-name": last_name}
+    site = "mobile-air-booking/v1/mobile-air-booking/page/view-reservation/" + confirmation_number
 
-    response = requests.get(url, headers=headers, params=params)
+    response = reservation.make_request("GET", site, info)
 
     # Only gets first flight listed
     # Todo: Add functionality for round-trip flights
-    flight_info = response.json()['viewReservationViewPage']['bounds'][0]
+    flight_info = response['viewReservationViewPage']['bounds'][0]
 
     flight_date = '{} {}'.format(flight_info['departureDate'], flight_info['departureTime'])
     departure_airport = flight_info['departureAirport']['code']

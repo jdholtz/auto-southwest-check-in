@@ -1,9 +1,57 @@
 from time import sleep
+import sys
 import requests
 
 
 # WARNING: This has not been tested on a real flight yet
 def check_in(confirmation_number, first_name, last_name):
+    info = {"first-name": first_name, "last-name": last_name}
+    site = "mobile-air-operations/v1/mobile-air-operations/page/check-in/" + confirmation_number
+
+    response = make_request("GET", site, info)
+    print(response.json())
+
+    site = "logging/v1/logging/mobile/log"
+    reservation = make_request("POST", site, info)
+    print(reservation.status_code)
+
+def make_request(method, site, info):
+    url = "https://mobile.southwest.com/api/" + site
+    headers = get_headers()
+
+    attempts = 0
+    while True:
+        if method == "POST":
+            response = requests.post(url, headers=headers, json={"names": info})
+        elif method == "GET":
+            response = requests.get(url, headers=headers, params=info)
+        else:
+            print("\033[91Error: Method {} not known\033[0m".format(method))
+            return
+
+        if response.status_code == 200:
+            return response.json()
+
+        if attempts > 0:
+            break
+
+        attempts += 1
+        sleep(0.5)
+
+    return response # Here for testing purposes
+    print("Failed to retrieve reservation. Reason: " + response.reason)
+    sys.exit()
+
+def get_headers():
+    response = requests.get("https://mobile.southwest.com/js/config.js")
+
+    if response.status_code != 200:
+        print("\033[91mFailed to retrieve headers. Exiting...\033[0m")
+        sys.exit()
+
+    keys = response.text.split("IOS_API_KEY")[1]
+    api_key = keys[1:keys.index(',')].strip('"')
+
     headers = {
         # "Host": "mobile.southwest.com",
         # "Content-Type": "application/json",
@@ -12,25 +60,12 @@ def check_in(confirmation_number, first_name, last_name):
         # "X-Dublriiu-B": "-1ffcfg",
         # "X-Dublriiu-Z": "q",
         # "X-Dublriiu-C": "AEAteQV8AQAAaB-AgCKkzru4WUxxgQ9jW6TTnnCB2rYSRz7tuuTZ5r2ET6WBc",
-        "X-Api-Key": "l7xx4eafc61ff199477ebe6dca005f47a7f1",
-        # "X-Channel-Id": "IOS",
+        "X-Api-Key": api_key,
+        "X-Channel-Id": "IOS",
         # "X-Dublriiu-D": "ABYQoAuABKgAhACAQYAQwAKIAIEwBOTZ5r2ET6WB_____80ML3YAI0iMUx-h8qVZxesN6NpleA",
         "X-User-Experience-Id": "3CDA348B-463A-4861-9400-F77362B172AC",
         # "EE30zvQLWf-f": "A1RPfQV8AQAAnQSKLiRZ5UODiX_Jrw2Sv3ctFgBhowKAb0HYZ5RdGm5mxnGTAaLN0g0X2gAX5qEO8YLqosIO8Q==",
         # "User-Agent": "Southwest/8.9.0 CFNetwork/1240.0.4 Darwin/20.6.0"
     }
-    params = {"first-name": first_name, "last-name": last_name}
-    url = "https://mobile.southwest.com/api/mobile-air-operations/v1/mobile-air-operations/page/check-in/" + confirmation_number
 
-    response = requests.get(url, headers=headers, params=params)
-    print(response.json())
-    url = "https://mobile.southwest.com/api/logging/v1/logging/mobile/log"
-
-    response = requests.post(url, headers=headers, json={"names": params})
-
-    if response.status_code == 200:
-        print("Success!")
-        print(response.json())
-    else:
-        print("Failed to get reservation")
-        print(response.status_code)
+    return headers
