@@ -1,4 +1,8 @@
 #!/usr/bin/python
+"""Automatically checks you in to your Southwest flight 24 hours beforehand
+
+Usage: checkin.py CONFIRMATION_NUMBER FIRST_NAME LAST_NAME
+"""
 
 import pytz
 import requests
@@ -10,7 +14,6 @@ from time import sleep
 
 def set_up_check_in(flight):
     checkin_time = get_checkin_time(flight)
-    print(checkin_time)
     current_time = datetime.utcnow()
     tomorrow_time = current_time + timedelta(days=1)
 
@@ -18,7 +21,8 @@ def set_up_check_in(flight):
         if checkin_time < tomorrow_time:
             sleep(checkin_time.total_seconds())
         else:
-            sleep(24 * 60 * 60)
+            # Once a day, the script will check to see if the flight time has changed
+            sleep(24*60*60)
             checkin_time = get_checkin_time(flight)
 
         current_time = datetime.utcnow()
@@ -29,17 +33,18 @@ def set_up_check_in(flight):
 
 def get_checkin_time(flight):
     flight_time = convert_to_utc(flight)
-    checkin_time = flight_time - timedelta(days=1)
+    # Starts to check in five seconds early in case the Southwest server is ahead of your server
+    checkin_time = flight_time - timedelta(days=1, seconds=5)
 
     return checkin_time
 
 def get_flights(confirmation_number, first_name, last_name):
-    print(confirmation_number, first_name, last_name)
     info = { "first-name": first_name, "last-name": last_name}
     site = "mobile-air-booking/v1/mobile-air-booking/page/view-reservation/" + confirmation_number
 
     response = reservation.make_request("GET", site, info)
 
+    # If multiple flights are under the same confirmation number, it will schedule all checkins one by one
     flights = []
     flight_info = response['viewReservationViewPage']['bounds']
 
@@ -53,8 +58,8 @@ def get_flights(confirmation_number, first_name, last_name):
 def convert_to_utc(flight_info):
     airport_timezone = get_airport_timezone(flight_info)
     time = datetime.strptime(flight_info[0], "%Y-%m-%d %H:%M")
-    local_time = airport_timezone.localize(time)
-    utc_time = local_time.astimezone(pytz.utc).replace(tzinfo=None)
+    flight_time = airport_timezone.localize(time)
+    utc_time = flight_time.astimezone(pytz.utc).replace(tzinfo=None)
 
     return utc_time
 
@@ -68,11 +73,20 @@ def get_airport_timezone(flight_info):
 
 if __name__ == "__main__":
     arguments = sys.argv
+    if arguments[1] == "-h" or arguments[1] == "--help":
+        print(__doc__)
+        sys.exit()
 
     confirmation_number = arguments[1]
     first_name = arguments[2]
     last_name = arguments[3]
 
-    flights = get_flights(confirmation_number, first_name, last_name)
-    for flight in flights:
-        set_up_check_in(flight)
+    try:
+        flights = get_flights(confirmation_number, first_name, last_name)
+        for flight in flights:
+            print("Scheduling checkin for {} {} at {} UTC".format(first_name, last_name, get_checkin_time(flight)))
+            set_up_check_in(flight)
+
+    except KeyboardInterrupt:
+        print("\nCtrl+C pressed. Stopping checkin")
+        sys.exit()

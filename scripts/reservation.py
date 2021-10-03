@@ -1,6 +1,6 @@
-from time import sleep
-import sys
 import requests
+import sys
+from time import sleep
 
 
 # WARNING: This has not been tested on a real flight yet
@@ -19,6 +19,8 @@ def make_request(method, site, info):
     url = "https://mobile.southwest.com/api/" + site
     headers = get_headers()
 
+    # In the case that your server and the Southwest server aren't in sync,
+    # this requests multiple times for a better chance at success
     attempts = 0
     while True:
         if method == "POST":
@@ -26,19 +28,18 @@ def make_request(method, site, info):
         elif method == "GET":
             response = requests.get(url, headers=headers, params=info)
         else:
-            print("\033[91Error: Method {} not known\033[0m".format(method))
+            print("\033[91mError: Method {} not known\033[0m".format(method))
             return
 
         if response.status_code == 200:
             return response.json()
 
-        if attempts > 0:
+        if attempts > 20:
             break
 
         attempts += 1
         sleep(0.5)
 
-    return response # Here for testing purposes
     print("Failed to retrieve reservation. Reason: " + response.reason)
     sys.exit()
 
@@ -52,6 +53,7 @@ def get_headers():
     keys = response.text.split("IOS_API_KEY")[1]
     api_key = keys[1:keys.index(',')].strip('"')
 
+    # I'm keeping these headers here because I am not sure which ones I will need to successfully check in
     headers = {
         # "Host": "mobile.southwest.com",
         # "Content-Type": "application/json",
