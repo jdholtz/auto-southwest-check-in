@@ -1,22 +1,37 @@
 #!/usr/bin/python
 
-from datetime import datetime, timedelta
-import sys
 import pytz
 import requests
+import sys
+from datetime import datetime, timedelta
 from scripts import reservation
+from time import sleep
 
 
 def set_up_check_in(confirmation_number, first_name, last_name):
     print(confirmation_number, first_name, last_name)
     checkin_time = get_checkin_time()
     print(checkin_time)
+    current_time = datetime.utcnow()
+    tomorrow_time = current_time + timedelta(days=1)
+
+    while checkin_time > current_time:
+        if checkin_time < tomorrow_time:
+            sleep(checkin_time.total_seconds())
+        else:
+            sleep(24 * 60 * 60)
+            checkin_time = get_checkin_time()
+
+        current_time = datetime.utcnow()
+        tomorrow_time = current_time + timedelta(days=1)
+
+    print("Checking in...")
     reservation.check_in(confirmation_number, first_name, last_name)
 
 def get_checkin_time():
     flight_info = get_flight_info()
     flight_time = convert_to_utc(flight_info)
-    checkin_time = flight_time - timedelta(1)
+    checkin_time = flight_time - timedelta(days=1)
 
     return checkin_time
 
@@ -39,7 +54,7 @@ def convert_to_utc(flight_info):
     airport_timezone = get_airport_timezone(flight_info)
     time = datetime.strptime(flight_info[0], "%Y-%m-%d %H:%M")
     local_time = airport_timezone.localize(time)
-    utc_time = local_time.astimezone(pytz.utc)
+    utc_time = local_time.astimezone(pytz.utc).replace(tzinfo=None)
 
     return utc_time
 
