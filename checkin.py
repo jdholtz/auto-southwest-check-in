@@ -19,7 +19,7 @@ def set_up_check_in(flight):
 
     while checkin_time > current_time:
         if checkin_time < tomorrow_time:
-            sleep(checkin_time.total_seconds())
+            sleep((checkin_time - current_time).total_seconds())
         else:
             # Once a day, the script will check to see if the flight time has changed
             sleep(24*60*60)
@@ -29,7 +29,11 @@ def set_up_check_in(flight):
         tomorrow_time = current_time + timedelta(days=1)
 
     print("Checking in...")
-    reservation.check_in(confirmation_number, first_name, last_name)
+    boarding_pass = reservation.check_in(confirmation_number, first_name, last_name)
+    
+    for flight in boarding_pass['flights']:
+        for passenger in flight['passengers']:
+            print("{} got {}{}!".format(passenger['name'], passenger['boardingGroup'], passenger['boardingPosition']))
 
 def get_checkin_time(flight):
     flight_time = convert_to_utc(flight)
@@ -39,7 +43,7 @@ def get_checkin_time(flight):
     return checkin_time
 
 def get_flights(confirmation_number, first_name, last_name):
-    info = { "first-name": first_name, "last-name": last_name}
+    info = {"first-name": first_name, "last-name": last_name}
     site = "mobile-air-booking/v1/mobile-air-booking/page/view-reservation/" + confirmation_number
 
     response = reservation.make_request("GET", site, info)
