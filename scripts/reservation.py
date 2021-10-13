@@ -14,7 +14,7 @@ def check_in(confirmation_number, first_name, last_name):
     site = "mobile-air-operations/v1/mobile-air-operations/page/check-in"
 
     reservation = make_request("POST", site, info)
-    return reservation['checkInReservationPage']
+    return reservation['checkInConfirmationPage']
 
 def make_request(method, site, info):
     url = "https://mobile.southwest.com/api/" + site
