@@ -3,22 +3,21 @@ import sys
 from time import sleep
 
 
-# WARNING: This has not been tested on a real flight yet
 def check_in(confirmation_number, first_name, last_name):
+    headers = get_headers()
     info = {"first-name": first_name, "last-name": last_name}
     site = "mobile-air-operations/v1/mobile-air-operations/page/check-in/" + confirmation_number
 
-    response = make_request("GET", site, info)
+    response = make_request("GET", site, info, headers)
 
     info = response['checkInViewReservationPage']['_links']['checkIn']['body']
     site = "mobile-air-operations/v1/mobile-air-operations/page/check-in"
 
-    reservation = make_request("POST", site, info)
+    reservation = make_request("POST", site, info, headers)
     return reservation['checkInConfirmationPage']
 
-def make_request(method, site, info):
+def make_request(method, site, info, headers):
     url = "https://mobile.southwest.com/api/" + site
-    headers = get_headers()
 
     # In the case that your server and the Southwest server aren't in sync,
     # this requests multiple times for a better chance at success
@@ -35,11 +34,11 @@ def make_request(method, site, info):
         if response.status_code == 200:
             return response.json()
 
-        if attempts > 20:
+        if attempts > 40:
             break
 
         attempts += 1
-        sleep(0.5)
+        sleep(0.25)
 
     print("Failed to retrieve reservation. Reason: " + response.reason)
     sys.exit()
@@ -67,7 +66,7 @@ def get_headers():
         "X-Api-Key": api_key,
         "X-Channel-Id": "IOS",
         #"X-Dublriiu-D": "ABYQoAuABKgAhACAQYAQwAKIAIEwBLQMY-7KrgO9_____80ML3YAQ6Ec99umwO_0fXUMF7hKMg",
-        "X-Dublriiu-E": "b;te0SxOLv_9qudcUVKPg7EdF32KlnmBp1PWmX-8CiICpTl9jiKcrWPqsFDsv3zCNg-WumEuy_kb7U5enPyMWtaHw05vqBFnihUpE_way0AHLP_wY4gsiIy4f2qsOyQN-nsYLEjNh-iAek1cB-mNxIksljZIj-TGaYRvEHR2mDYPwetU3UT7l1YWpJeoTxxUhsY4yBqDcbk0U3ZOiKN_4MerkGU7Nz_rB6eyCslaaKahF0ptgSoqVQHR8werDFAwgRURRMoaRprYjV04MeISh4VtXozJjIL886f3RI3YZZ8IdTxoiTwsDZrhCIOZhJk2Y7EaI-CmrbrCHW0shhtsBDiFzkKXD7huXRJl0YJ5TjxyytPtfbTBjo36MfnA_t8nPR00K_joUlHbicYFhL2FdBb0z1icy9hVpNyzHuIoPaNQFk7wTBlrG-Nn48nCcN2uWS1Mtf6ABVc3bCk6A_MxrKDVyM0InWTsed4uCrNP03wKq0sW-ov5oqpiU2uVHwg5g61-rZsPY_HXJ-bKNjAwtiXAFyCs4nWJyC5y195L_70LI1ta5oRjlR4UFOk2jMgVCDtv5bmwoz13Bf_Jmp4R5rM3sj7PssP5PmSVLvyvf3rBPe5dxF2O1egESYrWX5COTMNQXaqDvFpFX-ivVQSSb6Fz3CZlZOmffvM_slyhRD1fa5IwnOn3Dp92cqHaoFavdf_q-DJnQDhPq12lorKSXTf-yZk0PCrqvlbpUWNPDLgiONZbBPOaN7KRz5Ukk09a7tBlhZVVqTfG-bFbnMZKKF2JwsHdRNPZu7W_vnDEpkd1_-3gQixYMwaJuSZWSBRYirWAOlIf41sevj6GT9ghhJScQ8nnVxVoLeM2HZSdMAyuDmI9DUOuksbGuuSRS2i_vDKuFYJjMvryV3zaQM0scI8uHcHT8ECITqT8_RzJACuIQ2uCcRPKj2;Hv7A5SRaRGnlbBSdFDpNeVL9ZgsQnAh2xopCGZs4HNA=",
+        "X-Dublriiu-E": "b;ln9hHAYIc123H3mpehvHK7YEWOAtbi4zzuPn0WyUIXfGI2SEbcmu1-xP7z3EIzme9oGkF8DfXkH-hgGWiAGrVj4JEVoQNegn8KG3Rsn_6wJYoO-JkpPr93OAKjTw4tgMN722uEmQeL-0GtFnq_8LYdxb4AWo_KxYFld5DQ52gURdIIBDaG_NPpuz1F9xIYQtxMSVdx7jQBNcDQE2IhjNadPIgOUf56oX2X32D03JSzIfSho_K6CjV71W1vIORF1DGjBESHP5Gz5HNS-uqLYeRvokoXDwxHoocYwmdL1HC6nfTj0F0GRtbS0aXkMYb0lTK2ZFs5XUKm9vVJrfqW_1G3bP1HECUlmudB1FeE_vmJl54zlGFjnhec7m6slijkQRyI7doi-fP3bj3JRY_OXJsOQw2oPQkpLVtnhYuX3soGPlEMkc_5Tackk1VKUA7kdBNtsOSidP7SxdmkatG7US1HbMaoBe3hixwvRP7zp-sDtYaNXfWLe3K34Vp4i3P-GhLdao0Xg5dgNv1EXnF47EGzPVxb5R6Bl91p7t6g9lDfbTGXXXvfNW3UjXRVlEbe_em0N1j3pSfYg0s1cDkKSkOyrdPRPzBo9tBEblf1RY7Vcw1FBod46ktdfSUkpISXDHQwa-20GIorLCjDwbvjdz5ahXQx7yUVEkGSctbUECawCfMcfAQwQxai7MqKkCnzsEtjlM7B6FotHWz-aZCXOoVwluoQBkUXIkrInLRYEqDzHl7nfrUu7wzNunUSGlgrCvi5D5uHGNpPta8DHgY1YSeHIaRMLHIxFJtRLS5wScfSzrYp5EA5ckB5PSPVQOBdQjQ6X8xOEwojncvVeyVNNLdBLUCg07NixVcbdOHvJOdqYC086nj6IdD8Altl87blOaugTGHfXXHMlyltCm_B2kBbAmKd6kig==;KsGQBkzjPB8cgWtAc94tYAv8TZihlmWVAFdE1r3uPHE=",
         #"X-User-Experience-Id": "AA0EC380-4A6E-4F32-9045-42FABD316952",
         #"X-Dublriiu-F": "Ayz4F3d8AQAA9V54NqJC6nystxeWgfHybpqrsbF2l5x_l2EzScixK_pWWiatAaLN0g0X2gAXCT8O8YLqosIO8Q==",
         #"User-Agent": "Southwest/8.10.0 CFNetwork/1240.0.4 Darwin/20.6.0"

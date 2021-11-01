@@ -17,6 +17,9 @@ def set_up_check_in(flight):
     current_time = datetime.utcnow()
     tomorrow_time = current_time + timedelta(days=1)
 
+    if checkin_time > current_time:
+        print("Scheduling checkin for {} {} at {} UTC".format(first_name, last_name, checkin_time))
+
     while checkin_time > current_time:
         if checkin_time < tomorrow_time:
             sleep((checkin_time - current_time).total_seconds())
@@ -43,10 +46,11 @@ def get_checkin_time(flight):
     return checkin_time
 
 def get_flights(confirmation_number, first_name, last_name):
+    headers = reservation.get_headers()
     info = {"first-name": first_name, "last-name": last_name}
     site = "mobile-air-booking/v1/mobile-air-booking/page/view-reservation/" + confirmation_number
 
-    response = reservation.make_request("GET", site, info)
+    response = reservation.make_request("GET", site, info, headers)
 
     # If multiple flights are under the same confirmation number, it will schedule all checkins one by one
     flights = []
@@ -88,7 +92,6 @@ if __name__ == "__main__":
     try:
         flights = get_flights(confirmation_number, first_name, last_name)
         for flight in flights:
-            print("Scheduling checkin for {} {} at {} UTC".format(first_name, last_name, get_checkin_time(flight)))
             set_up_check_in(flight)
 
     except KeyboardInterrupt:
