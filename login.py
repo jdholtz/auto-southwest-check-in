@@ -1,6 +1,6 @@
 import sys
 
-from scripts.account import Account
+from lib.account import Account
 
 
 if __name__ == "__main__":
@@ -9,4 +9,4 @@ if __name__ == "__main__":
     password = arguments[2]
 
     account = Account(username, password)
-    flights = account.get_flights()
+    account.get_flights()

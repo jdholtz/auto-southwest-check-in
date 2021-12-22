@@ -1,6 +1,6 @@
 import sys
 
-from scripts.account import Account
+from lib.account import Account
 
 
 if __name__ == "__main__":

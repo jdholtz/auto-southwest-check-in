@@ -1,7 +1,8 @@
 from __future__ import annotations
-import requests
 import time
 from typing import Any, Dict, Optional, TYPE_CHECKING
+
+import requests
 
 if TYPE_CHECKING:
     from account import Account
