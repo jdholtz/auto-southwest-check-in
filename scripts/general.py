@@ -1,10 +1,17 @@
+from __future__ import annotations
 import requests
-from time import sleep
+import time
+from typing import Any, Dict, Optional, TYPE_CHECKING
 
+if TYPE_CHECKING:
+    from account import Account
 
 BASE_URL = "https://mobile.southwest.com/api/"
 
-def make_request(method, site, account, info):
+
+def make_request(
+    method: str, site: str, account: Account, info: Dict[str, str]
+) -> Optional[Dict[str, Any]]:
     url = BASE_URL + site
 
     # In the case that your server and the Southwest server aren't in sync,
@@ -23,7 +30,7 @@ def make_request(method, site, account, info):
             return response.json()
 
         attempts += 1
-        sleep(0.5)
+        time.sleep(0.5)
 
     print(f"Failed to retrieve reservation. Reason: {response.reason} {response.status_code}")
     # TO-DO: Kill thread without killing other threads or the main process

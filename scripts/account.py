@@ -1,13 +1,20 @@
-import requests
-from .webdriver import WebDriver
+from typing import Optional
+
 from .flight import Flight
 from .general import make_request
-
+from .webdriver import WebDriver
 
 VIEW_RESERVATION_URL = "mobile-air-booking/v1/mobile-air-booking/page/view-reservation/"
 
+
 class Account:
-    def __init__(self, username=None, password=None, first_name=None, last_name=None):
+    def __init__(
+        self,
+        username: Optional[str] = None,
+        password: Optional[str] = None,
+        first_name: Optional[str] = None,
+        last_name: Optional[str] = None
+    ) -> None:
         self.username = username
         self.password = password
         self.first_name = first_name
@@ -15,20 +22,20 @@ class Account:
         self.flights = []
         self.headers = {}
 
-    def get_flights(self):
+    def get_flights(self) -> None:
         webdriver = WebDriver()
         reservations = webdriver.get_info(self)
 
         for reservation in reservations:
             confirmation_number = reservation['confirmationNumber']
-            self.get_reservation_info(confirmation_number)
+            self._get_reservation_info(confirmation_number)
 
-    def get_checkin_info(self, confirmation_number):
+    def get_checkin_info(self, confirmation_number: str) -> None:
         webdriver = WebDriver()
         self.headers = webdriver.get_info()
-        self.get_reservation_info(confirmation_number)
+        self._get_reservation_info(confirmation_number)
 
-    def get_reservation_info(self, confirmation_number):
+    def _get_reservation_info(self, confirmation_number: str) -> None:
         info = {"first-name": self.first_name, "last-name": self.last_name}
         site = VIEW_RESERVATION_URL + confirmation_number
 

@@ -1,11 +1,16 @@
+from __future__ import annotations
 import json
 import re
 import time
-import seleniumwire.undetected_chromedriver.v2 as uc
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.common.by import By
+from typing import Any, Dict, Optional, TYPE_CHECKING
 
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
+from seleniumwire.undetected_chromedriver.v2 import Chrome, ChromeOptions
+
+if TYPE_CHECKING:
+    from account import Account
 
 USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64; rv:96.0) Gecko/20100101 Firefox/96.0"
 BASE_URL = "https://mobile.southwest.com"
@@ -14,25 +19,26 @@ TRIPS_URL = BASE_URL + "/api/mobile-misc/v1/mobile-misc/page/upcoming-trips"
 CHECKIN_URL = BASE_URL + "/check-in"
 RESERVATION_URL = BASE_URL + "/api/mobile-air-operations/v1/mobile-air-operations/page/check-in/"
 
+
 class WebDriver():
     # This is heavily based off of https://github.com/byalextran/southwest-headers/commit/d2969306edb0976290bfa256d41badcc9698f6ed
-    def get_info(self, account=None):
-        options = self.get_options()
+    def get_info(self, account: Optional[Account] = None) -> Dict[str, Any]:
+        options = self._get_options()
         seleniumwire_options = {'disable_encoding': True}
 
-        driver = uc.Chrome(options=options, seleniumwire_options=seleniumwire_options)
+        driver = Chrome(options=options, seleniumwire_options=seleniumwire_options)
         driver.scopes = [LOGIN_URL, TRIPS_URL, RESERVATION_URL] # Filter out unneeded URLs
 
         if account is None:
-            info = self.get_checkin_info(driver)
+            info = self._get_checkin_info(driver)
         else:
-            info = self.get_account_info(account, driver)
+            info = self._get_account_info(account, driver)
 
         driver.quit()
 
         return info
 
-    def get_checkin_info(self, driver):
+    def _get_checkin_info(self, driver: Chrome) -> Dict[str, Any]:
         driver.get(CHECKIN_URL)
 
         # Attempt a check in to retrieve the correct headers
@@ -51,11 +57,11 @@ class WebDriver():
         time.sleep(10)
 
         request_headers = driver.requests[0].headers
-        headers = self.get_needed_headers(request_headers)
+        headers = self._get_needed_headers(request_headers)
 
         return headers
 
-    def get_account_info(self, account, driver):
+    def _get_account_info(self, account: Account, driver: Chrome) -> Dict[str, Any]:
         driver.get(BASE_URL)
 
         # Login to retrieve the account's trips and needed headers for later requests
@@ -74,20 +80,20 @@ class WebDriver():
 
         request = driver.requests[0]
         request_headers = request.headers
-        account.headers = self.get_needed_headers(request_headers)
+        account.headers = self._get_needed_headers(request_headers)
 
         # If this is the first time logging in, the account name needs to be set because that info is needed later
         if account.first_name is None:
             response = json.loads(request.response.body)
-            self.set_account_name(account, response)
+            self._set_account_name(account, response)
 
         # This page is also loaded when we log in, so we might as well grab it instead of requesting again later
         flights = json.loads(driver.requests[1].response.body)['upcomingTripsPage']
 
         return flights
 
-    def get_options(self):
-        options = uc.ChromeOptions()
+    def _get_options(self) -> ChromeOptions:
+        options = ChromeOptions()
         options.add_argument("--headless")
 
         # Fixes issues when run as root
@@ -96,9 +102,10 @@ class WebDriver():
 
         # Southwest detects headless browser user agents, so we have to set our own
         options.add_argument("--user-agent=" + USER_AGENT)
+
         return options
 
-    def get_needed_headers(self, request_headers):
+    def _get_needed_headers(self, request_headers: Dict[str, Any]) -> Dict[str, Any]:
         headers = {}
         for header in request_headers:
             if re.match("x-api-key|x-channel-id|user-agent|^[\w-]+?-\w$", header, re.I):
@@ -106,6 +113,6 @@ class WebDriver():
 
         return headers
 
-    def set_account_name(self, account, response):
+    def _set_account_name(self, account: Account, response: Dict[str, Any]) -> None:
         account.first_name = response['customers.userInformation.firstName']
         account.last_name = response['customers.userInformation.lastName']

@@ -1,5 +1,7 @@
 import sys
-from scripts import Account
+
+from scripts.account import Account
+
 
 if __name__ == "__main__":
     arguments = sys.argv
