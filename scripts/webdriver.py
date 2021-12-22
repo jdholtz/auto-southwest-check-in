@@ -67,7 +67,7 @@ class WebDriver():
     def get_needed_headers(self, request_headers):
         headers = {}
         for header in request_headers:
-            if re.match("x-api-key|x-user-experience-id|x-channel-id|^[\w-]+?-\w$", header, re.I):
+            if re.match("x-api-key|x-channel-id|user-agent|^[\w-]+?-\w$", header, re.I):
                 headers[header] = request_headers[header]
 
         return headers

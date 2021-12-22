@@ -76,10 +76,11 @@ class Flight:
 
         response = self.make_request("GET", site, info)
 
-        info = response['checkInViewReservationPage']['_links']['checkIn']['body']
+        info = response['checkInViewReservationPage']['_links']['checkIn']
+        site = f"mobile-air-operations{info['href']}"
 
-        reservation = self.make_request("POST", CHECKIN_URL, info)
-        self.print_results(reservation['checkInReservationPage'])
+        reservation = self.make_request("POST", site, info['body'])
+        self.print_results(reservation['checkInConfirmationPage'])
 
     def make_request(self, method, site, info):
         url = BASE_URL + site
@@ -107,8 +108,8 @@ class Flight:
         # The thread does not exit at the moment, it instead continues even after failing
 
     def print_results(self, boarding_pass):
-        print("Successfully checked in to flight from {self.departure_airport} to {self.destination_airport}!")
+        print(f"Successfully checked in to flight from '{self.departure_airport}' to '{self.destination_airport}'!")
         for flight in boarding_pass['flights']:
             for passenger in flight['passengers']:
-                print("{} got {}{}!".format(passenger['name'], passenger['boardingGroup'], passenger['boardingPosition']))
+                print(f"{passenger['name']} got {passenger['boardingGroup']}{passenger['boardingPosition']}!")
         print()
