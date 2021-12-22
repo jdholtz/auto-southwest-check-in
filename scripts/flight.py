@@ -1,11 +1,11 @@
 from threading import Thread
 from datetime import datetime, timedelta
+from .general import make_request
 import pytz
 import requests
 from time import sleep
 
 
-BASE_URL = "https://mobile.southwest.com/api/"
 CHECKIN_URL = "mobile-air-operations/v1/mobile-air-operations/page/check-in/"
 
 class Flight:
@@ -80,38 +80,13 @@ class Flight:
         info = {"first-name": self.account.first_name, "last-name": self.account.last_name}
         site = CHECKIN_URL + self.confirmation_number
 
-        response = self.make_request("GET", site, info)
+        response = make_request("GET", site, self.account, info)
 
         info = response['checkInViewReservationPage']['_links']['checkIn']
         site = f"mobile-air-operations{info['href']}"
 
-        reservation = self.make_request("POST", site, info['body'])
+        reservation = make_request("POST", site, self.account, info['body'])
         self.print_results(reservation['checkInConfirmationPage'])
-
-    def make_request(self, method, site, info):
-        url = BASE_URL + site
-
-        # In the case that your server and the Southwest server aren't in sync,
-        # this requests multiple times for a better chance at success
-        attempts = 0
-        while attempts < 20:
-            if method == "POST":
-                response = requests.post(url, headers=self.account.headers, json=info)
-            elif method == "GET":
-                response = requests.get(url, headers=self.account.headers, params=info)
-            else:
-                print(f"\033[91mError: Method {method} not known\033[0m")
-                return
-
-            if response.status_code == 200:
-                return response.json()
-
-            attempts += 1
-            sleep(0.5)
-
-        print(f"Failed to retrieve reservation. Reason: {response.reason} {response.status_code}")
-        # TO-DO: Kill thread without killing other threads or the main process
-        # The thread does not exit at the moment, it instead continues even after failing
 
     def print_results(self, boarding_pass):
         print(f"Successfully checked in to flight from '{self.departure_airport}' to '{self.destination_airport}'!")

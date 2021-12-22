@@ -1,10 +1,10 @@
-import time
 import requests
 from .webdriver import WebDriver
 from .flight import Flight
+from .general import make_request
 
 
-VIEW_RESERVATION_URL = "https://mobile.southwest.com/api/mobile-air-booking/v1/mobile-air-booking/page/view-reservation/"
+VIEW_RESERVATION_URL = "mobile-air-booking/v1/mobile-air-booking/page/view-reservation/"
 
 class Account:
     def __init__(self, username=None, password=None, first_name=None, last_name=None):
@@ -32,7 +32,7 @@ class Account:
         info = {"first-name": self.first_name, "last-name": self.last_name}
         site = VIEW_RESERVATION_URL + confirmation_number
 
-        response = requests.get(site, headers=self.headers, params=info).json()
+        response = make_request("GET", site, self, info)
 
         # If multiple flights are under the same confirmation number, it will schedule all checkins one by one
         flight_info = response['viewReservationViewPage']['bounds']
