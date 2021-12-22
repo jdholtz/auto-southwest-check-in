@@ -1,4 +1,3 @@
-import time
 import sys
 from scripts import Account
 

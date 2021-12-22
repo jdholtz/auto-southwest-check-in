@@ -59,7 +59,13 @@ class Flight:
             sleep_time = (checkin_time - current_time - timedelta(minutes=10)).total_seconds()
             sleep(sleep_time)
 
-            self.account.get_flights()
+            # Check if this is a check in started automatically or manually
+            # To-Do: Make one function to retrieve headers
+            if self.account.username is None:
+                self.account.get_checkin_info(self.confirmation_number)
+            else:
+                self.account.get_flights()
+
             current_time = datetime.utcnow()
             sleep_time = (checkin_time - current_time).total_seconds()
             sleep(sleep_time)
