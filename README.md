@@ -1,10 +1,6 @@
 ## Auto-Southwest Check-In
 Running this script will automatically check you into your flight 24 hours before your flight
 
-WARNING: Until a way has been found to automatically generate a header, \
-you will need to get the `X-Dublriiu-E` header and put it in the `reservation.py` \
-file to successfuly check in. A way to get the header is to proxy the IOS app and \
-grab the header from the proxy. I'm not sure how long this header is valid for.
 ## Dependencies
 - [Python][0] (Any version of Python 2 or 3 works)
 - [Pip][1]
@@ -24,6 +20,11 @@ $ pip install -r requirements.txt
 To schedule a check-in, run the following command
 ```shell
 $ python3 checkin.py CONFIRMATION_NUMBER FIRST_NAME LAST_NAME
+```
+Alternatively, you can login to your account, which will automatically check \
+you in to all of your flights
+```shell
+$ python3 login.py USERNAME PASSWORD
 ```
 
 [0]: https://www.python.org/downloads/
