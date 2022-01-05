@@ -1,3 +1,5 @@
-datetime
-pytz
-requests
+pytz==2019.3
+requests==2.26.0
+selenium==4.0.0b4
+selenium_wire==4.5.6
+undetected_chromedriver==3.0.3 # Later versions (3.0.4-3.0.6) have an asyncio issue that I have run into
