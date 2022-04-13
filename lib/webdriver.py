@@ -7,7 +7,7 @@ from typing import Any, Dict, Optional, TYPE_CHECKING
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
-from seleniumwire.undetected_chromedriver.v2 import Chrome, ChromeOptions
+from seleniumwire.undetected_chromedriver import Chrome, ChromeOptions
 
 if TYPE_CHECKING:
     from account import Account

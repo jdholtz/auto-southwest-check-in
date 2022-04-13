@@ -2,7 +2,7 @@
 Running this script will automatically check you into your flight 24 hours before your flight
 
 ## Dependencies
-- [Python][0] (Any version of Python 2 or 3 works)
+- [Python 3.10][0]
 - [Pip][1]
 
 ## Download
