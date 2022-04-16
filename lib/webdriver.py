@@ -65,7 +65,8 @@ class WebDriver():
         driver.get(BASE_URL)
 
         # Login to retrieve the account's trips and needed headers for later requests
-        WebDriverWait(driver, 30).until(EC.presence_of_element_located((By.CLASS_NAME, "login-button--box"))).click()
+        WebDriverWait(driver, 30).until(EC.invisibility_of_element((By.CLASS_NAME, 'dimmer')))
+        WebDriverWait(driver, 30).until(EC.element_to_be_clickable((By.CLASS_NAME, "login-button--box"))).click()
 
         username_element = WebDriverWait(driver, 30).until(EC.presence_of_element_located((By.NAME, "userNameOrAccountNumber")))
         username_element.send_keys(account.username)
