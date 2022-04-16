@@ -19,12 +19,12 @@ $ pip install -r requirements.txt
 ## Using The Script
 To schedule a check-in, run the following command
 ```shell
-$ python3 checkin.py CONFIRMATION_NUMBER FIRST_NAME LAST_NAME
+$ python3 southwest.py CONFIRMATION_NUMBER FIRST_NAME LAST_NAME
 ```
-Alternatively, you can login to your account, which will automatically check \
+Alternatively, you can log in to your account, which will automatically check \
 you in to all of your flights
 ```shell
-$ python3 login.py USERNAME PASSWORD
+$ python3 southwest.py USERNAME PASSWORD
 ```
 
 [0]: https://www.python.org/downloads/
