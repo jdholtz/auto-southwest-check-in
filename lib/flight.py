@@ -80,15 +80,16 @@ class Flight:
         print(f"Checking in to flight from '{self.departure_airport}' to '{self.destination_airport}' "
               f"for {self.account.first_name} {self.account.last_name}\n")
 
+        headers = self.account.headers
         info = {"first-name": self.account.first_name, "last-name": self.account.last_name}
         site = CHECKIN_URL + self.confirmation_number
 
-        response = make_request("GET", site, self.account, info)
+        response = make_request("GET", site, headers, info)
 
         info = response['checkInViewReservationPage']['_links']['checkIn']
         site = f"mobile-air-operations{info['href']}"
 
-        reservation = make_request("POST", site, self.account, info['body'])
+        reservation = make_request("POST", site, headers, info['body'])
         self._print_results(reservation['checkInConfirmationPage'])
 
     def _print_results(self, boarding_pass: Dict[str, Any]) -> None:

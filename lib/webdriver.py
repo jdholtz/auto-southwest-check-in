@@ -80,8 +80,7 @@ class WebDriver():
         time.sleep(10)
 
         request = driver.requests[0]
-        request_headers = request.headers
-        account.headers = self._get_needed_headers(request_headers)
+        account.headers = self._get_needed_headers(request.headers)
 
         # If this is the first time logging in, the account name needs to be set because that info is needed later
         if account.first_name is None:

@@ -42,7 +42,7 @@ class Account:
         info = {"first-name": self.first_name, "last-name": self.last_name}
         site = VIEW_RESERVATION_URL + confirmation_number
 
-        response = make_request("GET", site, self, info)
+        response = make_request("GET", site, self.headers, info)
 
         # If multiple flights are under the same confirmation number, it will schedule all checkins one by one
         flight_info = response['viewReservationViewPage']['bounds']
