@@ -86,6 +86,7 @@ class WebDriver():
         if account.first_name is None:
             response = json.loads(request.response.body)
             self._set_account_name(account, response)
+            print(f"Successfully logged in to {account.first_name} {account.last_name}'s account")
 
         # This page is also loaded when we log in, so we might as well grab it instead of requesting again later
         flights = json.loads(driver.requests[1].response.body)['upcomingTripsPage']
