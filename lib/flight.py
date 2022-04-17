@@ -67,13 +67,7 @@ class Flight:
             # Only try to refresh the headers if the checkin is more than ten minutes away
             if sleep_time > 0:
                 time.sleep(sleep_time)
-
-                # Check if the check in was started manually or from logging in
-                # To-Do: Make one function to retrieve headers
-                if self.account.username is None:
-                    self.account.get_checkin_info(self.confirmation_number)
-                else:
-                    self.account.get_flights()
+                self.account.refresh_headers()
 
             current_time = datetime.utcnow()
             sleep_time = (checkin_time - current_time).total_seconds()

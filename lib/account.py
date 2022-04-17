@@ -31,9 +31,12 @@ class Account:
             self._get_reservation_info(confirmation_number)
 
     def get_checkin_info(self, confirmation_number: str) -> None:
+        self.refresh_headers()
+        self._get_reservation_info(confirmation_number)
+
+    def refresh_headers(self) -> None:
         webdriver = WebDriver()
         self.headers = webdriver.get_info()
-        self._get_reservation_info(confirmation_number)
 
     def _get_reservation_info(self, confirmation_number: str) -> None:
         info = {"first-name": self.first_name, "last-name": self.last_name}
