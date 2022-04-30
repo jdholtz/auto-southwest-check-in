@@ -4,6 +4,7 @@ Running this script will automatically check you into your flight 24 hours befor
 ## Dependencies
 - [Python 3.10][0]
 - [Pip][1]
+- [Google Chrome][2]
 
 ## Download
 First, download the script onto your computer
@@ -29,3 +30,4 @@ $ python3 southwest.py USERNAME PASSWORD
 
 [0]: https://www.python.org/downloads/
 [1]: https://pip.pypa.io/en/stable/installation/
+[2]: https://www.google.com/chrome/
