@@ -97,10 +97,6 @@ class WebDriver():
         options = ChromeOptions()
         options.add_argument("--headless")
 
-        # Fixes issues when run as root
-        options.add_argument("--no-sandbox")
-        options.add_argument("--disable-dev-shm-usage")
-
         # Southwest detects headless browser user agents, so we have to set our own
         options.add_argument("--user-agent=" + USER_AGENT)
 

@@ -2,4 +2,4 @@ pytz==2019.3
 requests==2.27.1
 selenium==4.1.3
 selenium_wire==4.6.3
-undetected_chromedriver==3.1.0
+undetected_chromedriver==3.1.5r4
