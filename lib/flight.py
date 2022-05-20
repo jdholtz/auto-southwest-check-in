@@ -2,7 +2,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 import time
 from threading import Thread
-from typing import Any, Dict, Optional, TYPE_CHECKING
+from typing import Any, Dict, TYPE_CHECKING
 
 import pytz
 import requests
@@ -15,22 +15,22 @@ CHECKIN_URL = "mobile-air-operations/v1/mobile-air-operations/page/check-in/"
 
 
 class Flight:
-    def __init__(self, account: Optional[Account], confirmation_number: str, flight: Flight) -> None:
+    def __init__(self, account: Account, confirmation_number: str, flight: Dict[str, Any]) -> None:
         self.account = account
         self.confirmation_number = confirmation_number
-        self.departure_time = None
-        self.departure_airport = None
-        self.destination_airport = None
+        self.departure_time: datetime = None
+        self.departure_airport: str = None
+        self.destination_airport: str = None
         self._get_flight_info(flight)
         x = Thread(target=self._set_check_in)
         x.start()
 
-    def _get_flight_info(self, flight: Flight) -> None:
+    def _get_flight_info(self, flight: Dict[str, Any]) -> None:
         self.departure_airport = flight["departureAirport"]["name"]
         self.destination_airport = flight["arrivalAirport"]["name"]
         self.departure_time = self._get_flight_time(flight)
 
-    def _get_flight_time(self, flight: Flight) -> datetime:
+    def _get_flight_time(self, flight: Dict[str, Any]) -> datetime:
         flight_date = f"{flight['departureDate']} {flight['departureTime']}"
         departure_airport_code = flight['departureAirport']['code']
         airport_timezone = self._get_airport_timezone(departure_airport_code)
@@ -38,13 +38,15 @@ class Flight:
 
         return flight_time
 
-    def _get_airport_timezone(self, airport_code: str) -> Any:
+    @staticmethod
+    def _get_airport_timezone(airport_code: str) -> Any:
         airport_info = requests.post("https://openflights.org/php/apsearch.php", data={"iata": airport_code})
         airport_timezone = pytz.timezone(airport_info.json()['airports'][0]['tz_id'])
 
         return airport_timezone
 
-    def _convert_to_utc(self, flight_date: str, airport_timezone: Any) -> datetime:
+    @staticmethod
+    def _convert_to_utc(flight_date: str, airport_timezone: Any) -> datetime:
         flight_date = datetime.strptime(flight_date, "%Y-%m-%d %H:%M")
         flight_time = airport_timezone.localize(flight_date)
         utc_time = flight_time.astimezone(pytz.utc).replace(tzinfo=None)

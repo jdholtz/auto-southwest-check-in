@@ -1,14 +1,12 @@
 import time
-from typing import Any, Dict, Optional, TYPE_CHECKING
+from typing import Any, Dict
 
 import requests
 
 BASE_URL = "https://mobile.southwest.com/api/"
 
 
-def make_request(
-    method: str, site: str, headers: Dict[str, str], info: Dict[str, str]
-) -> Optional[Dict[str, Any]]:
+def make_request(method: str, site: str, headers: Dict[str, Any], info: Dict[str, str]) -> Dict[str, Any]:
     url = BASE_URL + site
 
     # In the case that your server and the Southwest server aren't in sync,
@@ -21,7 +19,7 @@ def make_request(
             response = requests.get(url, headers=headers, params=info)
         else:
             print(f"\033[91mError: Method {method} not known\033[0m")
-            return
+            return None
 
         if response.status_code == 200:
             return response.json()
