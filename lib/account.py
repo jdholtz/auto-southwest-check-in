@@ -48,6 +48,7 @@ class Account:
         flight_info = response['viewReservationViewPage']['bounds']
 
         for flight in flight_info:
-            if not flight in self.flights:
+            # if not flight in self.flights: // TODO: This doesn't work. Add a function to make sure it only schedules if it isn't already added
+            if flight['departureStatus'] != "DEPARTED":
                 flight = Flight(self, confirmation_number, flight)
                 self.flights.append(flight)
