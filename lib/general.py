@@ -1,5 +1,5 @@
 import time
-from typing import Any, Dict, Optional, TYPE_CHECKING
+from typing import Any, Dict, Optional
 
 import requests
 
@@ -17,11 +17,8 @@ def make_request(
     while attempts < 20:
         if method == "POST":
             response = requests.post(url, headers=headers, json=info)
-        elif method == "GET":
-            response = requests.get(url, headers=headers, params=info)
         else:
-            print(f"\033[91mError: Method {method} not known\033[0m")
-            return
+            response = requests.get(url, headers=headers, params=info)
 
         if response.status_code == 200:
             return response.json()
@@ -29,6 +26,9 @@ def make_request(
         attempts += 1
         time.sleep(0.5)
 
-    print(f"Failed to retrieve reservation. Reason: {response.reason} {response.status_code}")
-    # TO-DO: Kill thread without killing other threads or the main process
-    # The thread does not exit at the moment, it instead continues even after failing
+    raise CheckInError(response.reason + " " + str(response.status_code))
+
+
+# Make a custom exception when a check-in fails
+class CheckInError(Exception):
+    pass

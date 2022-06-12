@@ -7,7 +7,7 @@ from typing import Any, Dict, Optional, TYPE_CHECKING
 import pytz
 import requests
 
-from .general import make_request
+from .general import CheckInError, make_request
 if TYPE_CHECKING:
     from account import Account
 
@@ -77,19 +77,27 @@ class Flight:
         self.account.flights.remove(self)
 
     def _check_in(self) -> None:
+        account_name = f"{self.account.first_name} {self.account.last_name}"
         print(f"Checking in to flight from '{self.departure_airport}' to '{self.destination_airport}' "
-              f"for {self.account.first_name} {self.account.last_name}\n")
+              f"for {account_name}\n")
 
         headers = self.account.headers
         info = {"first-name": self.account.first_name, "last-name": self.account.last_name}
         site = CHECKIN_URL + self.confirmation_number
 
-        response = make_request("GET", site, headers, info)
+        try:
+            response = make_request("GET", site, headers, info)
 
-        info = response['checkInViewReservationPage']['_links']['checkIn']
-        site = f"mobile-air-operations{info['href']}"
+            info = response['checkInViewReservationPage']['_links']['checkIn']
+            site = f"mobile-air-operations{info['href']}"
 
-        reservation = make_request("POST", site, headers, info['body'])
+            reservation = make_request("POST", site, headers, info['body'])
+        except CheckInError as err:
+            # TODO: Kill thread
+            print(f"Failed to retrieve reservation for {account_name} with confirmation number "
+                  f"{self.confirmation_number}. Reason: {err}\n")
+            return
+
         self._print_results(reservation['checkInConfirmationPage'])
 
     def _print_results(self, boarding_pass: Dict[str, Any]) -> None:

@@ -20,6 +20,7 @@ def set_up(arguments):
     else:
         print("Invalid arguments") # TODO: Send reference on how to use the script
 
+
 if __name__ == "__main__":
     arguments = sys.argv
 
