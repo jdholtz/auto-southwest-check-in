@@ -1,2 +1,8 @@
+# Byte-compiled files
 *.pyc
+
+# Intellij / PyCharm
 .idea/
+
+# Program files
+config.json

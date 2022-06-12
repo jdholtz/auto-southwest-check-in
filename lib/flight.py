@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from account import Account
 
 CHECKIN_URL = "mobile-air-operations/v1/mobile-air-operations/page/check-in/"
+MANUAL_CHECKIN_URL = "https://mobile.southwest.com/check-in"
 
 
 class Flight:
@@ -94,15 +95,24 @@ class Flight:
             reservation = make_request("POST", site, headers, info['body'])
         except CheckInError as err:
             # TODO: Kill thread
-            print(f"Failed to retrieve reservation for {account_name} with confirmation number "
-                  f"{self.confirmation_number}. Reason: {err}\n")
+            error_message = f"Failed to retrieve reservation for {account_name} with confirmation number " \
+                            f"{self.confirmation_number}. Reason: {err}.\n" \
+                            f"Checkin at this url: {MANUAL_CHECKIN_URL}"
+
+            self.account.send_notification(error_message)
+            print(error_message)
             return
 
-        self._print_results(reservation['checkInConfirmationPage'])
+        self._send_results(reservation['checkInConfirmationPage'])
 
-    def _print_results(self, boarding_pass: Dict[str, Any]) -> None:
-        print(f"Successfully checked in to flight from '{self.departure_airport}' to '{self.destination_airport}'!")
+    # Sends the results to the console and any notification services if they are enabled
+    def _send_results(self, boarding_pass: Dict[str, Any]) -> None:
+        success_message = f"Successfully checked in to flight from '{self.departure_airport}' to " \
+                          f"'{self.destination_airport}' for {self.account.first_name} {self.account.last_name}!\n"
+
         for flight in boarding_pass['flights']:
             for passenger in flight['passengers']:
-                print(f"{passenger['name']} got {passenger['boardingGroup']}{passenger['boardingPosition']}!")
-        print()
+                success_message += f"{passenger['name']} got {passenger['boardingGroup']}{passenger['boardingPosition']}!\n"
+
+        self.account.send_notification(success_message)
+        print(success_message)
