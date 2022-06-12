@@ -38,11 +38,11 @@ $ python3 southwest.py USERNAME PASSWORD
 ## Configuration
 ### Notifications
 **This feature is currently in its beta version and can be found on the [notifications][3] branch.** \
-If you run into any issues while using this, please file an [issue][4].
+If you use this, please let me know if it worked or not in the [Issue #4][4] thread.
 
 
 [0]: https://www.python.org/downloads/
 [1]: https://pip.pypa.io/en/stable/installation/
 [2]: https://www.google.com/chrome/
 [3]: https://github.com/jdholtz/auto-southwest-check-in/tree/notifications
-[4]: https://github.com/jdholtz/auto-southwest-check-in/issues/new
+[4]: https://github.com/jdholtz/auto-southwest-check-in/issues/4
