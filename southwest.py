@@ -4,7 +4,11 @@ import sys
 from lib.account import Account
 
 def set_up(arguments):
-    if len(arguments) == 3:
+    if arguments[1] == "--test-notifications":
+        print("Sending test notifications...")
+        account = Account()
+        account.send_notification("This is a test message")
+    elif len(arguments) == 3:
         username = arguments[1]
         password = arguments[2]
 

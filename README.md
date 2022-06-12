@@ -56,6 +56,10 @@ If you have more than one service you want to send notifications to, you can put
   ]
 }
 ```
+To test if the notification urls work, you can run the following command
+```shell
+$ python3 southwest.py --test-notifications
+```
 
 
 [0]: https://www.python.org/downloads/
