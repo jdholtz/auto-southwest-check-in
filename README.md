@@ -5,6 +5,7 @@ Running this script will automatically check you into your flight 24 hours befor
 - [Installation](#installation)
     * [Prerequisites](#prerequisites)
 - [Using The Script](#using-the-script)
+    * [Docker](#docker)
 - [Configuration](#configuration)
     * [Notifications](#notifications)
 
@@ -35,7 +36,7 @@ Alternatively, you can log in to your account, which will automatically check yo
 $ python3 southwest.py USERNAME PASSWORD
 ```
 
-## Docker
+### Docker
 To run in Docker, first build the image:
 ```shell
 $ git clone https://github.com/jdholtz/auto-southwest-check-in.git
