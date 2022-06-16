@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Optional
 
 from .flight import Flight
-from .general import make_request
+from .general import CheckInError, make_request
 from .webdriver import WebDriver
 
 import apprise
@@ -43,13 +43,24 @@ class Account:
         webdriver = WebDriver()
         reservations = webdriver.get_info(self)
 
+        flight_schedule_message = f"Scheduling the following flights to check in for {self.first_name} {self.last_name}:\n"
         for reservation in reservations:
             confirmation_number = reservation['confirmationNumber']
-            self._get_reservation_info(confirmation_number)
+            flight_schedule_message += self._get_reservation_info(confirmation_number)
+
+        # Only send the message if new flights were scheduled
+        if flight_schedule_message.count('\n') > 1:
+            self.send_notification(flight_schedule_message)
 
     def get_checkin_info(self, confirmation_number: str) -> None:
         self.refresh_headers()
-        self._get_reservation_info(confirmation_number)
+
+        flight_schedule_message = f"Scheduling the following flights to check in for {self.first_name} {self.last_name}:\n"
+        flight_schedule_message += self._get_reservation_info(confirmation_number)
+
+        # Only send the message if new flights were scheduled
+        if flight_schedule_message.count('\n') > 1:
+            self.send_notification(flight_schedule_message)
 
     def refresh_headers(self) -> None:
         webdriver = WebDriver()
@@ -59,15 +70,28 @@ class Account:
         info = {"first-name": self.first_name, "last-name": self.last_name}
         site = VIEW_RESERVATION_URL + confirmation_number
 
-        response = make_request("GET", site, self.headers, info)
+        try:
+            response = make_request("GET", site, self.headers, info)
+        except CheckInError as err:
+            error_message = f"Failed to retrieve reservation for {self.first_name} {self.last_name} " \
+                            f"with confirmation number {confirmation_number}. Reason: {err}.\n" \
+                            f"Make sure the flight information is correct and try again."
+            self.send_notification(error_message)
+            print(error_message)
+            return
 
         # If multiple flights are under the same confirmation number, it will schedule all checkins one by one
         flight_info = response['viewReservationViewPage']['bounds']
 
+        flight_schedule_message = ""
         for flight in flight_info:
-            if not flight in self.flights:
+            # if not flight in self.flights: // TODO: This doesn't work. Add a function to make sure it only schedules if it isn't already added
+            if flight['departureStatus'] != "DEPARTED":
                 flight = Flight(self, confirmation_number, flight)
                 self.flights.append(flight)
+                flight_schedule_message += f"Flight from {flight.departure_airport} to {flight.destination_airport} at {flight.departure_time} UTC\n"
+
+        return flight_schedule_message
 
     def send_notification(self, body: str) -> None:
         if "notification_urls" not in self.config or len(self.config["notification_urls"]) == 0:

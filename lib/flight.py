@@ -95,9 +95,8 @@ class Flight:
             reservation = make_request("POST", site, headers, info['body'])
         except CheckInError as err:
             # TODO: Kill thread
-            error_message = f"Failed to retrieve reservation for {account_name} with confirmation number " \
-                            f"{self.confirmation_number}. Reason: {err}.\n" \
-                            f"Checkin at this url: {MANUAL_CHECKIN_URL}"
+            error_message = f"Failed to check in to flight {self.confirmation_number} for {account_name}. " \
+                            f"Reason: {err}.\nCheck in at this url: {MANUAL_CHECKIN_URL}"
 
             self.account.send_notification(error_message)
             print(error_message)
