@@ -38,6 +38,28 @@ $ python3 southwest.py USERNAME PASSWORD
 ## Configuration
 To set up a configuration file, copy `config.example.json` to `config.json`.
 
+
+### Docker
+To run in Docker, first build the image:
+```shell
+$ git clone https://github.com/jdholtz/auto-southwest-check-in.git
+$ cd auto-southwest-check-in
+$ docker build . -t auto-southwest-check-in
+```
+
+Then spawn a container:
+```shell
+$ docker run -d --name=auto-southwest-check-in --entrypoint 'python3 southwest.py USERNAME PASSWORD' auto-southwest-check-in
+```
+or
+```shell
+$ docker run -d --name=auto-southwest-check-in --entrypoint 'python3 southwest.py CONFIRMATION_NUMBER FIRST_NAME LAST_NAME' auto-southwest-check-in
+```
+
+You can review the container's logs with:
+```shell
+docker logs 
+
 ### Notifications
 Users can be notified on successful and failed check-ins. This is done through the [Apprise library][3]. 
 To start, first gather the service url you want to send notifications to (information on how to create
