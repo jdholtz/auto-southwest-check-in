@@ -35,11 +35,7 @@ Alternatively, you can log in to your account, which will automatically check yo
 $ python3 southwest.py USERNAME PASSWORD
 ```
 
-## Configuration
-To set up a configuration file, copy `config.example.json` to `config.json`.
-
-
-### Docker
+## Docker
 To run in Docker, first build the image:
 ```shell
 $ git clone https://github.com/jdholtz/auto-southwest-check-in.git
@@ -47,7 +43,7 @@ $ cd auto-southwest-check-in
 $ docker build . -t auto-southwest-check-in
 ```
 
-Then spawn a container:
+Then spawn a container (you can spawn multiple with different names):
 ```shell
 $ docker run -d --name=auto-southwest-check-in --entrypoint 'python3 southwest.py USERNAME PASSWORD' auto-southwest-check-in
 ```
@@ -58,7 +54,11 @@ $ docker run -d --name=auto-southwest-check-in --entrypoint 'python3 southwest.p
 
 You can review the container's logs with:
 ```shell
-docker logs 
+$ docker logs auto-southwest-check-in
+```
+
+## Configuration
+To set up a configuration file, copy `config.example.json` to `config.json`.
 
 ### Notifications
 Users can be notified on successful and failed check-ins. This is done through the [Apprise library][3]. 
