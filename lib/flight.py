@@ -7,7 +7,7 @@ from typing import Any, Dict, Optional, TYPE_CHECKING
 import pytz
 import requests
 
-from .general import CheckInError, make_request
+from .general import CheckInError, make_request, NotificationLevel
 if TYPE_CHECKING:
     from account import Account
 
@@ -98,7 +98,7 @@ class Flight:
             error_message = f"Failed to check in to flight {self.confirmation_number} for {account_name}. " \
                             f"Reason: {err}.\nCheck in at this url: {MANUAL_CHECKIN_URL}"
 
-            self.account.send_notification(error_message)
+            self.account.send_notification(error_message, NotificationLevel.ERROR)
             print(error_message)
             return
 
@@ -113,5 +113,5 @@ class Flight:
             for passenger in flight['passengers']:
                 success_message += f"{passenger['name']} got {passenger['boardingGroup']}{passenger['boardingPosition']}!\n"
 
-        self.account.send_notification(success_message)
+        self.account.send_notification(success_message, NotificationLevel.INFO)
         print(success_message)

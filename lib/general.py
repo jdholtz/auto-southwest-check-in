@@ -1,3 +1,4 @@
+from enum import IntEnum
 import time
 from typing import Any, Dict, Optional
 
@@ -32,3 +33,8 @@ def make_request(
 # Make a custom exception when a check-in fails
 class CheckInError(Exception):
     pass
+
+
+class NotificationLevel(IntEnum):
+    INFO = 1
+    ERROR = 2

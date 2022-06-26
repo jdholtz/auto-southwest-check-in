@@ -2,7 +2,7 @@ from typing import Optional
 
 from .config import Config
 from .flight import Flight
-from .general import CheckInError, make_request
+from .general import CheckInError, make_request, NotificationLevel
 from .webdriver import WebDriver
 
 import apprise
@@ -26,7 +26,6 @@ class Account:
         self.headers = {}
         self.config = Config()
 
-
     def get_flights(self) -> None:
         webdriver = WebDriver()
         reservations = webdriver.get_info(self)
@@ -38,7 +37,7 @@ class Account:
 
         # Only send the message if new flights were scheduled
         if flight_schedule_message.count('\n') > 1:
-            self.send_notification(flight_schedule_message)
+            self.send_notification(flight_schedule_message, NotificationLevel.INFO)
 
     def get_checkin_info(self, confirmation_number: str) -> None:
         self.refresh_headers()
@@ -48,7 +47,7 @@ class Account:
 
         # Only send the message if new flights were scheduled
         if flight_schedule_message.count('\n') > 1:
-            self.send_notification(flight_schedule_message)
+            self.send_notification(flight_schedule_message, NotificationLevel.INFO)
 
     def refresh_headers(self) -> None:
         webdriver = WebDriver()
@@ -64,9 +63,9 @@ class Account:
             error_message = f"Failed to retrieve reservation for {self.first_name} {self.last_name} " \
                             f"with confirmation number {confirmation_number}. Reason: {err}.\n" \
                             f"Make sure the flight information is correct and try again."
-            self.send_notification(error_message)
+            self.send_notification(error_message, NotificationLevel.ERROR)
             print(error_message)
-            return
+            return ""
 
         # If multiple flights are under the same confirmation number, it will schedule all checkins one by one
         flight_info = response['viewReservationViewPage']['bounds']
@@ -81,9 +80,14 @@ class Account:
 
         return flight_schedule_message
 
-    def send_notification(self, body: str) -> None:
+    def send_notification(self, body: str, level: int = None) -> None:
         if len(self.config.notification_urls) == 0:
             # Notification config is not set up
+            return
+
+        # Check the level to see if we still want to send it. If level is none, it means
+        # the message will always be printed. For example, this is used when testing notifications.
+        if level and level < self.config.notification_level:
             return
 
         title = "Auto Southwest Check-in Script"
