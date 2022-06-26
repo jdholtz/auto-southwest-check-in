@@ -9,10 +9,14 @@ CONFIG_FILE_NAME = "config.json"
 
 class Config():
     def __init__(self):
-        # First, read the config file
+        # Default values are set
+        self.notification_urls = []
+        self.notification_level = NotificationLevel.INFO
+
+        # Read the config file
         config = self._get_config()
 
-        # Then, set the configuration values if provided. Otherwise, set defaults
+        # Set the configuration values if provided
         try:
             self._parse_config(config)
         except TypeError as err:
@@ -34,12 +38,8 @@ class Config():
         return config
 
     # This method ensures the configuration values are correct and the right types.
-    # A default value is set if no value is provided in the configuration file.
+    # Defaults are already set in the constructor to ensure a value is never null.
     def _parse_config(self, config: Dict[str, Any]) -> None:
-        # Default values are set here
-        self.notification_urls = []
-        self.notification_level = NotificationLevel.INFO
-
         if "notification_urls" in config:
             self.notification_urls = config["notification_urls"]
 
