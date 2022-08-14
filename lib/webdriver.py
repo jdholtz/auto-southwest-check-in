@@ -62,10 +62,11 @@ class WebDriver():
         return headers
 
     def _get_account_info(self, account: Account, driver: Chrome) -> Dict[str, Any]:
-        driver.get(BASE_URL)
+        # The check-in URL is still used because, when you log in, it loads the user's upcoming trips
+        # allowing us to log in and get the user's flights all in one process.
+        driver.get(CHECKIN_URL)
 
         # Login to retrieve the account's trips and needed headers for later requests
-        WebDriverWait(driver, 30).until(EC.invisibility_of_element((By.CLASS_NAME, 'dimmer')))
         WebDriverWait(driver, 30).until(EC.element_to_be_clickable((By.CLASS_NAME, "login-button--box"))).click()
 
         username_element = WebDriverWait(driver, 30).until(EC.presence_of_element_located((By.NAME, "userNameOrAccountNumber")))
@@ -86,7 +87,7 @@ class WebDriver():
         if account.first_name is None:
             response = json.loads(request.response.body)
             self._set_account_name(account, response)
-            print(f"Successfully logged in to {account.first_name} {account.last_name}'s account")
+            print(f"Successfully logged in to {account.first_name} {account.last_name}'s account\n")
 
         # This page is also loaded when we log in, so we might as well grab it instead of requesting again later
         flights = json.loads(driver.requests[1].response.body)['upcomingTripsPage']
