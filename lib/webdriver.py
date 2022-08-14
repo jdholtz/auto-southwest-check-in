@@ -2,7 +2,7 @@ from __future__ import annotations
 import json
 import re
 import time
-from typing import Any, Dict, Optional, TYPE_CHECKING
+from typing import Any, Dict, TYPE_CHECKING
 
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
@@ -22,7 +22,7 @@ RESERVATION_URL = BASE_URL + "/api/mobile-air-operations/v1/mobile-air-operation
 
 class WebDriver():
     # This is heavily based off of https://github.com/byalextran/southwest-headers/commit/d2969306edb0976290bfa256d41badcc9698f6ed
-    def get_info(self, account: Optional[Account] = None) -> Dict[str, Any]:
+    def get_info(self, account: Account = None) -> Dict[str, Any]:
         options = self._get_options()
         seleniumwire_options = {'disable_encoding': True}
 
@@ -93,7 +93,8 @@ class WebDriver():
 
         return flights
 
-    def _get_options(self) -> ChromeOptions:
+    @staticmethod
+    def _get_options() -> ChromeOptions:
         options = ChromeOptions()
         options.add_argument("--headless")
 
@@ -102,14 +103,16 @@ class WebDriver():
 
         return options
 
-    def _get_needed_headers(self, request_headers: Dict[str, Any]) -> Dict[str, Any]:
+    @staticmethod
+    def _get_needed_headers(request_headers: Dict[str, Any]) -> Dict[str, Any]:
         headers = {}
         for header in request_headers:
-            if re.match("x-api-key|x-channel-id|user-agent|^[\w-]+?-\w$", header, re.I):
+            if re.match(r"x-api-key|x-channel-id|user-agent|^[\w-]+?-\w$", header, re.I):
                 headers[header] = request_headers[header]
 
         return headers
 
-    def _set_account_name(self, account: Account, response: Dict[str, Any]) -> None:
+    @staticmethod
+    def _set_account_name(account: Account, response: Dict[str, Any]) -> None:
         account.first_name = response['customers.userInformation.firstName']
         account.last_name = response['customers.userInformation.lastName']

@@ -1,6 +1,6 @@
 from enum import IntEnum
 import time
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 import requests
 
@@ -9,7 +9,7 @@ BASE_URL = "https://mobile.southwest.com/api/"
 
 def make_request(
     method: str, site: str, headers: Dict[str, str], info: Dict[str, str]
-) -> Optional[Dict[str, Any]]:
+) -> Dict[str, Any]:
     url = BASE_URL + site
 
     # In the case that your server and the Southwest server aren't in sync,

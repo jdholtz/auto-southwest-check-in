@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Any, Dict, List
 
 from .config import Config
 from .flight import Flight
@@ -13,17 +13,17 @@ VIEW_RESERVATION_URL = "mobile-air-booking/v1/mobile-air-booking/page/view-reser
 class Account:
     def __init__(
         self,
-        username: Optional[str] = None,
-        password: Optional[str] = None,
-        first_name: Optional[str] = None,
-        last_name: Optional[str] = None
+        username: str = None,
+        password: str = None,
+        first_name: str = None,
+        last_name: str = None
     ) -> None:
         self.username = username
         self.password = password
         self.first_name = first_name
         self.last_name = last_name
-        self.flights = []
-        self.headers = {}
+        self.flights: List[Flight] = []
+        self.headers: Dict[str, Any] = {}
         self.config = Config()
 
     def get_flights(self) -> None:

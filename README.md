@@ -13,7 +13,7 @@ Running this script will automatically check you into your flight 24 hours befor
 ### Prerequisites
 - [Python 3.7+][0]
 - [Pip][1]
-- [Google Chrome][2]
+- [Google Chrome (Version 101+)][2]
 
 First, download the script onto your computer
 ```shell
