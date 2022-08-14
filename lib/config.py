@@ -43,7 +43,7 @@ class Config():
         if "notification_urls" in config:
             self.notification_urls = config["notification_urls"]
 
-            if not isinstance(self.notification_urls, list | str):
+            if not isinstance(self.notification_urls, (list, str)):
                 raise TypeError("'notification_urls' must be a list or string")
 
         if "notification_level" in config:

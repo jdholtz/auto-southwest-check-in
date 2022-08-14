@@ -11,7 +11,7 @@ Running this script will automatically check you into your flight 24 hours befor
 ## Installation
 
 ### Prerequisites
-- [Python 3.10][0]
+- [Python 3.7+][0]
 - [Pip][1]
 - [Google Chrome][2]
 
@@ -40,7 +40,7 @@ To set up a configuration file, copy `config.example.json` to `config.json`.
 
 ### Notifications
 #### Notification URLs
-Users can be notified on successful and failed check-ins. This is done through the [Apprise library][3]. 
+Users can be notified on successful and failed check-ins. This is done through the [Apprise library][3].
 To start, first gather the service url you want to send notifications to (information on how to create
 service urls can be found on the [Apprise Readme][4]). Then put it in your configuration file.
 ```json

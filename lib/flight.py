@@ -96,7 +96,7 @@ class Flight:
         except CheckInError as err:
             # TODO: Kill thread
             error_message = f"Failed to check in to flight {self.confirmation_number} for {account_name}. " \
-                            f"Reason: {err}.\nCheck in at this url: {MANUAL_CHECKIN_URL}"
+                            f"Reason: {err}.\nCheck in at this url: {MANUAL_CHECKIN_URL}\n"
 
             self.account.send_notification(error_message, NotificationLevel.ERROR)
             print(error_message)
