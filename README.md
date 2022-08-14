@@ -11,7 +11,7 @@ Running this script will automatically check you into your flight 24 hours befor
 ## Installation
 
 ### Prerequisites
-- [Python 3.10][0]
+- [Python 3.7+][0]
 - [Pip][1]
 - [Google Chrome (Version 101+)][2]
 
@@ -36,13 +36,47 @@ $ python3 southwest.py USERNAME PASSWORD
 ```
 
 ## Configuration
+To set up a configuration file, copy `config.example.json` to `config.json`.
+
 ### Notifications
-**This feature is currently in its beta version and can be found on the [notifications][3] branch.** \
-If you use this, please let me know if it worked or not in the [Issue #4][4] thread.
+#### Notification URLs
+Users can be notified on successful and failed check-ins. This is done through the [Apprise library][3].
+To start, first gather the service url you want to send notifications to (information on how to create
+service urls can be found on the [Apprise Readme][4]). Then put it in your configuration file.
+```json
+{
+  "notification_urls": "service://my_service_url"
+}
+```
+If you have more than one service you want to send notifications to, you can put them in an array:
+```json
+{
+  "notification_urls": [
+    "service://my_first_service_url",
+    "service://my_second_service_url"
+  ]
+}
+
+```
+#### Notification Level
+You can also select the level of notifications you want to receive.
+```json
+{
+  "notification_level": 1
+}
+```
+Level 1 means you receive successful scheduling and check-in messages and all messages in later levels.\
+Level 2 means you receive only error messages (failed scheduling and check-ins).
+
+#### Test The Notifications
+To test if the notification urls work, you can run the following command
+```shell
+$ python3 southwest.py --test-notifications
+```
 
 
 [0]: https://www.python.org/downloads/
 [1]: https://pip.pypa.io/en/stable/installation/
 [2]: https://www.google.com/chrome/
-[3]: https://github.com/jdholtz/auto-southwest-check-in/tree/notifications
-[4]: https://github.com/jdholtz/auto-southwest-check-in/issues/4
+[3]: https://github.com/caronc/apprise
+[4]: https://github.com/caronc/apprise#supported-notifications

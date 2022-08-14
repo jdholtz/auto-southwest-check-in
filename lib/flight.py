@@ -7,11 +7,12 @@ from typing import Any, Dict, TYPE_CHECKING
 import pytz
 import requests
 
-from .general import make_request
+from .general import CheckInError, make_request, NotificationLevel
 if TYPE_CHECKING:
     from account import Account
 
 CHECKIN_URL = "mobile-air-operations/v1/mobile-air-operations/page/check-in/"
+MANUAL_CHECKIN_URL = "https://mobile.southwest.com/check-in"
 
 
 class Flight:
@@ -79,24 +80,40 @@ class Flight:
         self.account.flights.remove(self)
 
     def _check_in(self) -> None:
+        account_name = f"{self.account.first_name} {self.account.last_name}"
         print(f"Checking in to flight from '{self.departure_airport}' to '{self.destination_airport}' "
-              f"for {self.account.first_name} {self.account.last_name}\n")
+              f"for {account_name}\n")
 
         headers = self.account.headers
         info = {"first-name": self.account.first_name, "last-name": self.account.last_name}
         site = CHECKIN_URL + self.confirmation_number
 
-        response = make_request("GET", site, headers, info)
+        try:
+            response = make_request("GET", site, headers, info)
 
-        info = response['checkInViewReservationPage']['_links']['checkIn']
-        site = f"mobile-air-operations{info['href']}"
+            info = response['checkInViewReservationPage']['_links']['checkIn']
+            site = f"mobile-air-operations{info['href']}"
 
-        reservation = make_request("POST", site, headers, info['body'])
-        self._print_results(reservation['checkInConfirmationPage'])
+            reservation = make_request("POST", site, headers, info['body'])
+        except CheckInError as err:
+            # TODO: Kill thread
+            error_message = f"Failed to check in to flight {self.confirmation_number} for {account_name}. " \
+                            f"Reason: {err}.\nCheck in at this url: {MANUAL_CHECKIN_URL}\n"
 
-    def _print_results(self, boarding_pass: Dict[str, Any]) -> None:
-        print(f"Successfully checked in to flight from '{self.departure_airport}' to '{self.destination_airport}'!")
+            self.account.send_notification(error_message, NotificationLevel.ERROR)
+            print(error_message)
+            return
+
+        self._send_results(reservation['checkInConfirmationPage'])
+
+    # Sends the results to the console and any notification services if they are enabled
+    def _send_results(self, boarding_pass: Dict[str, Any]) -> None:
+        success_message = f"Successfully checked in to flight from '{self.departure_airport}' to " \
+                          f"'{self.destination_airport}' for {self.account.first_name} {self.account.last_name}!\n"
+
         for flight in boarding_pass['flights']:
             for passenger in flight['passengers']:
-                print(f"{passenger['name']} got {passenger['boardingGroup']}{passenger['boardingPosition']}!")
-        print()
+                success_message += f"{passenger['name']} got {passenger['boardingGroup']}{passenger['boardingPosition']}!\n"
+
+        self.account.send_notification(success_message, NotificationLevel.INFO)
+        print(success_message)
