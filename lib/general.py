@@ -8,7 +8,7 @@ BASE_URL = "https://mobile.southwest.com/api/"
 
 
 def make_request(
-    method: str, site: str, headers: Dict[str, str], info: Dict[str, str]
+    method: str, site: str, headers: Dict[str, Any], info: Dict[str, str]
 ) -> Dict[str, Any]:
     url = BASE_URL + site
 
@@ -17,9 +17,9 @@ def make_request(
     attempts = 0
     while attempts < 20:
         if method == "POST":
-            response = requests.post(url, headers=headers, json=info)
+            response = requests.post(url, headers = headers, json = info)
         else:
-            response = requests.get(url, headers=headers, params=info)
+            response = requests.get(url, headers = headers, params = info)
 
         if response.status_code == 200:
             return response.json()

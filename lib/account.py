@@ -59,7 +59,7 @@ class Account:
         except CheckInError as err:
             error_message = f"Failed to retrieve reservation for {self.first_name} {self.last_name} " \
                             f"with confirmation number {confirmation_number}. Reason: {err}.\n" \
-                            f"Make sure the flight information is correct and try again."
+                            f"Make sure the flight information is correct and try again.\n"
             self.send_notification(error_message, NotificationLevel.ERROR)
             print(error_message)
             return
