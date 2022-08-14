@@ -1,4 +1,4 @@
-apprise==0.9.9
+apprise==1.0.0
 pytz==2019.3
 requests==2.27.1
 selenium==4.1.3

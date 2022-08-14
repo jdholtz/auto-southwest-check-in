@@ -62,7 +62,7 @@ class Account:
                             f"Make sure the flight information is correct and try again."
             self.send_notification(error_message, NotificationLevel.ERROR)
             print(error_message)
-            return ""
+            return
 
         # If multiple flights are under the same confirmation number, it will schedule all checkins one by one
         flight_info = response['viewReservationViewPage']['bounds']
@@ -99,4 +99,8 @@ class Account:
         title = "Auto Southwest Check-in Script"
 
         apobj = apprise.Apprise(self.config.notification_urls)
-        apobj.notify(title=title, body=body)
+        apobj.notify(
+            title = title,
+            body = body,
+            body_format = apprise.NotifyFormat.TEXT
+        )
