@@ -1,7 +1,7 @@
 from __future__ import annotations
 from datetime import datetime, timedelta
 import time
-from threading import Thread
+from multiprocessing import Process
 from typing import Any, Dict, TYPE_CHECKING
 
 import pytz
@@ -23,8 +23,8 @@ class Flight:
         self.departure_airport: str = None
         self.destination_airport: str = None
         self._get_flight_info(flight)
-        x = Thread(target=self._set_check_in)
-        x.start()
+        process = Process(target=self._set_check_in)
+        process.start()
 
     def _get_flight_info(self, flight: Dict[str, Any]) -> None:
         self.departure_airport = flight["departureAirport"]["name"]
@@ -96,7 +96,6 @@ class Flight:
 
             reservation = make_request("POST", site, headers, info['body'])
         except CheckInError as err:
-            # TODO: Kill thread
             error_message = f"Failed to check in to flight {self.confirmation_number} for {account_name}. " \
                             f"Reason: {err}.\nCheck in at this url: {MANUAL_CHECKIN_URL}\n"
 
