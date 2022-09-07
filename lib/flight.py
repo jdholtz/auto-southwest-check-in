@@ -77,7 +77,6 @@ class Flight:
             time.sleep(sleep_time)
 
         self._check_in()
-        self.account.flights.remove(self)
 
     def _check_in(self) -> None:
         account_name = f"{self.account.first_name} {self.account.last_name}"

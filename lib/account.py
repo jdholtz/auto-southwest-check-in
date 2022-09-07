@@ -72,6 +72,7 @@ class Account:
             if flight['departureStatus'] != "DEPARTED":
                 flight = Flight(self, confirmation_number, flight)
                 self.flights.append(flight)
+                # TODO: Remove flight from list after it has checked in. Have to do in main process (memory isn't shared)
 
     # Sends new flight notifications to the user. It detects new flights by getting every scheduled flight after
     # the previous length of the flights list.
