@@ -35,6 +35,9 @@ Alternatively, you can log in to your account, which will automatically check yo
 $ python3 southwest.py USERNAME PASSWORD
 ```
 
+**Note**: The script will check the entire party in under the same reservation, so there is no need
+to create more than one instance of the script per reservation.
+
 ## Configuration
 To set up a configuration file, copy `config.example.json` to `config.json`.
 
