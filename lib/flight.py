@@ -1,11 +1,11 @@
 from __future__ import annotations
 from datetime import datetime, timedelta
+import json
 import time
 from multiprocessing import Process
 from typing import Any, Dict, TYPE_CHECKING
 
 import pytz
-import requests
 
 from .general import CheckInError, make_request, NotificationLevel
 if TYPE_CHECKING:
@@ -41,9 +41,10 @@ class Flight:
 
     @staticmethod
     def _get_airport_timezone(airport_code: str) -> Any:
-        airport_info = requests.post("https://openflights.org/php/apsearch.php", data={"iata": airport_code})
-        airport_timezone = pytz.timezone(airport_info.json()['airports'][0]['tz_id'])
+        with open("utils/airport_timezones.json") as tz:
+            airport_timezones = json.load(tz)
 
+        airport_timezone = pytz.timezone(airport_timezones[airport_code])
         return airport_timezone
 
     @staticmethod
