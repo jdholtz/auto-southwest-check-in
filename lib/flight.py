@@ -51,33 +51,35 @@ class Flight:
     def _convert_to_utc(flight_date: str, airport_timezone: Any) -> datetime:
         flight_date = datetime.strptime(flight_date, "%Y-%m-%d %H:%M")
         flight_time = airport_timezone.localize(flight_date)
-        utc_time = flight_time.astimezone(pytz.utc).replace(tzinfo=None)
+        utc_time = flight_time.astimezone(pytz.utc).replace(tzinfo = None)
 
         return utc_time
 
     def _set_check_in(self) -> None:
         # Starts to check in five seconds early in case the Southwest server is ahead of your server
         checkin_time = self.departure_time - timedelta(days = 1, seconds = 5)
+        self._wait_for_check_in(checkin_time)
+        self._check_in()
+
+    def _wait_for_check_in(self, checkin_time: datetime) -> None:
+        current_time = datetime.utcnow()
+        if checkin_time <= current_time:
+            return
+
+        print(f"Scheduling checkin to flight from '{self.departure_airport}' to '{self.destination_airport}' "
+              f"for {self.account.first_name} {self.account.last_name} at {checkin_time} UTC\n")
+
+        # Refresh headers 10 minutes before to make sure they are valid
+        sleep_time = (checkin_time - current_time - timedelta(minutes = 10)).total_seconds()
+
+        # Only try to refresh the headers if the checkin is more than ten minutes away
+        if sleep_time > 0:
+            time.sleep(sleep_time)
+            self.account.refresh_headers()
 
         current_time = datetime.utcnow()
-
-        if checkin_time > current_time:
-            print(f"Scheduling checkin to flight from '{self.departure_airport}' to '{self.destination_airport}' "
-                  f"for {self.account.first_name} {self.account.last_name} at {checkin_time} UTC\n")
-
-            # Refresh headers 10 minutes before to make sure they are valid
-            sleep_time = (checkin_time - current_time - timedelta(minutes = 10)).total_seconds()
-
-            # Only try to refresh the headers if the checkin is more than ten minutes away
-            if sleep_time > 0:
-                time.sleep(sleep_time)
-                self.account.refresh_headers()
-
-            current_time = datetime.utcnow()
-            sleep_time = (checkin_time - current_time).total_seconds()
-            time.sleep(sleep_time)
-
-        self._check_in()
+        sleep_time = (checkin_time - current_time).total_seconds()
+        time.sleep(sleep_time)
 
     def _check_in(self) -> None:
         account_name = f"{self.account.first_name} {self.account.last_name}"
