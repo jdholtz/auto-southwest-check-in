@@ -1,5 +1,5 @@
-from enum import IntEnum
 import time
+from enum import IntEnum
 from typing import Any, Dict
 
 import requests
@@ -17,9 +17,9 @@ def make_request(
     attempts = 0
     while attempts < 20:
         if method == "POST":
-            response = requests.post(url, headers = headers, json = info)
+            response = requests.post(url, headers=headers, json=info)
         else:
-            response = requests.get(url, headers = headers, params = info)
+            response = requests.get(url, headers=headers, params=info)
 
         if response.status_code == 200:
             return response.json()

@@ -12,10 +12,15 @@ from lib.webdriver import WebDriver
 
 
 def test_get_flights_processes_retrieved_flights(mocker: MockerFixture) -> None:
-    mocker.patch.object(WebDriver, "get_info",
-        return_value = [{"confirmationNumber": "flight1"}, {"confirmationNumber": "flight2"}])
+    mocker.patch.object(
+        WebDriver,
+        "get_info",
+        return_value=[{"confirmationNumber": "flight1"}, {"confirmationNumber": "flight2"}],
+    )
     mock_get_reservation_info = mocker.patch.object(Account, "_get_reservation_info")
-    mock_send_new_flight_notifications = mocker.patch.object(Account, "_send_new_flight_notifications")
+    mock_send_new_flight_notifications = mocker.patch.object(
+        Account, "_send_new_flight_notifications"
+    )
 
     test_account = Account()
     test_account.get_flights()
@@ -27,7 +32,9 @@ def test_get_flights_processes_retrieved_flights(mocker: MockerFixture) -> None:
 def test_get_checkin_info_retrives_info_for_one_flight(mocker: MockerFixture) -> None:
     mock_refresh_headers = mocker.patch.object(Account, "refresh_headers")
     mock_get_reservation_info = mocker.patch.object(Account, "_get_reservation_info")
-    mock_send_new_flight_notifications = mocker.patch.object(Account, "_send_new_flight_notifications")
+    mock_send_new_flight_notifications = mocker.patch.object(
+        Account, "_send_new_flight_notifications"
+    )
 
     test_account = Account()
     test_account.get_checkin_info("flight1")
@@ -38,7 +45,7 @@ def test_get_checkin_info_retrives_info_for_one_flight(mocker: MockerFixture) ->
 
 
 def test_refresh_headers_sets_new_headers(mocker: MockerFixture) -> None:
-    mocker.patch.object(WebDriver, "get_info", return_value = {"test": "headers"})
+    mocker.patch.object(WebDriver, "get_info", return_value={"test": "headers"})
 
     test_account = Account()
     test_account.refresh_headers()
@@ -47,9 +54,9 @@ def test_refresh_headers_sets_new_headers(mocker: MockerFixture) -> None:
 
 
 def test_get_reservation_info_sends_error_notification_when_reservation_retrieval_fails(
-    mocker: MockerFixture
+    mocker: MockerFixture,
 ) -> None:
-    mocker.patch("lib.account.make_request", side_effect = CheckInError())
+    mocker.patch("lib.account.make_request", side_effect=CheckInError())
     mock_send_notification = mocker.patch.object(Account, "send_notification")
 
     test_account = Account()
@@ -61,7 +68,7 @@ def test_get_reservation_info_sends_error_notification_when_reservation_retrieva
 
 def test_get_reservation_info_does_not_schedule_departed_flights(mocker: MockerFixture) -> None:
     flight_info = {"viewReservationViewPage": {"bounds": [{"departureStatus": "DEPARTED"}]}}
-    mocker.patch("lib.account.make_request", return_value = flight_info)
+    mocker.patch("lib.account.make_request", return_value=flight_info)
 
     test_account = Account()
     test_account._get_reservation_info("flight1")
@@ -70,10 +77,14 @@ def test_get_reservation_info_does_not_schedule_departed_flights(mocker: MockerF
 
 
 def test_get_reservation_info_schedules_all_flights_under_one_reservation(
-    mocker: MockerFixture
+    mocker: MockerFixture,
 ) -> None:
-    flight_info = {"viewReservationViewPage": {"bounds": [{"departureStatus": "WAITING"}, {"departureStatus": "WAITING"}]}}
-    mocker.patch("lib.account.make_request", return_value = flight_info)
+    flight_info = {
+        "viewReservationViewPage": {
+            "bounds": [{"departureStatus": "WAITING"}, {"departureStatus": "WAITING"}]
+        }
+    }
+    mocker.patch("lib.account.make_request", return_value=flight_info)
     mock_flight = mocker.patch("lib.account.Flight")
 
     test_account = Account()
@@ -84,7 +95,7 @@ def test_get_reservation_info_schedules_all_flights_under_one_reservation(
 
 
 def test_send_new_flight_notifications_sends_no_notification_if_no_new_flights_are_scheduled(
-    mocker: MockerFixture
+    mocker: MockerFixture,
 ) -> None:
     mock_send_notification = mocker.patch.object(Account, "send_notification")
 
@@ -95,7 +106,7 @@ def test_send_new_flight_notifications_sends_no_notification_if_no_new_flights_a
 
 
 def test_send_new_flight_notifications_sends_notifications_for_new_flights(
-    mocker: MockerFixture
+    mocker: MockerFixture,
 ) -> None:
     mock_send_notification = mocker.patch.object(Account, "send_notification")
     mock_flight = mocker.patch("lib.account.Flight")
@@ -108,11 +119,11 @@ def test_send_new_flight_notifications_sends_notifications_for_new_flights(
 
 
 def test_send_notification_does_not_send_notifications_if_notication_config_is_empty(
-    mocker: MockerFixture
+    mocker: MockerFixture,
 ) -> None:
     mock_apprise_notify = mocker.patch.object(apprise.Apprise, "notify")
     test_account = Account()
-    test_account.config.notification_urls = [] # Just in case it isn't empty
+    test_account.config.notification_urls = []  # Just in case it isn't empty
 
     test_account.send_notification("")
 
@@ -120,7 +131,7 @@ def test_send_notification_does_not_send_notifications_if_notication_config_is_e
 
 
 def test_send_nofication_does_not_send_notifications_if_level_is_too_low(
-    mocker: MockerFixture
+    mocker: MockerFixture,
 ) -> None:
     mock_apprise_notify = mocker.patch.object(apprise.Apprise, "notify")
     test_account = Account()
@@ -133,13 +144,12 @@ def test_send_nofication_does_not_send_notifications_if_level_is_too_low(
 
 
 def test_send_notification_sends_notifications_with_the_correct_content(
-    mocker: MockerFixture
+    mocker: MockerFixture,
 ) -> None:
-    # mock_apprise = mocker.patch("apprise.Apprise")
     mock_apprise_notify = mocker.patch.object(apprise.Apprise, "notify")
     test_account = Account()
     test_account.config.notification_urls = ["url"]
 
     test_account.send_notification("test notification", 1)
 
-    assert mock_apprise_notify.call_args.kwargs["body"] == "test notification"
+    assert mock_apprise_notify.call_args[1]["body"] == "test notification"

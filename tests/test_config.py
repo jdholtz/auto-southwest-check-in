@@ -11,7 +11,7 @@ from lib import config
 
 def test_config_exits_on_error_in_config_file(mocker: MockerFixture) -> None:
     mock_sys_exit = mocker.patch("sys.exit")
-    mocker.patch.object(config.Config, "_parse_config", side_effect = TypeError())
+    mocker.patch.object(config.Config, "_parse_config", side_effect=TypeError())
 
     config.Config()
     mock_sys_exit.assert_called_once()
@@ -19,7 +19,7 @@ def test_config_exits_on_error_in_config_file(mocker: MockerFixture) -> None:
 
 def test_get_config_reads_the_config_file_correctly(mocker: MockerFixture) -> None:
     mocker.patch("builtins.open")
-    mocker.patch("json.load", return_value = {"test": "data"})
+    mocker.patch("json.load", return_value={"test": "data"})
 
     test_config = config.Config()
     config_content = test_config._get_config()
@@ -27,10 +27,8 @@ def test_get_config_reads_the_config_file_correctly(mocker: MockerFixture) -> No
     assert config_content == {"test": "data"}
 
 
-def test_get_config_returns_empty_config_when_file_is_not_found(
-    mocker: MockerFixture
-) -> None:
-    mocker.patch("builtins.open", side_effect = FileNotFoundError())
+def test_get_config_returns_empty_config_when_file_is_not_found(mocker: MockerFixture) -> None:
+    mocker.patch("builtins.open", side_effect=FileNotFoundError())
 
     test_config = config.Config()
     config_content = test_config._get_config()
@@ -42,9 +40,7 @@ def test_get_config_returns_empty_config_when_file_is_not_found(
     "config_content",
     [{"notification_urls": None}, {"notification_level": "invalid"}],
 )
-def test_parse_config_raises_exception_with_invalid_entries(
-    config_content: Dict[str, Any]
-) -> None:
+def test_parse_config_raises_exception_with_invalid_entries(config_content: Dict[str, Any]) -> None:
     test_config = config.Config()
 
     with pytest.raises(TypeError):
@@ -53,9 +49,7 @@ def test_parse_config_raises_exception_with_invalid_entries(
 
 def test_parse_config_sets_the_correct_config_values() -> None:
     test_config = config.Config()
-    test_config._parse_config(
-        {"notification_urls": "test_url", "notification_level": 30}
-    )
+    test_config._parse_config({"notification_urls": "test_url", "notification_level": 30})
 
     assert test_config.notification_urls == "test_url"
     assert test_config.notification_level == 30

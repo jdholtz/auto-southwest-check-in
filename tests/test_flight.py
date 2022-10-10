@@ -1,8 +1,8 @@
 from datetime import datetime
-import pytz
 from unittest import mock
 
 import pytest
+import pytz
 from pytest_mock import MockerFixture
 
 from lib.account import Account
@@ -23,11 +23,11 @@ def test_flight(mocker: MockerFixture) -> Flight:
         return Flight(account, "test_num", {})
 
 
-def test_get_flight_info_sets_the_correct_info(
-    mocker: MockerFixture, test_flight: Flight
-) -> None:
-    mocker.patch.object(Flight, "_get_flight_time", return_value = "12:31:05")
-    test_flight._get_flight_info({"departureAirport": {"name": "LAX"}, "arrivalAirport": {"name": "LHR"}})
+def test_get_flight_info_sets_the_correct_info(mocker: MockerFixture, test_flight: Flight) -> None:
+    mocker.patch.object(Flight, "_get_flight_time", return_value="12:31:05")
+    test_flight._get_flight_info(
+        {"departureAirport": {"name": "LAX"}, "arrivalAirport": {"name": "LHR"}}
+    )
 
     assert test_flight.departure_airport == "LAX"
     assert test_flight.destination_airport == "LHR"
@@ -37,10 +37,16 @@ def test_get_flight_info_sets_the_correct_info(
 def test_get_flight_time_returns_the_correct_time(
     mocker: MockerFixture, test_flight: Flight
 ) -> None:
-    mock_get_airport_tz = mocker.patch.object(Flight, "_get_airport_timezone", return_value = "Asia/Calcutta")
-    mock_convert_to_utc = mocker.patch.object(Flight, "_convert_to_utc", return_value = "12:31:05")
+    mock_get_airport_tz = mocker.patch.object(
+        Flight, "_get_airport_timezone", return_value="Asia/Calcutta"
+    )
+    mock_convert_to_utc = mocker.patch.object(Flight, "_convert_to_utc", return_value="12:31:05")
 
-    flight_info = {"departureDate": "12-31-99", "departureTime": "23:59:59", "departureAirport": {"code": "999"}}
+    flight_info = {
+        "departureDate": "12-31-99",
+        "departureTime": "23:59:59",
+        "departureAirport": {"code": "999"},
+    }
     flight_time = test_flight._get_flight_time(flight_info)
 
     mock_get_airport_tz.assert_called_once_with("999")
@@ -52,7 +58,7 @@ def test_get_airport_timezone_returns_the_correct_timezone(
     mocker: MockerFixture, test_flight: Flight
 ) -> None:
     # Needs to be mocked within the flight module because pytz opens a file as well
-    mocker.patch("lib.flight.open", mock.mock_open(read_data = '{"test_code": "Asia/Calcutta"}'))
+    mocker.patch("lib.flight.open", mock.mock_open(read_data='{"test_code": "Asia/Calcutta"}'))
     timezone = test_flight._get_airport_timezone("test_code")
 
     assert timezone == pytz.timezone("Asia/Calcutta")
@@ -104,8 +110,10 @@ def test_wait_for_check_in_refreshes_headers_ten_minutes_before_check_in(
     mock_sleep = mocker.patch("time.sleep")
     mock_refresh_headers = mocker.patch.object(Account, "refresh_headers")
     mock_datetime = mocker.patch("lib.flight.datetime")
-    mock_datetime.utcnow.side_effect = [datetime(1999, 12, 31, 18, 29, 59),
-                                        datetime(1999, 12, 31, 23, 19, 59)]
+    mock_datetime.utcnow.side_effect = [
+        datetime(1999, 12, 31, 18, 29, 59),
+        datetime(1999, 12, 31, 23, 19, 59),
+    ]
 
     test_flight._wait_for_check_in(datetime(1999, 12, 31, 23, 29, 59))
 
@@ -116,7 +124,7 @@ def test_wait_for_check_in_refreshes_headers_ten_minutes_before_check_in(
 def test_check_in_sends_error_notification_when_check_in_fails(
     mocker: MockerFixture, test_flight: Flight
 ) -> None:
-    mocker.patch("lib.flight.make_request", side_effect = CheckInError())
+    mocker.patch("lib.flight.make_request", side_effect=CheckInError())
     mock_send_notification = mocker.patch.object(Account, "send_notification")
 
     test_flight._check_in()
@@ -131,7 +139,7 @@ def test_check_in_sends_results_on_successful_check_in(
     get_response = {"checkInViewReservationPage": {"_links": {"checkIn": {"href": "", "body": ""}}}}
     post_response = {"checkInConfirmationPage": "Checked In!"}
     mock_send_results = mocker.patch.object(Flight, "_send_results")
-    mocker.patch("lib.flight.make_request", side_effect = [get_response, post_response])
+    mocker.patch("lib.flight.make_request", side_effect=[get_response, post_response])
 
     test_flight._check_in()
 
@@ -142,8 +150,17 @@ def test_send_results_sends_a_notification_and_prints_the_message(
     mocker: MockerFixture, test_flight: Flight, capsys: pytest.CaptureFixture[str]
 ) -> None:
     mock_send_notification = mocker.patch.object(Account, "send_notification")
-    test_flight._send_results({"flights": [{"passengers": [{"name": "John", "boardingGroup": "A", "boardingPosition": "1"}]}]})
+    test_flight._send_results(
+        {
+            "flights": [
+                {"passengers": [{"name": "John", "boardingGroup": "A", "boardingPosition": "1"}]}
+            ]
+        }
+    )
 
     assert mock_send_notification.call_args[0][1] == NotificationLevel.INFO
     # None is in place for the flight info because it was never set
-    assert capsys.readouterr().out == "Successfully checked in to flight from 'None' to 'None' for None None!\nJohn got A1!\n\n"
+    assert (
+        capsys.readouterr().out
+        == "Successfully checked in to flight from 'None' to 'None' for None None!\nJohn got A1!\n\n"
+    )

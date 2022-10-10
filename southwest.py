@@ -22,10 +22,10 @@ def set_up(arguments: List[str]):
         first_name = arguments[1]
         last_name = arguments[2]
 
-        account = Account(first_name = first_name, last_name = last_name)
+        account = Account(first_name=first_name, last_name=last_name)
         account.get_checkin_info(confirmation_number)
     else:
-        print("Invalid arguments") # TODO: Send reference on how to use the script
+        print("Invalid arguments")  # TODO: Send reference on how to use the script
 
 
 if __name__ == "__main__":
