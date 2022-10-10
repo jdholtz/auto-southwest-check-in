@@ -8,7 +8,8 @@ from typing import Any, Dict, TYPE_CHECKING
 import pytz
 
 from .general import CheckInError, make_request, NotificationLevel
-if TYPE_CHECKING:
+
+if TYPE_CHECKING: # pragma: no cover
     from account import Account
 
 CHECKIN_URL = "mobile-air-operations/v1/mobile-air-operations/page/check-in/"
@@ -23,6 +24,7 @@ class Flight:
         self.departure_airport: str = None
         self.destination_airport: str = None
         self._get_flight_info(flight)
+
         process = Process(target=self._set_check_in)
         process.start()
 
