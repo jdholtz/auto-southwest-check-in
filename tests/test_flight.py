@@ -65,7 +65,9 @@ def test_get_airport_timezone_returns_the_correct_timezone(
     timezone = test_flight._get_airport_timezone("test_code")
 
     assert timezone == pytz.timezone("Asia/Calcutta")
-    mock_open.assert_called_with(os.path.dirname(os.path.dirname(__file__)) + "/" + TZ_FILE_PATH)
+    mock_open.assert_called_once_with(
+        os.path.dirname(os.path.dirname(__file__)) + "/" + TZ_FILE_PATH
+    )
 
 
 def test_convert_to_utc_converts_local_time_to_utc(test_flight: Flight) -> None:
