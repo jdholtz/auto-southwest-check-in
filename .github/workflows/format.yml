@@ -1,6 +1,18 @@
 name: Format
 
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - "**.py"
+      - "pyproject.toml"
+      - ".github/workflows/format.yml"
+  pull_request:
+    paths:
+      - "**.py"
+      - "pyproject.toml"
+      - ".github/workflows/format.yml"
 
 jobs:
   isort:
