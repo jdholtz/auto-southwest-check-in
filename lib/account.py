@@ -1,11 +1,11 @@
 from typing import Any, Dict, List
 
+import apprise
+
 from .config import Config
 from .flight import Flight
-from .general import CheckInError, make_request, NotificationLevel
+from .general import CheckInError, NotificationLevel, make_request
 from .webdriver import WebDriver
-
-import apprise
 
 VIEW_RESERVATION_URL = "mobile-air-booking/v1/mobile-air-booking/page/view-reservation/"
 
@@ -16,7 +16,7 @@ class Account:
         username: str = None,
         password: str = None,
         first_name: str = None,
-        last_name: str = None
+        last_name: str = None,
     ) -> None:
         self.username = username
         self.password = password
@@ -33,7 +33,7 @@ class Account:
         reservations = webdriver.get_info(self)
 
         for reservation in reservations:
-            confirmation_number = reservation['confirmationNumber']
+            confirmation_number = reservation["confirmationNumber"]
             self._get_reservation_info(confirmation_number)
 
         self._send_new_flight_notifications(prev_flight_len)
@@ -57,19 +57,21 @@ class Account:
         try:
             response = make_request("GET", site, self.headers, info)
         except CheckInError as err:
-            error_message = f"Failed to retrieve reservation for {self.first_name} {self.last_name} " \
-                            f"with confirmation number {confirmation_number}. Reason: {err}.\n" \
-                            f"Make sure the flight information is correct and try again.\n"
+            error_message = (
+                f"Failed to retrieve reservation for {self.first_name} {self.last_name} "
+                f"with confirmation number {confirmation_number}. Reason: {err}.\n"
+                f"Make sure the flight information is correct and try again.\n"
+            )
             self.send_notification(error_message, NotificationLevel.ERROR)
             print(error_message)
             return
 
         # If multiple flights are under the same confirmation number, it will schedule all checkins one by one
-        flight_info = response['viewReservationViewPage']['bounds']
+        flight_info = response["viewReservationViewPage"]["bounds"]
 
         for flight in flight_info:
             # if not flight in self.flights: // TODO: This doesn't work. Add a function to make sure it only schedules if it isn't already added
-            if flight['departureStatus'] != "DEPARTED":
+            if flight["departureStatus"] != "DEPARTED":
                 flight = Flight(self, confirmation_number, flight)
                 self.flights.append(flight)
                 # TODO: Remove flight from list after it has checked in. Have to do in main process (memory isn't shared)
@@ -100,8 +102,4 @@ class Account:
         title = "Auto Southwest Check-in Script"
 
         apobj = apprise.Apprise(self.config.notification_urls)
-        apobj.notify(
-            title = title,
-            body = body,
-            body_format = apprise.NotifyFormat.TEXT
-        )
+        apobj.notify(title=title, body=body, body_format=apprise.NotifyFormat.TEXT)

@@ -7,7 +7,7 @@ from .general import NotificationLevel
 CONFIG_FILE_NAME = "config.json"
 
 
-class Config():
+class Config:
     def __init__(self):
         # Default values are set
         self.notification_urls = []

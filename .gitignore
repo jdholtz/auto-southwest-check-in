@@ -6,3 +6,5 @@
 
 # Program files
 config.json
+.coverage
+Pipfile
