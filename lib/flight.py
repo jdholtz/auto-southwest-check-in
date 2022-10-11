@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import time
 from datetime import datetime, timedelta
 from multiprocessing import Process
@@ -15,6 +16,7 @@ if TYPE_CHECKING:  # pragma: no cover
 
 CHECKIN_URL = "mobile-air-operations/v1/mobile-air-operations/page/check-in/"
 MANUAL_CHECKIN_URL = "https://mobile.southwest.com/check-in"
+TZ_FILE_PATH = "utils/airport_timezones.json"
 
 
 class Flight:
@@ -44,7 +46,8 @@ class Flight:
 
     @staticmethod
     def _get_airport_timezone(airport_code: str) -> Any:
-        with open("utils/airport_timezones.json") as tz:
+        project_dir = os.path.dirname(os.path.dirname(__file__))
+        with open(project_dir + "/" + TZ_FILE_PATH) as tz:
             airport_timezones = json.load(tz)
 
         airport_timezone = pytz.timezone(airport_timezones[airport_code])

@@ -1,3 +1,4 @@
+import os
 from typing import Any, Dict
 
 import pytest
@@ -18,13 +19,16 @@ def test_config_exits_on_error_in_config_file(mocker: MockerFixture) -> None:
 
 
 def test_get_config_reads_the_config_file_correctly(mocker: MockerFixture) -> None:
-    mocker.patch("builtins.open")
+    mock_open = mocker.patch("builtins.open")
     mocker.patch("json.load", return_value={"test": "data"})
 
     test_config = config.Config()
     config_content = test_config._get_config()
 
     assert config_content == {"test": "data"}
+    mock_open.assert_called_with(
+        os.path.dirname(os.path.dirname(__file__)) + "/" + config.CONFIG_FILE_NAME
+    )
 
 
 def test_get_config_returns_empty_config_when_file_is_not_found(mocker: MockerFixture) -> None:

@@ -1,4 +1,5 @@
 import json
+import os
 import sys
 from typing import Any, Dict
 
@@ -25,8 +26,8 @@ class Config:
             sys.exit()
 
     def _get_config(self) -> Dict[str, Any]:
-        parent_dir = sys.path[0]
-        config_file = str(parent_dir) + "/" + CONFIG_FILE_NAME
+        project_dir = os.path.dirname(os.path.dirname(__file__))
+        config_file = project_dir + "/" + CONFIG_FILE_NAME
 
         config = {}
         try:
