@@ -77,6 +77,29 @@ To test if the notification urls work, you can run the following command
 $ python3 southwest.py --test-notifications
 ```
 
+## Running in Docker
+
+The application can be run in a container. To build the image, run the following command:
+```shell
+$ docker build -f Containerfile . -t auto-southwest-check-in
+```
+
+The container accepts several environment variables.
+The variables provided will determine the mode in which the application is started.
+
+To run the application in account mode, provide the follwing environment variables:
+1. `SW_USERNAME`
+1. `SW_PASSWORD`
+
+To run the application in reservation mode, provide these variables:
+1. `CONFIRMATION_NUMBER`
+1. `FIRST_NAME`
+1. `LAST_NAME`
+
+Therefore, to run the image, you can use a command such as:
+```shell
+docker run -e SW_PASSWORD='YOUR_SOUTHWEST_PASSWORD' -e SW_USERNAME='YOUR_SOUTHWEST_USERNAME' -d auto-southwest-check-in
+```
 
 [0]: https://www.python.org/downloads/
 [1]: https://pip.pypa.io/en/stable/installation/
