@@ -1,3 +1,16 @@
 [tool.black]
 line-length = 100
 target-version = ['py37']
+
+[tool.coverage.run]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+exclude_lines = [
+    # The default must be restated because the `exclude_lines` option overrides it.
+    "pragma: no cover",
+
+    # This is not feasible to test as it requires some really wonky module loading.
+    'if __name__ == "__main__":',
+]
