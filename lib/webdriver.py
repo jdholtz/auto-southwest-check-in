@@ -113,6 +113,7 @@ class WebDriver:
     def _get_options() -> ChromeOptions:
         options = ChromeOptions()
         options.add_argument("--headless")
+        options.add_argument("--disable-dev-shm-usage")  # For docker containers
 
         # Southwest detects headless browser user agents, so we have to set our own
         options.add_argument("--user-agent=" + USER_AGENT)

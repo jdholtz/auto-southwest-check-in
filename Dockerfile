@@ -17,4 +17,4 @@ RUN pip3 install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-CMD ["/app/entrypoint.sh"]
+ENTRYPOINT ["python3", "southwest.py"]
