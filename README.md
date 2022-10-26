@@ -5,6 +5,7 @@ Running this script will automatically check you into your flight 24 hours befor
 - [Installation](#installation)
     * [Prerequisites](#prerequisites)
 - [Using The Script](#using-the-script)
+    * [Running In Docker](#running-in-docker)
 - [Configuration](#configuration)
     * [Notifications](#notifications)
 
@@ -38,14 +39,28 @@ $ python3 southwest.py USERNAME PASSWORD
 **Note**: The script will check the entire party in under the same reservation, so there is no need
 to create more than one instance of the script per reservation.
 
+### Running In Docker
+
+The application can also be run in a container using [Docker][3]. To build the image, run the following command:
+```shell
+$ docker build -f Dockerfile . -t auto-southwest-check-in
+```
+**Note**: Re-run the build command whenever you update the script.
+
+To run the image, you can use a command such as:
+```shell
+docker run -d auto-southwest-check-in ARGS
+# See above for the arguments that can be passed in
+```
+
 ## Configuration
 To set up a configuration file, copy `config.example.json` to `config.json`.
 
 ### Notifications
 #### Notification URLs
-Users can be notified on successful and failed check-ins. This is done through the [Apprise library][3].
+Users can be notified on successful and failed check-ins. This is done through the [Apprise library][4].
 To start, first gather the service url you want to send notifications to (information on how to create
-service urls can be found on the [Apprise Readme][4]). Then put it in your configuration file.
+service urls can be found on the [Apprise Readme][5]). Then put it in your configuration file.
 ```json
 {
   "notification_urls": "service://my_service_url"
@@ -77,9 +92,9 @@ To test if the notification urls work, you can run the following command
 $ python3 southwest.py --test-notifications
 ```
 
-
 [0]: https://www.python.org/downloads/
 [1]: https://pip.pypa.io/en/stable/installation/
 [2]: https://www.google.com/chrome/
-[3]: https://github.com/caronc/apprise
-[4]: https://github.com/caronc/apprise#supported-notifications
+[3]: https://www.docker.com/
+[4]: https://github.com/caronc/apprise
+[5]: https://github.com/caronc/apprise#supported-notifications
