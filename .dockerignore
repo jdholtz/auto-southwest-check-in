@@ -1,0 +1,9 @@
+.github
+tests/
+.editorconfig
+.gitignore
+.pre-commit-config.yaml
+LICENSE
+*.md
+config.example.json
+pyproject.toml
