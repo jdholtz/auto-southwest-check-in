@@ -1,6 +1,9 @@
 ## Auto-Southwest Check-In
 Running this script will automatically check you into your flight 24 hours before your flight
 
+**Note**: If you are checking into an international flight, make sure to fill out all the passport
+information beforehand.
+
 ## Table of Contents
 - [Installation](#installation)
     * [Prerequisites](#prerequisites)
