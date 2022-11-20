@@ -59,6 +59,9 @@ docker run -d auto-southwest-check-in ARGS
 ## Configuration
 To set up a configuration file, copy `config.example.json` to `config.json`.
 
+**Note**: If you are using Docker, make sure to rebuild the container after editing the configuration
+file for your changes to be applied.
+
 ### Notifications
 #### Notification URLs
 Users can be notified on successful and failed check-ins. This is done through the [Apprise library][4].
