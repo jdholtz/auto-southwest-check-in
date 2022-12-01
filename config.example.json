@@ -1,4 +1,5 @@
 {
-	"notification_urls": "",
-	"notification_level": 1
+    "notification_urls": "",
+    "notification_level": 1,
+    "retrieval_interval": 24
 }

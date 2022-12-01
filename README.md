@@ -11,6 +11,7 @@ information beforehand.
     * [Running In Docker](#running-in-docker)
 - [Configuration](#configuration)
     * [Notifications](#notifications)
+    * [Retrieval Interval](#retrieval-interval)
 
 ## Installation
 
@@ -82,6 +83,7 @@ If you have more than one service you want to send notifications to, you can put
 }
 
 ```
+
 #### Notification Level
 You can also select the level of notifications you want to receive.
 ```json
@@ -96,6 +98,15 @@ Level 2 means you receive only error messages (failed scheduling and check-ins).
 To test if the notification urls work, you can run the following command
 ```shell
 $ python3 southwest.py --test-notifications
+```
+
+### Retrieval Interval
+If you provide login credentials to the script, you can choose how often the script checks for new flights
+(in hours).
+```json
+{
+    "retrieval_interval": 24
+}
 ```
 
 [0]: https://www.python.org/downloads/
