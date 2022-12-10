@@ -7,7 +7,7 @@ from seleniumwire.request import Request, Response
 
 from lib.checkin_scheduler import CheckInScheduler
 from lib.flight_retriever import AccountFlightRetriever
-from lib.webdriver import USER_AGENT, Chrome, WebDriver
+from lib.webdriver import USER_AGENT, WebDriver
 
 # This needs to be accessed to be tested
 # pylint: disable=protected-access
