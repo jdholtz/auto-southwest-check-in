@@ -15,6 +15,14 @@ def mock_config(mocker: MockerFixture) -> None:
     mocker.patch("lib.flight_retriever.Config")
 
 
+@pytest.mark.parametrize("flag", ["-v", "--version"])
+def test_set_up_prints_version_when_flag_is_passed(
+    flag: str, capsys: pytest.CaptureFixture[str]
+) -> None:
+    southwest.set_up([flag])
+    assert southwest.__version__ in capsys.readouterr().out
+
+
 def test_set_up_sends_test_notifications_when_flag_is_passed(mocker: MockerFixture) -> None:
     mock_send_notification = mocker.patch.object(NotificationHandler, "send_notification")
     southwest.set_up(["--test-notifications"])

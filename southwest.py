@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+
+__version__ = "v1.0"
+
 import sys
 from typing import List
 
@@ -6,7 +9,9 @@ from lib.flight_retriever import AccountFlightRetriever, FlightRetriever
 
 
 def set_up(arguments: List[str]):
-    if len(arguments) > 0 and arguments[0] == "--test-notifications":
+    if len(arguments) > 0 and arguments[0] in ("-v", "--version"):
+        print("Auto-Southwest Check-In " + __version__)
+    elif len(arguments) > 0 and arguments[0] == "--test-notifications":
         flight_retriever = FlightRetriever()
 
         print("Sending test notifications...")
