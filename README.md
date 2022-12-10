@@ -7,6 +7,7 @@ information beforehand.
 ## Table of Contents
 - [Installation](#installation)
     * [Prerequisites](#prerequisites)
+    * [Upgrading](#upgrading)
 - [Using The Script](#using-the-script)
     * [Running In Docker](#running-in-docker)
 - [Configuration](#configuration)
@@ -30,8 +31,22 @@ Then, install the needed packages for the script
 $ pip install -r requirements.txt
 ```
 
+### Upgrading
+When updating the script, it is important to follow the [Changelog](CHANGELOG.md) for any actions
+that need to be performed.
+
+To get the script's current version, run the following command:
+```shell
+$ python3 southwest.py --version
+```
+
+To update the script, simply run:
+```shell
+$ git pull
+```
+
 ## Using The Script
-To schedule a check-in, run the following command
+To schedule a check-in, run the following command:
 ```shell
 $ python3 southwest.py CONFIRMATION_NUMBER FIRST_NAME LAST_NAME
 ```
