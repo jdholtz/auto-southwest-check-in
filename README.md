@@ -1,5 +1,8 @@
 ## Auto-Southwest Check-In
-Running this script will automatically check you into your flight 24 hours before your flight
+Running this script will automatically check you into your flight 24 hours before your flight.
+
+This script can also log in to your Southwest account and automatically schedule check-ins as
+flights are scheduled.
 
 **Note**: If you are checking into an international flight, make sure to fill out all the passport
 information beforehand.
