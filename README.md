@@ -1,5 +1,8 @@
 ## Auto-Southwest Check-In
-Running this script will automatically check you into your flight 24 hours before your flight
+Running this script will automatically check you into your flight 24 hours before your flight.
+
+This script can also log in to your Southwest account and automatically schedule check-ins as
+flights are scheduled.
 
 **Note**: If you are checking into an international flight, make sure to fill out all the passport
 information beforehand.
@@ -7,10 +10,12 @@ information beforehand.
 ## Table of Contents
 - [Installation](#installation)
     * [Prerequisites](#prerequisites)
+    * [Upgrading](#upgrading)
 - [Using The Script](#using-the-script)
     * [Running In Docker](#running-in-docker)
 - [Configuration](#configuration)
     * [Notifications](#notifications)
+    * [Retrieval Interval](#retrieval-interval)
 
 ## Installation
 
@@ -29,8 +34,22 @@ Then, install the needed packages for the script
 $ pip install -r requirements.txt
 ```
 
+### Upgrading
+When updating the script, it is important to follow the [Changelog](CHANGELOG.md) for any actions
+that need to be performed.
+
+To get the script's current version, run the following command:
+```shell
+$ python3 southwest.py --version
+```
+
+To update the script, simply run:
+```shell
+$ git pull
+```
+
 ## Using The Script
-To schedule a check-in, run the following command
+To schedule a check-in, run the following command:
 ```shell
 $ python3 southwest.py CONFIRMATION_NUMBER FIRST_NAME LAST_NAME
 ```
@@ -83,6 +102,7 @@ If you have more than one service you want to send notifications to, you can put
 }
 
 ```
+
 #### Notification Level
 You can also select the level of notifications you want to receive.
 ```json
@@ -97,6 +117,15 @@ Level 2 means you receive only error messages (failed scheduling and check-ins).
 To test if the notification urls work, you can run the following command
 ```shell
 $ python3 southwest.py --test-notifications
+```
+
+### Retrieval Interval
+If you provide login credentials to the script, you can choose how often the script checks for new flights
+(in hours).
+```json
+{
+    "retrieval_interval": 24
+}
 ```
 
 [0]: https://www.python.org/downloads/

@@ -10,6 +10,14 @@ from lib import config
 # pylint: disable=protected-access
 
 
+# Make sure we don't actually read the config file. The
+# mocks can still be overriden in each test
+@pytest.fixture(autouse=True)
+def mock_open(mocker: MockerFixture) -> None:
+    mocker.patch("builtins.open")
+    mocker.patch("json.load")
+
+
 def test_config_exits_on_error_in_config_file(mocker: MockerFixture) -> None:
     mock_sys_exit = mocker.patch("sys.exit")
     mocker.patch.object(config.Config, "_parse_config", side_effect=TypeError())
@@ -42,7 +50,11 @@ def test_get_config_returns_empty_config_when_file_is_not_found(mocker: MockerFi
 
 @pytest.mark.parametrize(
     "config_content",
-    [{"notification_urls": None}, {"notification_level": "invalid"}],
+    [
+        {"notification_urls": None},
+        {"notification_level": "invalid"},
+        {"retrieval_interval": "invalid"},
+    ],
 )
 def test_parse_config_raises_exception_with_invalid_entries(config_content: Dict[str, Any]) -> None:
     test_config = config.Config()
@@ -53,10 +65,13 @@ def test_parse_config_raises_exception_with_invalid_entries(config_content: Dict
 
 def test_parse_config_sets_the_correct_config_values() -> None:
     test_config = config.Config()
-    test_config._parse_config({"notification_urls": "test_url", "notification_level": 30})
+    test_config._parse_config(
+        {"notification_urls": "test_url", "notification_level": 30, "retrieval_interval": 20}
+    )
 
     assert test_config.notification_urls == "test_url"
     assert test_config.notification_level == 30
+    assert test_config.retrieval_interval == 20
 
 
 def test_parse_config_does_not_set_values_when_a_config_value_is_empty() -> None:
@@ -67,3 +82,11 @@ def test_parse_config_does_not_set_values_when_a_config_value_is_empty() -> None
 
     assert test_config.notification_urls == expected_config.notification_urls
     assert test_config.notification_level == expected_config.notification_level
+    assert test_config.retrieval_interval == test_config.retrieval_interval
+
+
+def test_parse_config_sets_retrieval_interval_to_a_minimum() -> None:
+    test_config = config.Config()
+    test_config._parse_config({"retrieval_interval": -1})
+
+    assert test_config.retrieval_interval == 1

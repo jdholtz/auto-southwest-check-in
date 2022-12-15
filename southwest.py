@@ -1,29 +1,35 @@
 #!/usr/bin/env python3
+
+__version__ = "v1.0"
+
 import sys
 from typing import List
 
-from lib.account import Account
+from lib.flight_retriever import AccountFlightRetriever, FlightRetriever
 
 
 def set_up(arguments: List[str]):
-    if len(arguments) > 0 and arguments[0] == "--test-notifications":
-        account = Account()
+    if len(arguments) > 0 and arguments[0] in ("-v", "--version"):
+        print("Auto-Southwest Check-In " + __version__)
+    elif len(arguments) > 0 and arguments[0] == "--test-notifications":
+        flight_retriever = FlightRetriever()
 
         print("Sending test notifications...")
-        account.send_notification("This is a test message")
+        flight_retriever.notification_handler.send_notification("This is a test message")
     elif len(arguments) == 2:
         username = arguments[0]
         password = arguments[1]
 
-        account = Account(username, password)
-        account.get_flights()
+        flight_retriever = AccountFlightRetriever(username, password)
+        flight_retriever.monitor_account()
     elif len(arguments) == 3:
         confirmation_number = arguments[0]
         first_name = arguments[1]
         last_name = arguments[2]
 
-        account = Account(first_name=first_name, last_name=last_name)
-        account.get_checkin_info(confirmation_number)
+        flight_retriever = FlightRetriever(first_name, last_name)
+        flight_retriever.checkin_scheduler.refresh_headers()
+        flight_retriever.schedule_reservations([{"confirmationNumber": confirmation_number}])
     else:
         print("Invalid arguments")  # TODO: Send reference on how to use the script
 

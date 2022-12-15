@@ -13,6 +13,7 @@ class Config:
         # Default values are set
         self.notification_urls = []
         self.notification_level = NotificationLevel.INFO
+        self.retrieval_interval = 24
 
         # Read the config file
         config = self._get_config()
@@ -52,3 +53,15 @@ class Config:
 
             if not isinstance(self.notification_level, int):
                 raise TypeError("'notification_level' must be an integer")
+
+        if "retrieval_interval" in config:
+            self.retrieval_interval = config["retrieval_interval"]
+
+            if not isinstance(self.retrieval_interval, int):
+                raise TypeError("'retrieval_interval' must be an integer")
+
+            if self.retrieval_interval < 1:
+                print(
+                    f"Setting 'retrieval_interval' to one as {self.retrieval_interval} hours is too low"
+                )
+                self.retrieval_interval = 1
