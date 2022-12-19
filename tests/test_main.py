@@ -20,8 +20,15 @@ def test_print_version_prints_script_version(capsys: pytest.CaptureFixture[str])
     assert main.__version__ in capsys.readouterr().out
 
 
+def test_print_usage_prints_script_usage(capsys: pytest.CaptureFixture[str]) -> None:
+    main.print_usage()
+    output = capsys.readouterr().out
+    assert main.__version__ in output
+    assert main.USAGE in output
+
+
 @pytest.mark.parametrize("flag", ["-v", "--version"])
-def test_check_flags_prints_version_when_flag_is_passed(
+def test_check_flags_prints_version_when_version_flag_is_passed(
     mocker: MockerFixture,
     flag: str,
 ) -> None:
@@ -29,6 +36,18 @@ def test_check_flags_prints_version_when_flag_is_passed(
     mock_print_version = mocker.patch("lib.main.print_version")
     main.check_flags([flag])
     mock_print_version.assert_called_once()
+    mock_exit.assert_called_once()
+
+
+@pytest.mark.parametrize("arguments", [["-h"], ["--help"], []])
+def test_check_flags_prints_usage_when_help_flag_is_passed(
+    mocker: MockerFixture,
+    arguments: List[str],
+) -> None:
+    mock_exit = mocker.patch("sys.exit")
+    mock_print_usage = mocker.patch("lib.main.print_usage")
+    main.check_flags(arguments)
+    mock_print_usage.assert_called_once()
     mock_exit.assert_called_once()
 
 
@@ -82,7 +101,9 @@ def test_set_up_sends_error_message_when_arguments_are_invalid(
     arguments: List[str], capsys: pytest.CaptureFixture[str]
 ) -> None:
     main.set_up(arguments)
-    assert capsys.readouterr().out == "Invalid arguments\n"
+    output = capsys.readouterr().out
+    assert "Invalid arguments" in output
+    assert "--help" in output
 
 
 def test_main_sets_up_script(mocker: MockerFixture) -> None:
