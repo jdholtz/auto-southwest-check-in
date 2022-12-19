@@ -2,6 +2,17 @@
 When upgrading to a new version, make sure to follow the directions under the "Upgrading" header of the corresponding version.
 If there is no "Upgrading" header for that version, no post-upgrade actions need to be performed.
 
+
+## Upcoming
+
+### New features
+- A `--help` flag was added to display information on how to use the script
+
+### Improvements
+- Optimized the script's entrypoint so the user is no longer required to install the requirements (besides Python)
+to use the `--version` and `--help` flags. This also makes responses for those flags instantaneous
+
+
 ## 1.0 (2022-12-10)
 
 ### New Features

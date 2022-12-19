@@ -61,6 +61,9 @@ $ python3 southwest.py USERNAME PASSWORD
 **Note**: The script will check the entire party in under the same reservation, so there is no need
 to create more than one instance of the script per reservation.
 
+If you want the latest features of the script, you can use the `develop` branch (documented changes
+can be viewed in the Changelog). However, keep in mind that changes to this branch do not ensure reliability.
+
 ### Running In Docker
 
 The application can also be run in a container using [Docker][3]. To build the image, run the following command:
