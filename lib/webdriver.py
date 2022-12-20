@@ -33,6 +33,9 @@ class WebDriver:
 
     2. Logging into an account. In this case, the headers are refreshed and a list of scheduled
     flights are retrieved.
+
+    Some of this code is based off of:
+    https://github.com/byalextran/southwest-headers/commit/d2969306edb0976290bfa256d41badcc9698f6ed
     """
 
     def __init__(self, checkin_scheduler: CheckInScheduler) -> None:
