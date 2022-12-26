@@ -26,12 +26,12 @@ information beforehand.
 
 First, download the script onto your computer
 ```shell
-$ git clone https://github.com/jdholtz/auto-southwest-check-in.git
-$ cd auto-southwest-check-in
+git clone https://github.com/jdholtz/auto-southwest-check-in.git
+cd auto-southwest-check-in
 ```
 Then, install the needed packages for the script
 ```shell
-$ pip install -r requirements.txt
+pip install -r requirements.txt
 ```
 
 ### Upgrading
@@ -40,22 +40,22 @@ that need to be performed.
 
 To get the script's current version, run the following command:
 ```shell
-$ python3 southwest.py --version
+python3 southwest.py --version
 ```
 
 To update the script, simply run:
 ```shell
-$ git pull
+git pull
 ```
 
 ## Using The Script
 To schedule a check-in, run the following command:
 ```shell
-$ python3 southwest.py CONFIRMATION_NUMBER FIRST_NAME LAST_NAME
+python3 southwest.py CONFIRMATION_NUMBER FIRST_NAME LAST_NAME
 ```
 Alternatively, you can log in to your account, which will automatically check you in to all of your flights
 ```shell
-$ python3 southwest.py USERNAME PASSWORD
+python3 southwest.py USERNAME PASSWORD
 ```
 
 **Note**: The script will check the entire party in under the same reservation, so there is no need
@@ -65,7 +65,7 @@ to create more than one instance of the script per reservation.
 
 The application can also be run in a container using [Docker][3]. To build the image, run the following command:
 ```shell
-$ docker build -f Dockerfile . -t auto-southwest-check-in
+docker build -f Dockerfile . -t auto-southwest-check-in
 ```
 **Note**: Re-run the build command whenever you update the script.
 
@@ -116,7 +116,7 @@ Level 2 means you receive only error messages (failed scheduling and check-ins).
 #### Test The Notifications
 To test if the notification urls work, you can run the following command
 ```shell
-$ python3 southwest.py --test-notifications
+python3 southwest.py --test-notifications
 ```
 
 ### Retrieval Interval
