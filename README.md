@@ -116,7 +116,7 @@ Level 2 means you receive only error messages (failed scheduling and check-ins).
 #### Test The Notifications
 To test if the notification urls work, you can run the following command
 ```shell
-$ python3 southwest.py --test-notifications
+python3 southwest.py --test-notifications
 ```
 
 ### Retrieval Interval
