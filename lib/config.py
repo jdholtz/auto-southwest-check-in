@@ -16,7 +16,7 @@ class Config:
         self.retrieval_interval = 24
 
         # Read the config file
-        config = self._get_config()
+        config = self._read_config()
 
         # Set the configuration values if provided
         try:
@@ -26,16 +26,15 @@ class Config:
             print(err)
             sys.exit()
 
-    def _get_config(self) -> Dict[str, Any]:
+    def _read_config(self) -> Dict[str, Any]:
         project_dir = os.path.dirname(os.path.dirname(__file__))
         config_file = project_dir + "/" + CONFIG_FILE_NAME
 
-        config = {}
         try:
             with open(config_file) as file:
                 config = json.load(file)
         except FileNotFoundError:
-            pass
+            config = {}
 
         return config
 

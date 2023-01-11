@@ -12,7 +12,7 @@ from lib.webdriver import WebDriver
 # Don't read the config file
 @pytest.fixture(autouse=True)
 def mock_config(mocker: MockerFixture) -> None:
-    mocker.patch("lib.flight_retriever.Config._get_config")
+    mocker.patch("lib.flight_retriever.Config._read_config")
 
 
 def test_flight_retriever_schedules_reservations_correctly(mocker: MockerFixture) -> None:

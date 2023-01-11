@@ -17,7 +17,7 @@ Options:
     -h, --help           Display this help and exit
     -v, --version        Display version information and exit
 
-For more information, check out the README"""
+For more information, check out https://github.com/jdholtz/auto-southwest-check-in#readme"""
 
 
 def print_version():

@@ -26,12 +26,12 @@ def test_config_exits_on_error_in_config_file(mocker: MockerFixture) -> None:
     mock_sys_exit.assert_called_once()
 
 
-def test_get_config_reads_the_config_file_correctly(mocker: MockerFixture) -> None:
+def test_read_config_reads_the_config_file_correctly(mocker: MockerFixture) -> None:
     mock_open = mocker.patch("builtins.open")
     mocker.patch("json.load", return_value={"test": "data"})
 
     test_config = config.Config()
-    config_content = test_config._get_config()
+    config_content = test_config._read_config()
 
     assert config_content == {"test": "data"}
     mock_open.assert_called_with(
@@ -39,11 +39,11 @@ def test_get_config_reads_the_config_file_correctly(mocker: MockerFixture) -> No
     )
 
 
-def test_get_config_returns_empty_config_when_file_is_not_found(mocker: MockerFixture) -> None:
+def test_read_config_returns_empty_config_when_file_is_not_found(mocker: MockerFixture) -> None:
     mocker.patch("builtins.open", side_effect=FileNotFoundError())
 
     test_config = config.Config()
-    config_content = test_config._get_config()
+    config_content = test_config._read_config()
 
     assert config_content == {}
 
