@@ -9,6 +9,7 @@ file can be found at [config.example.json](config.example.json)
     * [Test The Notifications](#test-the-notifications)
 - [Retrieval Interval](#retrieval-interval)
 - [Accounts](#accounts)
+- [Flights](#flights)
 
 ## Notifications
 ### Notification URLs
@@ -64,6 +65,18 @@ provide a username and password as arguments.
     "accounts": [
         {"username": "user1", "password": "pass1"},
         {"username": "user2", "password": "pass2"}
+    ]
+}
+```
+
+## Flights
+Similar to [Accounts](#accounts), you can also add more flights to the script, allowing you check in to multiple flights in the same instance and/or not
+provide flight information as arguments.
+```json
+{
+    "flights": [
+        {"confirmationNumber": "num1", "firstName": "John", "lastName": "Doe"},
+        {"confirmationNumber": "num2", "firstName": "Jane", "lastName": "Doe"}
     ]
 }
 ```

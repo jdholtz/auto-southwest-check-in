@@ -15,6 +15,7 @@ class Config:
     def __init__(self):
         # Default values are set
         self.accounts = []
+        self.flights = []
         self.notification_level = NotificationLevel.INFO
         self.notification_urls = []
         self.retrieval_interval = 24
@@ -52,6 +53,14 @@ class Config:
                 raise TypeError("'accounts' must be a list")
 
             self._parse_accounts(accounts)
+
+        if "flights" in config:
+            flights = config["flights"]
+
+            if not isinstance(flights, list):
+                raise TypeError("'flights' must be a list")
+
+            self._parse_flights(flights)
 
         if "notification_level" in config:
             self.notification_level = config["notification_level"]
@@ -100,3 +109,34 @@ class Config:
             raise TypeError("'password' must be a string")
 
         self.accounts.append([username, password])
+
+    def _parse_flights(self, flights: List[JSON]) -> None:
+        for flight in flights :
+            if not isinstance(flight, dict):
+                raise TypeError("'flights' must only contain dictionaries")
+
+            self._parse_flight(flight)
+
+    def _parse_flight(self, flight: JSON) -> None:
+        if "confirmationNumber" not in flight:
+            raise TypeError("'confirmationNumber' must be in every flight")
+
+        if "firstName" not in flight:
+            raise TypeError("'firstName' must be in every flight")
+
+        if "lastName" not in flight:
+            raise TypeError("'lastName' must be in every flight")
+
+        confirmation_number = flight["confirmationNumber"]
+        if not isinstance(confirmation_number, str):
+            raise TypeError("'confirmationNumber' must be a string")
+
+        first_name = flight["firstName"]
+        if not isinstance(first_name, str):
+            raise TypeError("'firstName' must be a string")
+
+        last_name = flight["lastName"]
+        if not isinstance(last_name, str):
+            raise TypeError("'lastName' must be a string")
+
+        self.flights.append([confirmation_number, first_name, last_name])
