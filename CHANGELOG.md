@@ -8,6 +8,7 @@ If there is no "Upgrading" header for that version, no post-upgrade actions need
 ### New features
 - A `--help` flag was added to display information on how to use the script
 - Added official Python 3.11 support
+- A [Configuration](CONFIGURATION.md) guide was written to facilitate the script's configuration
 
 ### Improvements
 - Optimized the script's entrypoint so the user is no longer required to install the requirements (besides Python)
