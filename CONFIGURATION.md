@@ -8,6 +8,7 @@ file can be found at [config.example.json](config.example.json)
     * [Notification Level](#notification-level)
     * [Test The Notifications](#test-the-notifications)
 - [Retrieval Interval](#retrieval-interval)
+- [Accounts](#accounts)
 
 ## Notifications
 ### Notification URLs
@@ -52,6 +53,18 @@ If you provide login credentials to the script, you can choose how often the scr
 ```json
 {
     "retrieval_interval": 24
+}
+```
+
+## Accounts
+You can add more accounts to the script, allowing you to run multiple accounts at the same time and/or not
+provide a username and password as arguments.
+```json
+{
+    "accounts": [
+        {"username": "user1", "password": "pass1"},
+        {"username": "user2", "password": "pass2"}
+    ]
 }
 ```
 
