@@ -6,7 +6,6 @@ from pytest_mock import MockerFixture
 from seleniumwire.request import Request, Response
 
 from lib.checkin_scheduler import CheckInScheduler
-from lib.flight_retriever import AccountFlightRetriever
 from lib.webdriver import USER_AGENT, WebDriver
 
 # This needs to be accessed to be tested
@@ -16,6 +15,11 @@ from lib.webdriver import USER_AGENT, WebDriver
 @pytest.fixture(autouse=True)
 def mock_driver(mocker: MockerFixture) -> mock.Mock:
     return mocker.patch("lib.webdriver.Chrome")
+
+
+@pytest.fixture()
+def mock_flight_retriever(mocker: MockerFixture) -> mock.Mock:
+    return mocker.patch("lib.flight_retriever.AccountFlightRetriever")
 
 
 def test_get_driver_returns_a_webdriver_with_one_request() -> None:
@@ -47,7 +51,7 @@ def test_get_checkin_info_returns_request_headers(mocker: MockerFixture) -> None
 
 
 def test_get_flights_sets_account_name_when_it_is_not_set(
-    mocker: MockerFixture, mock_driver: mock.Mock
+    mocker: MockerFixture, mock_driver: mock.Mock, mock_flight_retriever: mock.Mock
 ) -> None:
     mocker.patch("lib.webdriver.WebDriverWait")
     mocker.patch.object(WebDriver, "_get_driver", return_value=mock_driver)
@@ -64,16 +68,16 @@ def test_get_flights_sets_account_name_when_it_is_not_set(
 
     mock_driver.requests = [request_one, request_two]
 
-    flight_retriever = AccountFlightRetriever("test", "test")
-    flights = WebDriver(None).get_flights(flight_retriever)
+    mock_flight_retriever.first_name = None
+    flights = WebDriver(None).get_flights(mock_flight_retriever)
 
     mock_set_headers_from_request.assert_called_once_with(mock_driver)
-    mock_set_account_name.assert_called_once_with(flight_retriever, {"name": "John Doe"})
+    mock_set_account_name.assert_called_once_with(mock_flight_retriever, {"name": "John Doe"})
     assert flights == "new flights"
 
 
 def test_get_account_info_does_not_set_account_name_when_it_is_already_set(
-    mocker: MockerFixture, mock_driver: mock.Mock
+    mocker: MockerFixture, mock_driver: mock.Mock, mock_flight_retriever: mock.Mock
 ) -> None:
     mocker.patch("lib.webdriver.WebDriverWait")
     mocker.patch.object(WebDriver, "_get_driver", return_value=mock_driver)
@@ -88,9 +92,8 @@ def test_get_account_info_does_not_set_account_name_when_it_is_already_set(
 
     mock_driver.requests = [request_one, request_two]
 
-    flight_retriever = AccountFlightRetriever("test", "test")
-    flight_retriever.first_name = "John"
-    flights = WebDriver(None).get_flights(flight_retriever)
+    mock_flight_retriever.first_name = "John"
+    flights = WebDriver(None).get_flights(mock_flight_retriever)
 
     mock_set_headers_from_request.assert_called_once_with(mock_driver)
     mock_set_account_name.assert_not_called()
@@ -122,15 +125,16 @@ def test_get_needed_headers_returns_matching_headers(
     assert headers == expected_headers
 
 
-def test_set_account_name_sets_the_correct_values_for_the_name() -> None:
-    flight_retriever = AccountFlightRetriever("test", "test")
+def test_set_account_name_sets_the_correct_values_for_the_name(
+    mock_flight_retriever: mock.Mock,
+) -> None:
     WebDriver(None)._set_account_name(
-        flight_retriever,
+        mock_flight_retriever,
         {
             "customers.userInformation.firstName": "John",
             "customers.userInformation.lastName": "Doe",
         },
     )
 
-    assert flight_retriever.first_name == "John"
-    assert flight_retriever.last_name == "Doe"
+    assert mock_flight_retriever.first_name == "John"
+    assert mock_flight_retriever.last_name == "Doe"

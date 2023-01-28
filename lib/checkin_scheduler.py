@@ -28,6 +28,10 @@ class CheckInScheduler:
         self.flights = []
 
     def schedule(self, confirmation_numbers: List[str]) -> None:
+        if not self.headers:
+            # Make sure we have valid headers before scheduling
+            self.refresh_headers()
+
         prev_flight_len = len(self.flights)
 
         for confirmation_number in confirmation_numbers:

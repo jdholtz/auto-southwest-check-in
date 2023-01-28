@@ -14,11 +14,11 @@ class FlightRetriever:
     provided.
     """
 
-    def __init__(self, first_name: str = None, last_name: str = None) -> None:
+    def __init__(self, config: Config, first_name: str = None, last_name: str = None) -> None:
         self.first_name = first_name
         self.last_name = last_name
 
-        self.config = Config()
+        self.config = config
         self.notification_handler = NotificationHandler(self)
         self.checkin_scheduler = CheckInScheduler(self)
 
@@ -37,10 +37,10 @@ class AccountFlightRetriever(FlightRetriever):
     are provided.
     """
 
-    def __init__(self, username: str, password: str) -> None:
+    def __init__(self, config: Config, username: str, password: str) -> None:
         self.username = username
         self.password = password
-        super().__init__()
+        super().__init__(config)
 
     def monitor_account(self) -> None:
         # Convert hours to seconds

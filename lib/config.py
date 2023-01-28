@@ -111,7 +111,7 @@ class Config:
         self.accounts.append([username, password])
 
     def _parse_flights(self, flights: List[JSON]) -> None:
-        for flight in flights :
+        for flight in flights:
             if not isinstance(flight, dict):
                 raise TypeError("'flights' must only contain dictionaries")
 

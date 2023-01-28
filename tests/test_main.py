@@ -1,10 +1,12 @@
 from typing import List
+from unittest import mock
 
 import pytest
 from pytest_mock import MockerFixture
 
 from lib import main
 from lib.checkin_scheduler import CheckInScheduler
+from lib.config import Config
 from lib.flight_retriever import AccountFlightRetriever, FlightRetriever
 from lib.notification_handler import NotificationHandler
 
@@ -12,7 +14,7 @@ from lib.notification_handler import NotificationHandler
 # We don't actually want the config to read the file for these tests
 @pytest.fixture(autouse=True)
 def mock_config(mocker: MockerFixture) -> None:
-    mocker.patch("lib.flight_retriever.Config")
+    mocker.patch("lib.config.Config._read_config")
 
 
 def test_print_version_prints_script_version(capsys: pytest.CaptureFixture[str]) -> None:
@@ -39,7 +41,7 @@ def test_check_flags_prints_version_when_version_flag_is_passed(
     mock_exit.assert_called_once()
 
 
-@pytest.mark.parametrize("arguments", [["-h"], ["--help"], []])
+@pytest.mark.parametrize("arguments", [["-h"], ["--help"]])
 def test_check_flags_prints_usage_when_help_flag_is_passed(
     mocker: MockerFixture,
     arguments: List[str],
@@ -59,51 +61,70 @@ def test_check_flags_does_not_exit_when_flags_are_not_matched(
     mock_exit.assert_not_called()
 
 
+def test_set_up_accounts_starts_all_accounts_in_proceses(mocker: MockerFixture) -> None:
+    config = Config()
+    config.accounts = [["user1", "pass1"], ["user2", "pass2"]]
+
+    mock_process = mocker.patch("lib.main.Process")
+    mock_process.start = mock.Mock()
+
+    main.set_up_accounts(config)
+
+    assert mock_process.call_count == len(config.accounts)
+    assert mock_process.return_value.start.call_count == len(config.accounts)
+
+
+def test_set_up_flights_starts_all_flights_in_proceses(mocker: MockerFixture) -> None:
+    config = Config()
+    config.flights = [["test1", "first1", "last1"], ["test2", "first2", "last2"]]
+
+    mock_process = mocker.patch("lib.main.Process")
+    mock_process.start = mock.Mock()
+
+    main.set_up_flights(config)
+
+    assert mock_process.call_count == len(config.flights)
+    assert mock_process.return_value.start.call_count == len(config.flights)
+
+
 def test_set_up_sends_test_notifications_when_flag_is_passed(mocker: MockerFixture) -> None:
     mock_send_notification = mocker.patch.object(NotificationHandler, "send_notification")
     main.set_up(["--test-notifications"])
     mock_send_notification.assert_called_once()
 
 
-def test_set_up_monitors_account_when_a_username_and_password_are_provided(
-    mocker: MockerFixture,
+@pytest.mark.parametrize(
+    ["arguments", "accounts_len", "flights_len"],
+    [
+        ([], 0, 0),
+        (["username", "password"], 1, 0),
+        (["test", "John", "Doe"], 0, 1),
+    ],
+)
+def test_set_up_sets_up_account_and_flight_with_arguments(
+    mocker: MockerFixture, arguments: List[str], accounts_len: int, flights_len: int
 ) -> None:
-    mock_account_FR = mocker.patch.object(AccountFlightRetriever, "__init__", return_value=None)
-    mock_get_flights = mocker.patch.object(AccountFlightRetriever, "monitor_account")
+    mock_set_up_accounts = mocker.patch("lib.main.set_up_accounts")
+    mock_set_up_flights = mocker.patch("lib.main.set_up_flights")
 
-    main.set_up(["username", "password"])
+    main.set_up(arguments)
 
-    mock_account_FR.assert_called_once_with("username", "password")
-    mock_get_flights.assert_called_once()
-
-
-def test_set_up_schedules_checkin_when_a_confirmation_number_and_name_are_provided(
-    mocker: MockerFixture,
-) -> None:
-    # The Flight Retriever needs to be mocked to get the values passed in to the constructor, but
-    # it still needs to return a valid Flight Retriever
-    mock_flight_retriever = mocker.patch(
-        "lib.flight_retriever.FlightRetriever", return_value=FlightRetriever()
-    )
-
-    mock_refresh_headers = mocker.patch.object(CheckInScheduler, "refresh_headers")
-    mock_schedule_reservations = mocker.patch.object(FlightRetriever, "schedule_reservations")
-
-    main.set_up(["000000", "first", "last"])
-
-    mock_flight_retriever.assert_called_once_with("first", "last")
-    mock_refresh_headers.assert_called_once()
-    mock_schedule_reservations.assert_called_once_with([{"confirmationNumber": "000000"}])
+    assert len(mock_set_up_accounts.call_args[0][0].accounts) == accounts_len
+    assert len(mock_set_up_flights.call_args[0][0].flights) == flights_len
 
 
-@pytest.mark.parametrize("arguments", [[], ["1"], ["1", "2", "3", "4"]])
 def test_set_up_sends_error_message_when_arguments_are_invalid(
-    arguments: List[str], capsys: pytest.CaptureFixture[str]
+    capsys: pytest.CaptureFixture[str], mocker: MockerFixture
 ) -> None:
+    mock_exit = mocker.patch("sys.exit")
+    arguments = ["1", "2", "3", "4"]
+
     main.set_up(arguments)
     output = capsys.readouterr().out
+
     assert "Invalid arguments" in output
     assert "--help" in output
+    mock_exit.assert_called_once()
 
 
 def test_main_sets_up_script(mocker: MockerFixture) -> None:
