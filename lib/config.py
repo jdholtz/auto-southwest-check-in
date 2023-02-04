@@ -20,13 +20,11 @@ class Config:
         self.notification_urls = []
         self.retrieval_interval = 24
 
-        # Read the config file
-        config = self._read_config()
-
         # Set the configuration values if provided
         try:
+            config = self._read_config()
             self._parse_config(config)
-        except TypeError as err:
+        except (TypeError, json.decoder.JSONDecodeError) as err:
             print("Error in configuration file:")
             print(err)
             sys.exit()

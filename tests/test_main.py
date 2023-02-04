@@ -26,7 +26,7 @@ def test_print_usage_prints_script_usage(capsys: pytest.CaptureFixture[str]) -> 
     main.print_usage()
     output = capsys.readouterr().out
     assert main.__version__ in output
-    assert main.USAGE in output
+    assert main.__doc__ in output
 
 
 @pytest.mark.parametrize("flag", ["-v", "--version"])

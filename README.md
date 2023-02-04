@@ -73,8 +73,9 @@ $ docker build -f Dockerfile . -t auto-southwest-check-in
 To run the image, you can use a command such as:
 ```shell
 docker run -d auto-southwest-check-in ARGS
-# See above for the arguments that can be passed in
 ```
+See above for the arguments that can be passed in.
+
 **Note**: The recommended restart policy for the container is `on-failed` or `no`
 
 ## Configuration

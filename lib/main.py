@@ -11,7 +11,7 @@ if TYPE_CHECKING:  # pragma: no cover
 
 __version__ = "v1.0"
 
-USAGE = """
+__doc__ = """
 Schedule a check-in:
     python3 southwest.py CONFIRMATION_NUMBER FIRST_NAME LAST_NAME
 
@@ -32,7 +32,7 @@ def print_version():
 
 def print_usage():
     print_version()
-    print(USAGE)
+    print(__doc__)
 
 
 def check_flags(arguments: List[str]) -> None:
