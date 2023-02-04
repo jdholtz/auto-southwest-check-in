@@ -14,6 +14,7 @@ information beforehand.
 - [Using The Script](#using-the-script)
     * [Running In Docker](#running-in-docker)
 - [Configuration](#configuration)
+- [Contributing](#contributing)
 
 ## Installation
 
@@ -86,7 +87,13 @@ For information on how to set up the configuration, see [Configuration.md](CONFI
 **Note**: If you are using Docker, make sure to rebuild the container after editing the configuration
 file for your changes to be applied.
 
+## Contributing
+If you run into any issues, please file it via [GitHub issues][4].
+
+Contributions are always welcome. Please read [Contributing.md](CONTRIBUTING.md) if you are considering making contributions.
+
 [0]: https://www.python.org/downloads/
 [1]: https://pip.pypa.io/en/stable/installation/
 [2]: https://www.google.com/chrome/
 [3]: https://www.docker.com/
+[4]: https://github.com/jdholtz/auto-southwest-check-in/issues/new

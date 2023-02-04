@@ -10,6 +10,8 @@ If there is no "Upgrading" header for that version, no post-upgrade actions need
 - Added official Python 3.11 support
 - A [Configuration](CONFIGURATION.md) guide was written to facilitate the script's configuration
 - Allow multiple accounts/flights to be run in one instance of the script ([#33](https://github.com/jdholtz/auto-southwest-check-in/pull/33))
+- A [Contributing](CONTRIBUTING.md) document was added to provide potential contributors with a guide on
+how they can help with the project.
 
 ### Improvements
 - Optimized the script's entrypoint so the user is no longer required to install the requirements (besides Python)
