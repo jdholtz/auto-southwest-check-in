@@ -22,27 +22,7 @@ def mock_flight_retriever(mocker: MockerFixture) -> mock.Mock:
     return mocker.patch("lib.flight_retriever.AccountFlightRetriever")
 
 
-def test_get_driver_returns_a_webdriver_with_one_request() -> None:
-    driver = WebDriver(None)._get_driver()
-    assert isinstance(driver, mock.Mock)
-    assert driver.get.call_count == 1  # pylint: disable=no-member
-
-
-def test_set_headers_from_request_sets_the_correct_headers(
-    mocker: MockerFixture, mock_driver: mock.Mock
-) -> None:
-    mocker.patch("time.sleep")
-    mocker.patch.object(WebDriver, "_get_needed_headers", return_value={"test": "headers"})
-    mock_flight_retriever = mocker.patch("lib.flight_retriever.FlightRetriever")
-
-    checkin_scheduler = CheckInScheduler(mock_flight_retriever)
-    webdriver = WebDriver(checkin_scheduler)
-    webdriver._set_headers_from_request(mock_driver)
-
-    assert checkin_scheduler.headers == {"test": "headers"}
-
-
-def test_get_checkin_info_returns_request_headers(mocker: MockerFixture) -> None:
+def test_set_headers_correctly_sets_needed_headers(mocker: MockerFixture) -> None:
     mocker.patch("lib.webdriver.WebDriverWait")
     mock_set_headers_from_request = mocker.patch.object(WebDriver, "_set_headers_from_request")
 
@@ -76,7 +56,7 @@ def test_get_flights_sets_account_name_when_it_is_not_set(
     assert flights == "new flights"
 
 
-def test_get_account_info_does_not_set_account_name_when_it_is_already_set(
+def test_get_flights_does_not_set_account_name_when_it_is_already_set(
     mocker: MockerFixture, mock_driver: mock.Mock, mock_flight_retriever: mock.Mock
 ) -> None:
     mocker.patch("lib.webdriver.WebDriverWait")
@@ -98,6 +78,26 @@ def test_get_account_info_does_not_set_account_name_when_it_is_already_set(
     mock_set_headers_from_request.assert_called_once_with(mock_driver)
     mock_set_account_name.assert_not_called()
     assert flights == "new flights"
+
+
+def test_get_driver_returns_a_webdriver_with_one_request() -> None:
+    driver = WebDriver(None)._get_driver()
+    assert isinstance(driver, mock.Mock)
+    assert driver.get.call_count == 1  # pylint: disable=no-member
+
+
+def test_set_headers_from_request_sets_the_correct_headers(
+    mocker: MockerFixture, mock_driver: mock.Mock
+) -> None:
+    mocker.patch("time.sleep")
+    mocker.patch.object(WebDriver, "_get_needed_headers", return_value={"test": "headers"})
+    mock_flight_retriever = mocker.patch("lib.flight_retriever.FlightRetriever")
+
+    checkin_scheduler = CheckInScheduler(mock_flight_retriever)
+    webdriver = WebDriver(checkin_scheduler)
+    webdriver._set_headers_from_request(mock_driver)
+
+    assert checkin_scheduler.headers == {"test": "headers"}
 
 
 def test_get_options_adds_the_necessary_options() -> None:

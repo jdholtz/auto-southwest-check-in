@@ -43,19 +43,6 @@ class WebDriver:
         self.options = self._get_options()
         self.seleniumwire_options = {"disable_encoding": True}
 
-    def _get_driver(self) -> Chrome:
-        driver = Chrome(options=self.options, seleniumwire_options=self.seleniumwire_options)
-        driver.scopes = [LOGIN_URL, TRIPS_URL, RESERVATION_URL]  # Filter out unneeded URLs
-        driver.get(CHECKIN_URL)
-        return driver
-
-    def _set_headers_from_request(self, driver: Chrome) -> None:
-        # Retrieving the headers could fail if the form isn't given enough time to submit
-        time.sleep(10)
-
-        request_headers = driver.requests[0].headers
-        self.checkin_scheduler.headers = self._get_needed_headers(request_headers)
-
     def set_headers(self) -> None:
         """
         Fills out a check-in form with invalid information and grabs the valid
@@ -124,6 +111,19 @@ class WebDriver:
         driver.quit()
 
         return flights
+
+    def _get_driver(self) -> Chrome:
+        driver = Chrome(options=self.options, seleniumwire_options=self.seleniumwire_options)
+        driver.scopes = [LOGIN_URL, TRIPS_URL, RESERVATION_URL]  # Filter out unneeded URLs
+        driver.get(CHECKIN_URL)
+        return driver
+
+    def _set_headers_from_request(self, driver: Chrome) -> None:
+        # Retrieving the headers could fail if the form isn't given enough time to submit
+        time.sleep(10)
+
+        request_headers = driver.requests[0].headers
+        self.checkin_scheduler.headers = self._get_needed_headers(request_headers)
 
     @staticmethod
     def _get_options() -> ChromeOptions:

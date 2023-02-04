@@ -39,6 +39,17 @@ class CheckInScheduler:
 
         self.notification_handler.new_flights(self.flights[prev_flight_len:])
 
+    def refresh_headers(self) -> None:
+        webdriver = WebDriver(self)
+        webdriver.set_headers()
+
+    def remove_departed_flights(self) -> None:
+        current_time = datetime.utcnow()
+
+        for flight in self.flights[:]:
+            if flight.departure_time < current_time:
+                self.flights.remove(flight)
+
     def _schedule_flights(self, confirmation_number: str) -> None:
         reservation_info = self._get_reservation_info(confirmation_number)
 
@@ -79,14 +90,3 @@ class CheckInScheduler:
                 return True
 
         return False
-
-    def refresh_headers(self) -> None:
-        webdriver = WebDriver(self)
-        webdriver.set_headers()
-
-    def remove_departed_flights(self) -> None:
-        current_time = datetime.utcnow()
-
-        for flight in self.flights[:]:
-            if flight.departure_time < current_time:
-                self.flights.remove(flight)

@@ -69,6 +69,36 @@ def test_schedule_schedules_all_reservations(mocker: MockerFixture) -> None:
     mock_new_flight_notifications.assert_called_once()
 
 
+def test_refresh_headers_sets_new_headers(mocker: MockerFixture) -> None:
+    mock_webdriver_set_headers = mocker.patch.object(WebDriver, "set_headers")
+
+    checkin_scheduler = CheckInScheduler(FlightRetriever(Config()))
+    checkin_scheduler.refresh_headers()
+    mock_webdriver_set_headers.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    ["flight_time", "expected_len"],
+    [
+        (datetime(2000, 1, 1), 1),
+        (datetime(1999, 12, 30), 0),
+    ],
+)
+def test_remove_departed_flights_removes_only_departed_flights(
+    mocker: MockerFixture, test_flight: Flight, flight_time: datetime, expected_len: int
+) -> None:
+    mock_datetime = mocker.patch("lib.checkin_scheduler.datetime")
+    mock_datetime.utcnow.return_value = datetime(1999, 12, 31)
+
+    checkin_scheduler = CheckInScheduler(FlightRetriever(Config()))
+    test_flight.departure_time = flight_time
+    checkin_scheduler.flights.append(test_flight)
+
+    checkin_scheduler.remove_departed_flights()
+
+    assert len(checkin_scheduler.flights) == expected_len
+
+
 def test_schedule_flights_schedules_all_flights_under_reservation(
     mocker: MockerFixture,
 ) -> None:
@@ -181,33 +211,3 @@ def test_flight_is_scheduled_returns_false_if_flight_is_not_scheduled(
     new_flight.departure_time = flight_time
 
     assert checkin_scheduler._flight_is_scheduled(new_flight) is False
-
-
-def test_set_headers_sets_new_headers(mocker: MockerFixture) -> None:
-    mock_webdriver_set_headers = mocker.patch.object(WebDriver, "set_headers")
-
-    checkin_scheduler = CheckInScheduler(FlightRetriever(Config()))
-    checkin_scheduler.refresh_headers()
-    mock_webdriver_set_headers.assert_called_once()
-
-
-@pytest.mark.parametrize(
-    ["flight_time", "expected_len"],
-    [
-        (datetime(2000, 1, 1), 1),
-        (datetime(1999, 12, 30), 0),
-    ],
-)
-def test_remove_departed_flights_removes_only_departed_flights(
-    mocker: MockerFixture, test_flight: Flight, flight_time: datetime, expected_len: int
-) -> None:
-    mock_datetime = mocker.patch("lib.checkin_scheduler.datetime")
-    mock_datetime.utcnow.return_value = datetime(1999, 12, 31)
-
-    checkin_scheduler = CheckInScheduler(FlightRetriever(Config()))
-    test_flight.departure_time = flight_time
-    checkin_scheduler.flights.append(test_flight)
-
-    checkin_scheduler.remove_departed_flights()
-
-    assert len(checkin_scheduler.flights) == expected_len
