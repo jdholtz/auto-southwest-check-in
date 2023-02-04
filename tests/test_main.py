@@ -116,7 +116,7 @@ def test_set_up_sets_up_account_and_flight_with_arguments(
 
 
 def test_set_up_sends_error_message_when_arguments_are_invalid(
-    capsys: pytest.CaptureFixture[str]
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     arguments = ["1", "2", "3", "4"]
 
