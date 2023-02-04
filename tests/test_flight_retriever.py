@@ -4,6 +4,8 @@ from pytest_mock import MockerFixture
 from lib.checkin_scheduler import CheckInScheduler
 from lib.config import Config
 from lib.flight_retriever import AccountFlightRetriever, FlightRetriever
+from lib.general import LoginError
+from lib.notification_handler import NotificationHandler
 from lib.webdriver import WebDriver
 
 # This needs to be accessed to be tested
@@ -42,6 +44,17 @@ def test_account_FR_monitors_the_account_continuously(mocker: MockerFixture) -> 
     assert mock_get_flights.call_count == 2
     assert mock_schedule_reservations.call_count == 2
     assert mock_remove_departed_flights.call_count == 2
+
+
+def test_get_flights_exits_on_login_error(mocker: MockerFixture) -> None:
+    mocker.patch.object(WebDriver, "get_flights", side_effect=LoginError)
+    mock_failed_login = mocker.patch.object(NotificationHandler, "failed_login")
+
+    with pytest.raises(SystemExit):
+        test_retriever = AccountFlightRetriever(Config(), "", "")
+        test_retriever._get_flights()
+
+    mock_failed_login.assert_called_once()
 
 
 def test_get_flights_returns_the_correct_flights(mocker: MockerFixture) -> None:

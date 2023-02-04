@@ -19,11 +19,10 @@ def mock_open(mocker: MockerFixture) -> None:
 
 
 def test_config_exits_on_error_in_config_file(mocker: MockerFixture) -> None:
-    mock_sys_exit = mocker.patch("sys.exit")
     mocker.patch.object(config.Config, "_parse_config", side_effect=TypeError())
 
-    config.Config()
-    mock_sys_exit.assert_called_once()
+    with pytest.raises(SystemExit):
+        config.Config()
 
 
 def test_read_config_reads_the_config_file_correctly(mocker: MockerFixture) -> None:

@@ -10,6 +10,8 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 from seleniumwire.undetected_chromedriver import Chrome, ChromeOptions
 
+from .general import LoginError
+
 if TYPE_CHECKING:  # pragma: no cover
     from .checkin_scheduler import CheckInScheduler
     from .flight_retriever import AccountFlightRetriever
@@ -97,10 +99,14 @@ class WebDriver:
 
         self._set_headers_from_request(driver)
 
+        response = driver.requests[0].response
+        if response.status_code != 200:
+            raise LoginError(str(response.status_code))
+
         # If this is the first time logging in, the account name needs to be set because that info is needed later
         if flight_retriever.first_name is None:
-            response = json.loads(driver.requests[0].response.body)
-            self._set_account_name(flight_retriever, response)
+            response_body = json.loads(response.body)
+            self._set_account_name(flight_retriever, response_body)
             print(
                 f"Successfully logged in to {flight_retriever.first_name} {flight_retriever.last_name}'s account\n"
             )

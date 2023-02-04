@@ -1,9 +1,11 @@
+import sys
 import time
 from datetime import datetime
 from typing import Any, Dict, List
 
 from .checkin_scheduler import CheckInScheduler
 from .config import Config
+from .general import LoginError
 from .notification_handler import NotificationHandler
 from .webdriver import WebDriver
 
@@ -62,5 +64,11 @@ class AccountFlightRetriever(FlightRetriever):
 
     def _get_flights(self) -> List[Dict[str, Any]]:
         webdriver = WebDriver(self.checkin_scheduler)
-        flights = webdriver.get_flights(self)
+
+        try:
+            flights = webdriver.get_flights(self)
+        except LoginError as err:
+            self.notification_handler.failed_login(err)
+            sys.exit()
+
         return flights

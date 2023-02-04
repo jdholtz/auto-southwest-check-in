@@ -34,11 +34,12 @@ def test_check_flags_prints_version_when_version_flag_is_passed(
     mocker: MockerFixture,
     flag: str,
 ) -> None:
-    mock_exit = mocker.patch("sys.exit")
     mock_print_version = mocker.patch("lib.main.print_version")
-    main.check_flags([flag])
+
+    with pytest.raises(SystemExit):
+        main.check_flags([flag])
+
     mock_print_version.assert_called_once()
-    mock_exit.assert_called_once()
 
 
 @pytest.mark.parametrize("arguments", [["-h"], ["--help"]])
@@ -46,11 +47,12 @@ def test_check_flags_prints_usage_when_help_flag_is_passed(
     mocker: MockerFixture,
     arguments: List[str],
 ) -> None:
-    mock_exit = mocker.patch("sys.exit")
     mock_print_usage = mocker.patch("lib.main.print_usage")
-    main.check_flags(arguments)
+
+    with pytest.raises(SystemExit):
+        main.check_flags(arguments)
+
     mock_print_usage.assert_called_once()
-    mock_exit.assert_called_once()
 
 
 def test_check_flags_does_not_exit_when_flags_are_not_matched(
@@ -114,17 +116,17 @@ def test_set_up_sets_up_account_and_flight_with_arguments(
 
 
 def test_set_up_sends_error_message_when_arguments_are_invalid(
-    capsys: pytest.CaptureFixture[str], mocker: MockerFixture
+    capsys: pytest.CaptureFixture[str]
 ) -> None:
-    mock_exit = mocker.patch("sys.exit")
     arguments = ["1", "2", "3", "4"]
 
-    main.set_up(arguments)
+    with pytest.raises(SystemExit):
+        main.set_up(arguments)
+
     output = capsys.readouterr().out
 
     assert "Invalid arguments" in output
     assert "--help" in output
-    mock_exit.assert_called_once()
 
 
 def test_main_sets_up_script(mocker: MockerFixture) -> None:
