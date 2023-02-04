@@ -1,0 +1,14 @@
+name: "💡 Feature request"
+description: Suggest an idea for this project
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What is the feature you want to see?
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: What alternatives have you considered?
