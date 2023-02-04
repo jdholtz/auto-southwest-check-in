@@ -2,6 +2,7 @@ import pytest
 from pytest_mock import MockerFixture
 
 from lib.checkin_scheduler import CheckInScheduler
+from lib.config import Config
 from lib.flight_retriever import AccountFlightRetriever, FlightRetriever
 from lib.webdriver import WebDriver
 
@@ -19,7 +20,7 @@ def test_flight_retriever_schedules_reservations_correctly(mocker: MockerFixture
     mock_schedule = mocker.patch.object(CheckInScheduler, "schedule")
     flights = [{"confirmationNumber": "Test1"}, {"confirmationNumber": "Test2"}]
 
-    test_retriever = FlightRetriever()
+    test_retriever = FlightRetriever(Config())
     test_retriever.schedule_reservations(flights)
 
     mock_schedule.assert_called_once_with(["Test1", "Test2"])
@@ -33,7 +34,7 @@ def test_account_FR_monitors_the_account_continuously(mocker: MockerFixture) -> 
     mock_schedule_reservations = mocker.patch.object(FlightRetriever, "schedule_reservations")
     mock_remove_departed_flights = mocker.patch.object(CheckInScheduler, "remove_departed_flights")
 
-    test_retriever = AccountFlightRetriever("", "")
+    test_retriever = AccountFlightRetriever(Config(), "", "")
 
     with pytest.raises(Exception):
         test_retriever.monitor_account()
@@ -47,7 +48,7 @@ def test_get_flights_returns_the_correct_flights(mocker: MockerFixture) -> None:
     flights = [{"flight1": "test1"}, {"flight2": "test2"}]
     mocker.patch.object(WebDriver, "get_flights", return_value=flights)
 
-    test_retriever = AccountFlightRetriever("", "")
+    test_retriever = AccountFlightRetriever(Config(), "", "")
     new_flights = test_retriever._get_flights()
 
     assert new_flights == flights

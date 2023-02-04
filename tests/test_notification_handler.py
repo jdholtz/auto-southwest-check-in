@@ -2,7 +2,6 @@ import apprise
 import pytest
 from pytest_mock import MockerFixture
 
-from lib.flight_retriever import FlightRetriever
 from lib.general import NotificationLevel
 from lib.notification_handler import NotificationHandler
 
@@ -11,8 +10,9 @@ from lib.notification_handler import NotificationHandler
 
 
 @pytest.fixture
-def notification_handler() -> NotificationHandler:
-    return NotificationHandler(FlightRetriever())
+def notification_handler(mocker: MockerFixture) -> NotificationHandler:
+    mock_flight_retriever = mocker.patch("lib.flight_retriever.FlightRetriever")
+    return NotificationHandler(mock_flight_retriever)
 
 
 def test_get_account_name_returns_the_correct_name(

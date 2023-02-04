@@ -1,9 +1,12 @@
 import json
 import os
 import sys
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from .general import NotificationLevel
+
+# Type alias for JSON
+JSON = Dict[str, Any]
 
 CONFIG_FILE_NAME = "config.json"
 
@@ -11,8 +14,10 @@ CONFIG_FILE_NAME = "config.json"
 class Config:
     def __init__(self):
         # Default values are set
-        self.notification_urls = []
+        self.accounts = []
+        self.flights = []
         self.notification_level = NotificationLevel.INFO
+        self.notification_urls = []
         self.retrieval_interval = 24
 
         # Read the config file
@@ -26,7 +31,7 @@ class Config:
             print(err)
             sys.exit()
 
-    def _read_config(self) -> Dict[str, Any]:
+    def _read_config(self) -> JSON:
         project_dir = os.path.dirname(os.path.dirname(__file__))
         config_file = project_dir + "/" + CONFIG_FILE_NAME
 
@@ -40,18 +45,34 @@ class Config:
 
     # This method ensures the configuration values are correct and the right types.
     # Defaults are already set in the constructor to ensure a value is never null.
-    def _parse_config(self, config: Dict[str, Any]) -> None:
-        if "notification_urls" in config:
-            self.notification_urls = config["notification_urls"]
+    def _parse_config(self, config: JSON) -> None:
+        if "accounts" in config:
+            accounts = config["accounts"]
 
-            if not isinstance(self.notification_urls, (list, str)):
-                raise TypeError("'notification_urls' must be a list or string")
+            if not isinstance(accounts, list):
+                raise TypeError("'accounts' must be a list")
+
+            self._parse_accounts(accounts)
+
+        if "flights" in config:
+            flights = config["flights"]
+
+            if not isinstance(flights, list):
+                raise TypeError("'flights' must be a list")
+
+            self._parse_flights(flights)
 
         if "notification_level" in config:
             self.notification_level = config["notification_level"]
 
             if not isinstance(self.notification_level, int):
                 raise TypeError("'notification_level' must be an integer")
+
+        if "notification_urls" in config:
+            self.notification_urls = config["notification_urls"]
+
+            if not isinstance(self.notification_urls, (list, str)):
+                raise TypeError("'notification_urls' must be a list or string")
 
         if "retrieval_interval" in config:
             self.retrieval_interval = config["retrieval_interval"]
@@ -64,3 +85,58 @@ class Config:
                     f"Setting 'retrieval_interval' to one as {self.retrieval_interval} hours is too low"
                 )
                 self.retrieval_interval = 1
+
+    def _parse_accounts(self, accounts: List[JSON]) -> None:
+        for account in accounts:
+            if not isinstance(account, dict):
+                raise TypeError("'accounts' must only contain dictionaries")
+
+            self._parse_account(account)
+
+    def _parse_account(self, account: JSON) -> None:
+        if "username" not in account:
+            raise TypeError("'username' must be in every account")
+
+        if "password" not in account:
+            raise TypeError("'password' must be in every account")
+
+        username = account["username"]
+        if not isinstance(username, str):
+            raise TypeError("'username' must be a string")
+
+        password = account["password"]
+        if not isinstance(password, str):
+            raise TypeError("'password' must be a string")
+
+        self.accounts.append([username, password])
+
+    def _parse_flights(self, flights: List[JSON]) -> None:
+        for flight in flights:
+            if not isinstance(flight, dict):
+                raise TypeError("'flights' must only contain dictionaries")
+
+            self._parse_flight(flight)
+
+    def _parse_flight(self, flight: JSON) -> None:
+        if "confirmationNumber" not in flight:
+            raise TypeError("'confirmationNumber' must be in every flight")
+
+        if "firstName" not in flight:
+            raise TypeError("'firstName' must be in every flight")
+
+        if "lastName" not in flight:
+            raise TypeError("'lastName' must be in every flight")
+
+        confirmation_number = flight["confirmationNumber"]
+        if not isinstance(confirmation_number, str):
+            raise TypeError("'confirmationNumber' must be a string")
+
+        first_name = flight["firstName"]
+        if not isinstance(first_name, str):
+            raise TypeError("'firstName' must be a string")
+
+        last_name = flight["lastName"]
+        if not isinstance(last_name, str):
+            raise TypeError("'lastName' must be a string")
+
+        self.flights.append([confirmation_number, first_name, last_name])

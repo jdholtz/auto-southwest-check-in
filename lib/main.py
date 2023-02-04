@@ -1,9 +1,15 @@
 """Primary script entrypoint where arguments are processed and flights are set up."""
 
-__version__ = "v1.0"
+from __future__ import annotations
 
 import sys
-from typing import List
+from multiprocessing import Process
+from typing import TYPE_CHECKING, List
+
+if TYPE_CHECKING:  # pragma: no cover
+    from config import Config
+
+__version__ = "v1.0"
 
 USAGE = """
 Schedule a check-in:
@@ -34,40 +40,64 @@ def check_flags(arguments: List[str]) -> None:
     if "--version" in arguments or "-v" in arguments:
         print_version()
         sys.exit()
-    elif len(arguments) == 0 or "--help" in arguments or "-h" in arguments:
+    elif "--help" in arguments or "-h" in arguments:
         print_usage()
         sys.exit()
+
+
+def set_up_accounts(config: Config) -> None:
+    # pylint:disable=import-outside-toplevel
+    from .flight_retriever import AccountFlightRetriever
+
+    for account in config.accounts:
+        flight_retriever = AccountFlightRetriever(config, account[0], account[1])
+
+        # Start each account in a separate process to run them in parallel
+        process = Process(target=flight_retriever.monitor_account)
+        process.start()
+
+
+def set_up_flights(config: Config) -> None:
+    # pylint:disable=import-outside-toplevel
+    from .flight_retriever import FlightRetriever
+
+    for flight in config.flights:
+        flight_retriever = FlightRetriever(config, flight[1], flight[2])
+
+        # Start each flight in a separate process to run them in parallel
+        process = Process(
+            target=flight_retriever.schedule_reservations,
+            args=([{"confirmationNumber": flight[0]}],),
+        )
+        process.start()
 
 
 def set_up(arguments: List[str]):
     """Initialize a specific Flight Retriever based on the arguments passed in"""
 
-    # Imported here to avoid needing dependencies downloaded to retrieve the script's
+    # Imported here to avoid needing dependencies to retrieve the script's
     # version or usage
     # pylint:disable=import-outside-toplevel
-    from .flight_retriever import AccountFlightRetriever, FlightRetriever
+    from .config import Config
+    from .flight_retriever import FlightRetriever
+
+    config = Config()
 
     if "--test-notifications" in arguments:
-        flight_retriever = FlightRetriever()
+        flight_retriever = FlightRetriever(config)
 
         print("Sending test notifications...")
         flight_retriever.notification_handler.send_notification("This is a test message")
     elif len(arguments) == 2:
-        username = arguments[0]
-        password = arguments[1]
-
-        flight_retriever = AccountFlightRetriever(username, password)
-        flight_retriever.monitor_account()
+        config.accounts.append([arguments[0], arguments[1]])
     elif len(arguments) == 3:
-        confirmation_number = arguments[0]
-        first_name = arguments[1]
-        last_name = arguments[2]
-
-        flight_retriever = FlightRetriever(first_name, last_name)
-        flight_retriever.checkin_scheduler.refresh_headers()
-        flight_retriever.schedule_reservations([{"confirmationNumber": confirmation_number}])
-    else:
+        config.flights.append([arguments[0], arguments[1], arguments[2]])
+    elif len(arguments) > 3:
         print("Invalid arguments. For more information, try '--help'")
+        sys.exit()
+
+    set_up_accounts(config)
+    set_up_flights(config)
 
 
 def main(arguments: List[str]) -> None:
