@@ -96,4 +96,4 @@ Contributions are always welcome. Please read [Contributing.md](CONTRIBUTING.md)
 [1]: https://pip.pypa.io/en/stable/installation/
 [2]: https://www.google.com/chrome/
 [3]: https://www.docker.com/
-[4]: https://github.com/jdholtz/auto-southwest-check-in/issues/new
+[4]: https://github.com/jdholtz/auto-southwest-check-in/issues/new/choose
