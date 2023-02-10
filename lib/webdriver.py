@@ -119,7 +119,12 @@ class WebDriver:
         return flights
 
     def _get_driver(self) -> Chrome:
-        driver = Chrome(options=self.options, seleniumwire_options=self.seleniumwire_options)
+        chrome_version = self.checkin_scheduler.flight_retriever.config.chrome_version
+        driver = Chrome(
+            options=self.options,
+            seleniumwire_options=self.seleniumwire_options,
+            version_main=chrome_version,
+        )
         driver.scopes = [LOGIN_URL, TRIPS_URL, RESERVATION_URL]  # Filter out unneeded URLs
         driver.get(CHECKIN_URL)
         return driver

@@ -15,6 +15,7 @@ class Config:
     def __init__(self):
         # Default values are set
         self.accounts = []
+        self.chrome_version = 109
         self.flights = []
         self.notification_level = NotificationLevel.INFO
         self.notification_urls = []
@@ -51,6 +52,12 @@ class Config:
                 raise TypeError("'accounts' must be a list")
 
             self._parse_accounts(accounts)
+
+        if "chrome_version" in config:
+            self.chrome_version = config["chrome_version"]
+
+            if not isinstance(self.chrome_version, int):
+                raise TypeError("'chrome_version' must be an integer")
 
         if "flights" in config:
             flights = config["flights"]
