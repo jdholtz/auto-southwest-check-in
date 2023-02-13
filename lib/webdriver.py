@@ -147,7 +147,6 @@ class WebDriver:
         # version of undetected_chromedriver adds this argument correctly, but it gets
         # detected by Southwest, so this will be here until it can bypass their bot detection.
         chrome_version = self.checkin_scheduler.flight_retriever.config.chrome_version
-        print(chrome_version)
         if not chrome_version or chrome_version >= 109:
             options.add_argument("--headless=new")
         else:

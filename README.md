@@ -79,6 +79,10 @@ See above for the arguments that can be passed in.
 
 **Note**: The recommended restart policy for the container is `on-failed` or `no`
 
+It is advised that you [specify](CONFIGURATION.md#chrome-version) a Google Chrome version in the configuration
+file so you don't need to rebuild your Docker image often. Find the latest version that will be downloaded
+[here](https://www.ubuntuupdates.org/package/google_chrome/stable/main/base/google-chrome-stable?id=202706&page=1).
+
 ## Configuration
 To use the default configuration file, copy `config.example.json` to `config.json`.
 
