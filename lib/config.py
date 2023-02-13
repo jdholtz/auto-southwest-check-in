@@ -15,7 +15,7 @@ class Config:
     def __init__(self):
         # Default values are set
         self.accounts = []
-        self.chrome_version = 109
+        self.chrome_version = None
         self.flights = []
         self.notification_level = NotificationLevel.INFO
         self.notification_urls = []

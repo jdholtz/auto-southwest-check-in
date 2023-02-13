@@ -136,14 +136,22 @@ class WebDriver:
         request_headers = driver.requests[0].headers
         self.checkin_scheduler.headers = self._get_needed_headers(request_headers)
 
-    @staticmethod
-    def _get_options() -> ChromeOptions:
+    def _get_options(self) -> ChromeOptions:
         options = ChromeOptions()
-        options.add_argument("--headless")
         options.add_argument("--disable-dev-shm-usage")  # For docker containers
 
         # Southwest detects headless browser user agents, so we have to set our own
         options.add_argument("--user-agent=" + USER_AGENT)
+
+        # This is a temporary workaround for later chrome versions. Currently, the latest
+        # version of undetected_chromedriver adds this argument correctly, but it gets
+        # detected by Southwest, so this will be here until it can bypass their bot detection.
+        chrome_version = self.checkin_scheduler.flight_retriever.config.chrome_version
+        print(chrome_version)
+        if not chrome_version or chrome_version >= 109:
+            options.add_argument("--headless=new")
+        else:
+            options.add_argument("--headless=chrome")
 
         return options
 

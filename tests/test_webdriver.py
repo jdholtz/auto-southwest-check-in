@@ -23,6 +23,12 @@ def mock_flight_retriever(mocker: MockerFixture) -> mock.Mock:
     return mocker.patch("lib.flight_retriever.AccountFlightRetriever")
 
 
+@pytest.fixture()
+def mock_get_options(mocker: MockerFixture):
+    mocker.patch.object(WebDriver, "_get_options")
+
+
+@pytest.mark.usefixtures("mock_get_options")
 def test_set_headers_correctly_sets_needed_headers(mocker: MockerFixture) -> None:
     mocker.patch("lib.webdriver.WebDriverWait")
     mock_set_headers_from_request = mocker.patch.object(WebDriver, "_set_headers_from_request")
@@ -32,6 +38,7 @@ def test_set_headers_correctly_sets_needed_headers(mocker: MockerFixture) -> Non
     mock_set_headers_from_request.assert_called_once()
 
 
+@pytest.mark.usefixtures("mock_get_options")
 def test_get_flights_raises_exception_on_failed_login(
     mocker: MockerFixture, mock_driver: mock.Mock, mock_flight_retriever: mock.Mock
 ) -> None:
@@ -50,6 +57,7 @@ def test_get_flights_raises_exception_on_failed_login(
     mock_set_headers_from_request.assert_called_once_with(mock_driver)
 
 
+@pytest.mark.usefixtures("mock_get_options")
 def test_get_flights_sets_account_name_when_it_is_not_set(
     mocker: MockerFixture, mock_driver: mock.Mock, mock_flight_retriever: mock.Mock
 ) -> None:
@@ -76,6 +84,7 @@ def test_get_flights_sets_account_name_when_it_is_not_set(
     assert flights == "new flights"
 
 
+@pytest.mark.usefixtures("mock_get_options")
 def test_get_flights_does_not_set_account_name_when_it_is_already_set(
     mocker: MockerFixture, mock_driver: mock.Mock, mock_flight_retriever: mock.Mock
 ) -> None:
@@ -101,6 +110,7 @@ def test_get_flights_does_not_set_account_name_when_it_is_already_set(
     assert flights == "new flights"
 
 
+@pytest.mark.usefixtures("mock_get_options")
 def test_get_driver_returns_a_webdriver_with_one_request(mocker: MockerFixture) -> None:
     mock_checkin_scheduler = mocker.patch("lib.checkin_scheduler.CheckInScheduler")
     driver = WebDriver(mock_checkin_scheduler)._get_driver()
@@ -108,6 +118,7 @@ def test_get_driver_returns_a_webdriver_with_one_request(mocker: MockerFixture) 
     assert driver.get.call_count == 1  # pylint: disable=no-member
 
 
+@pytest.mark.usefixtures("mock_get_options")
 def test_set_headers_from_request_sets_the_correct_headers(
     mocker: MockerFixture, mock_driver: mock.Mock
 ) -> None:
@@ -122,11 +133,25 @@ def test_set_headers_from_request_sets_the_correct_headers(
     assert checkin_scheduler.headers == {"test": "headers"}
 
 
-def test_get_options_adds_the_necessary_options() -> None:
-    options = WebDriver._get_options()
+@pytest.mark.parametrize(
+    ["chrome_version", "option"],
+    [
+        (None, "new"),
+        (109, "new"),
+        (108, "chrome"),
+    ],
+)
+def test_get_options_adds_the_correct_headless_option(
+    mocker: MockerFixture, chrome_version: int, option: str
+) -> None:
+    mock_checkin_scheduler = mocker.patch("lib.checkin_scheduler.CheckInScheduler")
+    mock_checkin_scheduler.flight_retriever.config.chrome_version = chrome_version
+
+    webdriver = WebDriver(mock_checkin_scheduler)
+    options = webdriver._get_options()
 
     assert "--disable-dev-shm-usage" in options.arguments
-    assert "--headless" in options.arguments
+    assert f"--headless={option}" in options.arguments
     assert "--user-agent=" + USER_AGENT in options.arguments
 
 
@@ -147,6 +172,7 @@ def test_get_needed_headers_returns_matching_headers(
     assert headers == expected_headers
 
 
+@pytest.mark.usefixtures("mock_get_options")
 def test_set_account_name_sets_the_correct_values_for_the_name(
     mock_flight_retriever: mock.Mock,
 ) -> None:
