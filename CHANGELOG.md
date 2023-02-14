@@ -2,6 +2,26 @@
 When upgrading to a new version, make sure to follow the directions under the "Upgrading" header of the corresponding version.
 If there is no "Upgrading" header for that version, no post-upgrade actions need to be performed.
 
+
+## 2.0 (2023-02-13)
+
+### New features
+- A `--help` flag was added to display information on how to use the script
+- Added official Python 3.11 support
+- A [Configuration](CONFIGURATION.md) guide was written to facilitate the script's configuration
+- Allow multiple accounts/flights to be run in one instance of the script ([#33](https://github.com/jdholtz/auto-southwest-check-in/pull/33))
+- A [Contributing](CONTRIBUTING.md) document was added to provide potential contributors with a guide on
+how they can help with the project.
+- Allow users to specify a specific Google Chrome version to use ([#40](https://github.com/jdholtz/auto-southwest-check-in/pull/40))
+
+### Improvements
+- Optimized the script's entrypoint so the user is no longer required to install the requirements (besides Python)
+to use the `--version` and `--help` flags. This also makes responses for those flags instantaneous
+
+### Upgrading
+Upgrade the dependencies to the latest versions by running `pip install -r requirements.txt`
+
+
 ## 1.0 (2022-12-10)
 
 ### New Features

@@ -14,8 +14,7 @@ information beforehand.
 - [Using The Script](#using-the-script)
     * [Running In Docker](#running-in-docker)
 - [Configuration](#configuration)
-    * [Notifications](#notifications)
-    * [Retrieval Interval](#retrieval-interval)
+- [Contributing](#contributing)
 
 ## Installation
 
@@ -61,6 +60,9 @@ python3 southwest.py USERNAME PASSWORD
 **Note**: The script will check the entire party in under the same reservation, so there is no need
 to create more than one instance of the script per reservation.
 
+If you want the latest features of the script, you can use the `develop` branch (documented changes
+can be viewed in the [Changelog](CHANGELOG.md)). However, keep in mind that changes to this branch do not ensure reliability.
+
 ### Running In Docker
 
 The application can also be run in a container using [Docker][3]. To build the image, run the following command:
@@ -72,65 +74,33 @@ docker build -f Dockerfile . -t auto-southwest-check-in
 To run the image, you can use a command such as:
 ```shell
 docker run -d auto-southwest-check-in ARGS
-# See above for the arguments that can be passed in
 ```
+See above for the arguments that can be passed in.
+
 **Note**: The recommended restart policy for the container is `on-failed` or `no`
 
+It is advised that you [specify](CONFIGURATION.md#chrome-version) a Google Chrome version in the configuration
+file so you don't need to rebuild your Docker image often. Find the latest version that will be downloaded
+[here][4].
+
 ## Configuration
-To set up a configuration file, copy `config.example.json` to `config.json`.
+To use the default configuration file, copy `config.example.json` to `config.json`.
+
+For information on how to set up the configuration, see [Configuration.md](CONFIGURATION.md)
 
 **Note**: If you are using Docker, make sure to rebuild the container after editing the configuration
 file for your changes to be applied.
 
-### Notifications
-#### Notification URLs
-Users can be notified on successful and failed check-ins. This is done through the [Apprise library][4].
-To start, first gather the service url you want to send notifications to (information on how to create
-service urls can be found on the [Apprise Readme][5]). Then put it in your configuration file.
-```json
-{
-  "notification_urls": "service://my_service_url"
-}
-```
-If you have more than one service you want to send notifications to, you can put them in an array:
-```json
-{
-  "notification_urls": [
-    "service://my_first_service_url",
-    "service://my_second_service_url"
-  ]
-}
+## Contributing
+If you run into any issues, please file it via [GitHub Issues][5]. If you have any questions or discussion topics,
+start a [GitHub Discussion][6].
 
-```
-
-#### Notification Level
-You can also select the level of notifications you want to receive.
-```json
-{
-  "notification_level": 1
-}
-```
-Level 1 means you receive successful scheduling and check-in messages and all messages in later levels.\
-Level 2 means you receive only error messages (failed scheduling and check-ins).
-
-#### Test The Notifications
-To test if the notification urls work, you can run the following command
-```shell
-python3 southwest.py --test-notifications
-```
-
-### Retrieval Interval
-If you provide login credentials to the script, you can choose how often the script checks for new flights
-(in hours).
-```json
-{
-    "retrieval_interval": 24
-}
-```
+Contributions are always welcome. Please read [Contributing.md](CONTRIBUTING.md) if you are considering making contributions.
 
 [0]: https://www.python.org/downloads/
 [1]: https://pip.pypa.io/en/stable/installation/
 [2]: https://www.google.com/chrome/
 [3]: https://www.docker.com/
-[4]: https://github.com/caronc/apprise
-[5]: https://github.com/caronc/apprise#supported-notifications
+[4]: https://www.ubuntuupdates.org/package/google_chrome/stable/main/base/google-chrome-stable?id=202706&page=1
+[5]: https://github.com/jdholtz/auto-southwest-check-in/issues/new/choose
+[6]: https://github.com/jdholtz/auto-southwest-check-in/discussions/new/choose

@@ -35,6 +35,11 @@ class CheckInError(Exception):
     pass
 
 
+# Make a custom exception when a login fails
+class LoginError(Exception):
+    pass
+
+
 class NotificationLevel(IntEnum):
     INFO = 1
     ERROR = 2

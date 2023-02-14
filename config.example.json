@@ -1,5 +1,8 @@
 {
     "notification_urls": "",
     "notification_level": 1,
-    "retrieval_interval": 24
+    "retrieval_interval": 24,
+    "accounts": [],
+    "flights": [],
+    "chrome_version": 109
 }

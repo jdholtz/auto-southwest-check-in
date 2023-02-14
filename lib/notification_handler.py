@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any, Dict, List
 import apprise
 
 from .flight import Flight
-from .general import CheckInError, NotificationLevel
+from .general import CheckInError, LoginError, NotificationLevel
 
 if TYPE_CHECKING:  # pragma: no cover
     from .flight_retriever import FlightRetriever
@@ -53,6 +53,13 @@ class NotificationHandler:
             f"Failed to retrieve reservation for {self._get_account_name()} "
             f"with confirmation number {confirmation_number}. Reason: {error}.\n"
             f"Make sure the flight information is correct and try again.\n"
+        )
+        self.send_notification(error_message, NotificationLevel.ERROR)
+
+    def failed_login(self, error: LoginError) -> None:
+        error_message = (
+            f"Failed to log in to account with username {self.flight_retriever.username}. "
+            f"Status Code: {error}.\nMake sure the login information is correct and try again.\n"
         )
         self.send_notification(error_message, NotificationLevel.ERROR)
 

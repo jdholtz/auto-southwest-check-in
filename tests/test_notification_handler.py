@@ -2,7 +2,6 @@ import apprise
 import pytest
 from pytest_mock import MockerFixture
 
-from lib.flight_retriever import FlightRetriever
 from lib.general import NotificationLevel
 from lib.notification_handler import NotificationHandler
 
@@ -11,8 +10,9 @@ from lib.notification_handler import NotificationHandler
 
 
 @pytest.fixture
-def notification_handler() -> NotificationHandler:
-    return NotificationHandler(FlightRetriever())
+def notification_handler(mocker: MockerFixture) -> NotificationHandler:
+    mock_flight_retriever = mocker.patch("lib.flight_retriever.FlightRetriever")
+    return NotificationHandler(mock_flight_retriever)
 
 
 def test_get_account_name_returns_the_correct_name(
@@ -69,11 +69,19 @@ def test_new_flights_sends_notifications_for_new_flights(
     assert mock_send_notification.call_args[0][1] == NotificationLevel.INFO
 
 
-def test_failed_retrieval_reservation_sends_error_notification(
+def test_failed_reservation_retrieval_sends_error_notification(
     mocker: MockerFixture, notification_handler: NotificationHandler
 ) -> None:
     mock_send_notification = mocker.patch.object(NotificationHandler, "send_notification")
     notification_handler.failed_reservation_retrieval("", "")
+    assert mock_send_notification.call_args[0][1] == NotificationLevel.ERROR
+
+
+def test_failed_login_sends_error_notification(
+    mocker: MockerFixture, notification_handler: NotificationHandler
+) -> None:
+    mock_send_notification = mocker.patch.object(NotificationHandler, "send_notification")
+    notification_handler.failed_login("")
     assert mock_send_notification.call_args[0][1] == NotificationLevel.ERROR
 
 

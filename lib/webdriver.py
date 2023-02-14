@@ -10,6 +10,8 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 from seleniumwire.undetected_chromedriver import Chrome, ChromeOptions
 
+from .general import LoginError
+
 if TYPE_CHECKING:  # pragma: no cover
     from .checkin_scheduler import CheckInScheduler
     from .flight_retriever import AccountFlightRetriever
@@ -33,25 +35,15 @@ class WebDriver:
 
     2. Logging into an account. In this case, the headers are refreshed and a list of scheduled
     flights are retrieved.
+
+    Some of this code is based off of:
+    https://github.com/byalextran/southwest-headers/commit/d2969306edb0976290bfa256d41badcc9698f6ed
     """
 
     def __init__(self, checkin_scheduler: CheckInScheduler) -> None:
         self.checkin_scheduler = checkin_scheduler
         self.options = self._get_options()
         self.seleniumwire_options = {"disable_encoding": True}
-
-    def _get_driver(self) -> Chrome:
-        driver = Chrome(options=self.options, seleniumwire_options=self.seleniumwire_options)
-        driver.scopes = [LOGIN_URL, TRIPS_URL, RESERVATION_URL]  # Filter out unneeded URLs
-        driver.get(CHECKIN_URL)
-        return driver
-
-    def _set_headers_from_request(self, driver: Chrome) -> None:
-        # Retrieving the headers could fail if the form isn't given enough time to submit
-        time.sleep(10)
-
-        request_headers = driver.requests[0].headers
-        self.checkin_scheduler.headers = self._get_needed_headers(request_headers)
 
     def set_headers(self) -> None:
         """
@@ -107,10 +99,14 @@ class WebDriver:
 
         self._set_headers_from_request(driver)
 
+        response = driver.requests[0].response
+        if response.status_code != 200:
+            raise LoginError(str(response.status_code))
+
         # If this is the first time logging in, the account name needs to be set because that info is needed later
         if flight_retriever.first_name is None:
-            response = json.loads(driver.requests[0].response.body)
-            self._set_account_name(flight_retriever, response)
+            response_body = json.loads(response.body)
+            self._set_account_name(flight_retriever, response_body)
             print(
                 f"Successfully logged in to {flight_retriever.first_name} {flight_retriever.last_name}'s account\n"
             )
@@ -122,14 +118,39 @@ class WebDriver:
 
         return flights
 
-    @staticmethod
-    def _get_options() -> ChromeOptions:
+    def _get_driver(self) -> Chrome:
+        chrome_version = self.checkin_scheduler.flight_retriever.config.chrome_version
+        driver = Chrome(
+            options=self.options,
+            seleniumwire_options=self.seleniumwire_options,
+            version_main=chrome_version,
+        )
+        driver.scopes = [LOGIN_URL, TRIPS_URL, RESERVATION_URL]  # Filter out unneeded URLs
+        driver.get(CHECKIN_URL)
+        return driver
+
+    def _set_headers_from_request(self, driver: Chrome) -> None:
+        # Retrieving the headers could fail if the form isn't given enough time to submit
+        time.sleep(10)
+
+        request_headers = driver.requests[0].headers
+        self.checkin_scheduler.headers = self._get_needed_headers(request_headers)
+
+    def _get_options(self) -> ChromeOptions:
         options = ChromeOptions()
-        options.add_argument("--headless")
         options.add_argument("--disable-dev-shm-usage")  # For docker containers
 
         # Southwest detects headless browser user agents, so we have to set our own
         options.add_argument("--user-agent=" + USER_AGENT)
+
+        # This is a temporary workaround for later chrome versions. Currently, the latest
+        # version of undetected_chromedriver adds this argument correctly, but it gets
+        # detected by Southwest, so this will be here until it can bypass their bot detection.
+        chrome_version = self.checkin_scheduler.flight_retriever.config.chrome_version
+        if not chrome_version or chrome_version >= 109:
+            options.add_argument("--headless=new")
+        else:
+            options.add_argument("--headless=chrome")
 
         return options
 
