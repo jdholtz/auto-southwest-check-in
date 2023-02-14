@@ -3,7 +3,7 @@ When upgrading to a new version, make sure to follow the directions under the "U
 If there is no "Upgrading" header for that version, no post-upgrade actions need to be performed.
 
 
-## Upcoming
+## 2.0 (2023-02-13)
 
 ### New features
 - A `--help` flag was added to display information on how to use the script

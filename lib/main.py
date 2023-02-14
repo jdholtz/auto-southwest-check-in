@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, List
 if TYPE_CHECKING:  # pragma: no cover
     from config import Config
 
-__version__ = "v1.0"
+__version__ = "v2.0"
 
 __doc__ = """
 Schedule a check-in:
