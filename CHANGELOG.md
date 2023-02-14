@@ -18,6 +18,9 @@ how they can help with the project.
 - Optimized the script's entrypoint so the user is no longer required to install the requirements (besides Python)
 to use the `--version` and `--help` flags. This also makes responses for those flags instantaneous
 
+### Upgrading
+Upgrade the dependencies to the latest versions by running `pip install -r requirements.txt`
+
 
 ## 1.0 (2022-12-10)
 
