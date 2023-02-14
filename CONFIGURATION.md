@@ -7,6 +7,7 @@ file can be found at [config.example.json](config.example.json)
     * [Notification URLS](#notification-urls)
     * [Notification Level](#notification-level)
     * [Test The Notifications](#test-the-notifications)
+- [Chrome Version](#chrome-version)
 - [Retrieval Interval](#retrieval-interval)
 - [Accounts](#accounts)
 - [Flights](#flights)
@@ -46,6 +47,15 @@ Level 2 means you receive only error messages (failed scheduling and check-ins).
 To test if the notification URLs work, you can run the following command
 ```shell
 $ python3 southwest.py --test-notifications
+```
+
+## Chrome Version
+You can specify a specific version of Google Chrome for the script to use (only the main version - e.g. 108, 109, etc.).
+This is highly recommended if you don't want to continuously keep Google Chrome on the latest version.
+```json
+{
+    "chrome_version": 110
+}
 ```
 
 ## Retrieval Interval

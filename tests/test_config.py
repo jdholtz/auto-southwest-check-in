@@ -50,11 +50,12 @@ def test_read_config_returns_empty_config_when_file_is_not_found(mocker: MockerF
 @pytest.mark.parametrize(
     "config_content",
     [
-        {"notification_urls": None},
-        {"notification_level": "invalid"},
-        {"retrieval_interval": "invalid"},
         {"accounts": "invalid"},
+        {"chrome_version": "invalid"},
         {"flights": "invalid"},
+        {"notification_level": "invalid"},
+        {"notification_urls": None},
+        {"retrieval_interval": "invalid"},
     ],
 )
 def test_parse_config_raises_exception_with_invalid_entries(config_content: Dict[str, Any]) -> None:
@@ -67,12 +68,18 @@ def test_parse_config_raises_exception_with_invalid_entries(config_content: Dict
 def test_parse_config_sets_the_correct_config_values() -> None:
     test_config = config.Config()
     test_config._parse_config(
-        {"notification_urls": "test_url", "notification_level": 30, "retrieval_interval": 20}
+        {
+            "chrome_version": 10,
+            "notification_level": 20,
+            "notification_urls": "test_url",
+            "retrieval_interval": 30,
+        }
     )
 
+    assert test_config.chrome_version == 10
+    assert test_config.notification_level == 20
     assert test_config.notification_urls == "test_url"
-    assert test_config.notification_level == 30
-    assert test_config.retrieval_interval == 20
+    assert test_config.retrieval_interval == 30
 
 
 def test_parse_config_does_not_set_values_when_a_config_value_is_empty(
