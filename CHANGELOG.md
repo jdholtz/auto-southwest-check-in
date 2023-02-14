@@ -12,6 +12,7 @@ If there is no "Upgrading" header for that version, no post-upgrade actions need
 - Allow multiple accounts/flights to be run in one instance of the script ([#33](https://github.com/jdholtz/auto-southwest-check-in/pull/33))
 - A [Contributing](CONTRIBUTING.md) document was added to provide potential contributors with a guide on
 how they can help with the project.
+- Allow users to specify a specific Google Chrome version to use ([#40](https://github.com/jdholtz/auto-southwest-check-in/pull/40))
 
 ### Improvements
 - Optimized the script's entrypoint so the user is no longer required to install the requirements (besides Python)

@@ -14,6 +14,9 @@ file can be found at [config.example.json](config.example.json)
 
 ## Notifications
 ### Notification URLs
+Default: [] \
+Type: String or List
+
 Users can be notified on successful and failed check-ins. This is done through the [Apprise library][0].
 To start, first gather the service URL you want to send notifications to (information on how to create
 service URLs can be found on the [Apprise Readme][1]). Then put it in your configuration file.
@@ -34,6 +37,9 @@ If you have more than one service you want to send notifications to, you can put
 ```
 
 ### Notification Level
+Default: 1 \
+Type: Integer
+
 You can also select the level of notifications you want to receive.
 ```json
 {
@@ -50,6 +56,9 @@ $ python3 southwest.py --test-notifications
 ```
 
 ## Chrome Version
+Default: The latest stable version \
+Type: Integer
+
 You can specify a specific version of Google Chrome for the script to use (only the main version - e.g. 108, 109, etc.).
 This is highly recommended if you don't want to continuously keep Google Chrome on the latest version.
 ```json
@@ -59,6 +68,9 @@ This is highly recommended if you don't want to continuously keep Google Chrome 
 ```
 
 ## Retrieval Interval
+Default: 24 hours \
+Type: Integer
+
 If you provide login credentials to the script, you can choose how often the script checks for new flights
 (in hours).
 ```json
@@ -68,6 +80,9 @@ If you provide login credentials to the script, you can choose how often the scr
 ```
 
 ## Accounts
+Default: [] \
+Type: List
+
 You can add more accounts to the script, allowing you to run multiple accounts at the same time and/or not
 provide a username and password as arguments.
 ```json
@@ -80,6 +95,9 @@ provide a username and password as arguments.
 ```
 
 ## Flights
+Default: [] \
+Type: List
+
 Similar to [Accounts](#accounts), you can also add more flights to the script, allowing you check in to multiple flights in the same instance and/or not
 provide flight information as arguments.
 ```json

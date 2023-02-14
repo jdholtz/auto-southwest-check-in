@@ -81,7 +81,7 @@ See above for the arguments that can be passed in.
 
 It is advised that you [specify](CONFIGURATION.md#chrome-version) a Google Chrome version in the configuration
 file so you don't need to rebuild your Docker image often. Find the latest version that will be downloaded
-[here](https://www.ubuntuupdates.org/package/google_chrome/stable/main/base/google-chrome-stable?id=202706&page=1).
+[here][4].
 
 ## Configuration
 To use the default configuration file, copy `config.example.json` to `config.json`.
@@ -92,7 +92,8 @@ For information on how to set up the configuration, see [Configuration.md](CONFI
 file for your changes to be applied.
 
 ## Contributing
-If you run into any issues, please file it via [GitHub issues][4].
+If you run into any issues, please file it via [GitHub Issues][5]. If you have any questions or discussion topics,
+start a [GitHub Discussion][6].
 
 Contributions are always welcome. Please read [Contributing.md](CONTRIBUTING.md) if you are considering making contributions.
 
@@ -100,4 +101,6 @@ Contributions are always welcome. Please read [Contributing.md](CONTRIBUTING.md)
 [1]: https://pip.pypa.io/en/stable/installation/
 [2]: https://www.google.com/chrome/
 [3]: https://www.docker.com/
-[4]: https://github.com/jdholtz/auto-southwest-check-in/issues/new/choose
+[4]: https://www.ubuntuupdates.org/package/google_chrome/stable/main/base/google-chrome-stable?id=202706&page=1
+[5]: https://github.com/jdholtz/auto-southwest-check-in/issues/new/choose
+[6]: https://github.com/jdholtz/auto-southwest-check-in/discussions/new/choose
