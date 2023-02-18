@@ -124,7 +124,7 @@ def test_set_up_check_in_sends_test_notifications_when_flag_is_passed(
     mocker: MockerFixture,
 ) -> None:
     mock_send_notification = mocker.patch.object(NotificationHandler, "send_notification")
-    main.set_up(["--test-notifications"])
+    main.set_up_check_in(["--test-notifications"])
     mock_send_notification.assert_called_once()
 
 
