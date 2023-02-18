@@ -75,7 +75,7 @@ class AccountFlightRetriever(FlightRetriever):
         try:
             flights = webdriver.get_flights(self)
         except LoginError as err:
-            logger.debug("Error logging in. Error: %s. Exiting", err)
+            logger.debug("Error logging in. %s. Exiting", err)
             self.notification_handler.failed_login(err)
             sys.exit()
 

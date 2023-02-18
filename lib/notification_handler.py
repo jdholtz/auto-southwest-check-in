@@ -61,10 +61,7 @@ class NotificationHandler:
         self.send_notification(error_message, NotificationLevel.ERROR)
 
     def failed_login(self, error: LoginError) -> None:
-        error_message = (
-            f"Failed to log in to account with username {self.flight_retriever.username}. "
-            f"Status Code: {error}.\nMake sure the login information is correct and try again.\n"
-        )
+        error_message = f"Failed to log in to account with username {self.flight_retriever.username}. {error}.\n"
         logger.debug("Sending failed login notification...")
         self.send_notification(error_message, NotificationLevel.ERROR)
 

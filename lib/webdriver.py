@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any, Dict
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
+from seleniumwire.request import Response
 from seleniumwire.undetected_chromedriver import Chrome, ChromeOptions
 
 from .general import LoginError
@@ -23,6 +24,9 @@ LOGIN_URL = BASE_URL + "/api/security/v4/security/token"
 TRIPS_URL = BASE_URL + "/api/mobile-misc/v1/mobile-misc/page/upcoming-trips"
 CHECKIN_URL = BASE_URL + "/check-in"
 RESERVATION_URL = BASE_URL + "/api/mobile-air-operations/v1/mobile-air-operations/page/check-in/"
+
+# Southwest's code when logging in with the incorrect information
+INVALID_CREDENTIALS_CODE = 400518024
 
 logger = logging.getLogger(__name__)
 
@@ -106,7 +110,8 @@ class WebDriver:
 
         response = driver.requests[0].response
         if response.status_code != 200:
-            raise LoginError(str(response.status_code))
+            error = self._handle_login_error(response)
+            raise error
 
         # If this is the first time logging in, the account name needs to be set because that info is needed later
         if flight_retriever.first_name is None:
@@ -163,6 +168,18 @@ class WebDriver:
             options.add_argument("--headless=chrome")
 
         return options
+
+    @staticmethod
+    def _handle_login_error(response: Response) -> LoginError:
+        body = json.loads(response.body)
+        if body.get("code") == INVALID_CREDENTIALS_CODE:
+            logger.debug("Invalid credentials provided when attempting to log in")
+            reason = "Invalid credentials"
+        else:
+            logger.debug("Logging in failed for an unknown reason")
+            reason = "Unknown"
+
+        return LoginError(f"Reason: {reason}. Status code: {response.status_code}")
 
     @staticmethod
     def _get_needed_headers(request_headers: Dict[str, Any]) -> Dict[str, Any]:
