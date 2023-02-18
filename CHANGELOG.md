@@ -3,6 +3,15 @@ When upgrading to a new version, make sure to follow the directions under the "U
 If there is no "Upgrading" header for that version, no post-upgrade actions need to be performed.
 
 
+## Upcoming
+
+### New features
+- A logger was added to enable better troubleshooting for both users and developers
+([#47](https://github.com/jdholtz/auto-southwest-check-in/pull/47))
+- A verbosity flag can be specified (`--verbose` or `-v`) to print debug messages to stderr. Shorthand
+for `--version` flag is now `-V` ([#47](https://github.com/jdholtz/auto-southwest-check-in/pull/47))
+
+
 ## 2.0 (2023-02-13)
 
 ### New features
