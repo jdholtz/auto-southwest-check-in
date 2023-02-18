@@ -14,6 +14,7 @@ information beforehand.
 - [Using The Script](#using-the-script)
     * [Running In Docker](#running-in-docker)
 - [Configuration](#configuration)
+- [Troubleshooting](#troubleshooting)
 - [Contributing](#contributing)
 
 ## Installation
@@ -91,10 +92,16 @@ For information on how to set up the configuration, see [Configuration.md](CONFI
 **Note**: If you are using Docker, make sure to rebuild the container after editing the configuration
 file for your changes to be applied.
 
-## Contributing
-If you run into any issues, please file it via [GitHub Issues][5]. If you have any questions or discussion topics,
-start a [GitHub Discussion][6].
+## Troubleshooting
+To troubleshoot a problem, run the script with the `--verbose` flag. This will print all debug messages to stderr.
 
+If you run into any issues, please file it via [GitHub Issues][5]. Please attach any relevant logs (can be found in
+`logs/auto-southwest-check-in.log`) to the issue. The logs should not have any personal information but check to make
+sure before attaching it).
+
+If you have any questions or discussion topics, start a [GitHub Discussion][6].
+
+## Contributing
 Contributions are always welcome. Please read [Contributing.md](CONTRIBUTING.md) if you are considering making contributions.
 
 [0]: https://www.python.org/downloads/
