@@ -132,6 +132,7 @@ def set_up_check_in(arguments: List[str]):
 
         logger.info("Sending test notifications...")
         flight_retriever.notification_handler.send_notification("This is a test message")
+        sys.exit()
     elif len(arguments) == 2:
         config.accounts.append([arguments[0], arguments[1]])
         logger.debug("Account added through CLI arguments")
