@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import logging
+import logging.handlers
+import os
 import sys
 from multiprocessing import Process
 from typing import TYPE_CHECKING, List
@@ -25,6 +28,13 @@ Options:
 
 For more information, check out https://github.com/jdholtz/auto-southwest-check-in#readme"""
 
+LOG_FILE = "logs/auto-southwest-check-in.log"
+VERBOSITY_LEVEL = logging.INFO
+
+# Use the parent logger so the logger config is applied to every module
+# when using getLogger(__name__)
+logger = logging.getLogger("lib")
+
 
 def print_version():
     print("Auto-Southwest Check-In " + __version__)
@@ -43,6 +53,34 @@ def check_flags(arguments: List[str]) -> None:
     elif "--help" in arguments or "-h" in arguments:
         print_usage()
         sys.exit()
+
+
+def init_logging() -> None:
+    """Sets the logger configuration for the script"""
+    # Make the logging directory if it doesn't exist
+    os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
+
+    logger.setLevel(logging.DEBUG)  # The minimum level for every handler
+
+    formatter = logging.Formatter(
+        "%(asctime)s %(levelname)s %(processName)s[%(module)s]: %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+
+    file_handler = logging.handlers.RotatingFileHandler(
+        LOG_FILE, maxBytes=2 * 1024 * 1024, backupCount=4
+    )
+    file_handler.setLevel(logging.DEBUG)
+    file_handler.setFormatter(formatter)
+    file_handler.doRollover()  # Create a new log file when starting the application
+
+    stream_handler = logging.StreamHandler()
+    stream_handler.setLevel(VERBOSITY_LEVEL)
+
+    logger.addHandler(file_handler)
+    logger.addHandler(stream_handler)
+
+    logger.debug("Initialized the application")
 
 
 def set_up_accounts(config: Config) -> None:
@@ -72,8 +110,9 @@ def set_up_flights(config: Config) -> None:
         process.start()
 
 
-def set_up(arguments: List[str]):
+def set_up_check_in(arguments: List[str]):
     """Initialize a specific Flight Retriever based on the arguments passed in"""
+    logger.debug("Called with %d arguments", len(arguments))
 
     # Imported here to avoid needing dependencies to retrieve the script's
     # version or usage
@@ -86,20 +125,24 @@ def set_up(arguments: List[str]):
     if "--test-notifications" in arguments:
         flight_retriever = FlightRetriever(config)
 
-        print("Sending test notifications...")
+        logger.info("Sending test notifications...")
         flight_retriever.notification_handler.send_notification("This is a test message")
     elif len(arguments) == 2:
         config.accounts.append([arguments[0], arguments[1]])
+        logger.debug("Account added through CLI arguments")
     elif len(arguments) == 3:
         config.flights.append([arguments[0], arguments[1], arguments[2]])
+        logger.debug("Flight added through CLI arguments")
     elif len(arguments) > 3:
-        print("Invalid arguments. For more information, try '--help'")
+        logger.error("Invalid arguments. For more information, try '--help'")
         sys.exit()
 
+    logger.debug("Monitoring %d accounts and %d flights", len(config.accounts), len(config.flights))
     set_up_accounts(config)
     set_up_flights(config)
 
 
 def main(arguments: List[str]) -> None:
     check_flags(arguments)
-    set_up(arguments)
+    init_logging()
+    set_up_check_in(arguments)

@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import sys
 from typing import Any, Dict, List
@@ -9,6 +10,7 @@ from .general import NotificationLevel
 JSON = Dict[str, Any]
 
 CONFIG_FILE_NAME = "config.json"
+logger = logging.getLogger(__name__)
 
 
 class Config:
@@ -34,10 +36,12 @@ class Config:
         project_dir = os.path.dirname(os.path.dirname(__file__))
         config_file = project_dir + "/" + CONFIG_FILE_NAME
 
+        logger.debug("Reading the configuration file")
         try:
             with open(config_file) as file:
                 config = json.load(file)
         except FileNotFoundError:
+            logger.debug("No configuration file found. Using defaults")
             config = {}
 
         return config
@@ -55,6 +59,7 @@ class Config:
 
         if "chrome_version" in config:
             self.chrome_version = config["chrome_version"]
+            logger.debug("Setting chrome version to %s", self.chrome_version)
 
             if not isinstance(self.chrome_version, int):
                 raise TypeError("'chrome_version' must be an integer")
@@ -69,6 +74,7 @@ class Config:
 
         if "notification_level" in config:
             self.notification_level = config["notification_level"]
+            logger.debug("Setting notification level to %s", self.notification_level)
 
             if not isinstance(self.notification_level, int):
                 raise TypeError("'notification_level' must be an integer")
@@ -79,19 +85,27 @@ class Config:
             if not isinstance(self.notification_urls, (list, str)):
                 raise TypeError("'notification_urls' must be a list or string")
 
+            notification_urls_len = (
+                len(self.notification_urls) if isinstance(self.notification_urls, list) else 1
+            )
+            logger.debug("Using %d notification services", notification_urls_len)
+
         if "retrieval_interval" in config:
             self.retrieval_interval = config["retrieval_interval"]
+            logger.debug("Setting retrieval interval to %s hours", self.retrieval_interval)
 
             if not isinstance(self.retrieval_interval, int):
                 raise TypeError("'retrieval_interval' must be an integer")
 
             if self.retrieval_interval < 1:
-                print(
-                    f"Setting 'retrieval_interval' to one as {self.retrieval_interval} hours is too low"
+                logger.warning(
+                    "Setting 'retrieval_interval' to 1 hour as %s hours is too low",
+                    self.retrieval_interval,
                 )
                 self.retrieval_interval = 1
 
     def _parse_accounts(self, accounts: List[JSON]) -> None:
+        logger.debug("Adding %d accounts from configuration file", len(accounts))
         for account in accounts:
             if not isinstance(account, dict):
                 raise TypeError("'accounts' must only contain dictionaries")
@@ -116,6 +130,7 @@ class Config:
         self.accounts.append([username, password])
 
     def _parse_flights(self, flights: List[JSON]) -> None:
+        logger.debug("Adding %d flights from configuration file", len(flights))
         for flight in flights:
             if not isinstance(flight, dict):
                 raise TypeError("'flights' must only contain dictionaries")

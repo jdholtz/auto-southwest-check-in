@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 import time
 from typing import TYPE_CHECKING, Any, Dict
@@ -22,6 +23,8 @@ LOGIN_URL = BASE_URL + "/api/security/v4/security/token"
 TRIPS_URL = BASE_URL + "/api/mobile-misc/v1/mobile-misc/page/upcoming-trips"
 CHECKIN_URL = BASE_URL + "/check-in"
 RESERVATION_URL = BASE_URL + "/api/mobile-air-operations/v1/mobile-air-operations/page/check-in/"
+
+logger = logging.getLogger(__name__)
 
 
 class WebDriver:
@@ -51,6 +54,7 @@ class WebDriver:
         headers from the request. Then, it updates the headers in the check-in scheduler.
         """
         driver = self._get_driver()
+        logger.debug("Filling out a check-in form to get valid headers")
 
         # Attempt a check in to retrieve the correct headers
         confirmation_element = WebDriverWait(driver, 30).until(
@@ -80,6 +84,7 @@ class WebDriver:
         information.
         """
         driver = self._get_driver()
+        logger.debug("Logging into Southwest account to get scheduled flights and valid headers")
 
         # Log in to retrieve the account's trips and needed headers for later requests
         WebDriverWait(driver, 30).until(
@@ -105,11 +110,12 @@ class WebDriver:
 
         # If this is the first time logging in, the account name needs to be set because that info is needed later
         if flight_retriever.first_name is None:
+            logger.debug("First time logging in. Setting account name")
             response_body = json.loads(response.body)
             self._set_account_name(flight_retriever, response_body)
             print(
                 f"Successfully logged in to {flight_retriever.first_name} {flight_retriever.last_name}'s account\n"
-            )
+            )  # Don't log as it contains sensitive information
 
         # This page is also loaded when we log in, so we might as well grab it instead of requesting again later
         flights = json.loads(driver.requests[1].response.body)["upcomingTripsPage"]
@@ -119,6 +125,7 @@ class WebDriver:
         return flights
 
     def _get_driver(self) -> Chrome:
+        logger.debug("Starting webdriver for current session")
         chrome_version = self.checkin_scheduler.flight_retriever.config.chrome_version
         driver = Chrome(
             options=self.options,
@@ -126,6 +133,8 @@ class WebDriver:
             version_main=chrome_version,
         )
         driver.scopes = [LOGIN_URL, TRIPS_URL, RESERVATION_URL]  # Filter out unneeded URLs
+
+        logger.debug("Loading Southwest Check-In page")
         driver.get(CHECKIN_URL)
         return driver
 
@@ -133,6 +142,7 @@ class WebDriver:
         # Retrieving the headers could fail if the form isn't given enough time to submit
         time.sleep(10)
 
+        logger.debug("Setting valid headers from previous request")
         request_headers = driver.requests[0].headers
         self.checkin_scheduler.headers = self._get_needed_headers(request_headers)
 

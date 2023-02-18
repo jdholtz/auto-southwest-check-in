@@ -1,3 +1,4 @@
+import logging
 import sys
 import time
 from datetime import datetime
@@ -8,6 +9,8 @@ from .config import Config
 from .general import LoginError
 from .notification_handler import NotificationHandler
 from .webdriver import WebDriver
+
+logger = logging.getLogger(__name__)
 
 
 class FlightRetriever:
@@ -25,6 +28,7 @@ class FlightRetriever:
         self.checkin_scheduler = CheckInScheduler(self)
 
     def schedule_reservations(self, flights: List[Dict[str, Any]]) -> None:
+        logger.debug("Scheduling reservations for %d flights", len(flights))
         confirmation_numbers = []
 
         for flight in flights:
@@ -60,15 +64,20 @@ class AccountFlightRetriever(FlightRetriever):
             # deciding how long to sleep
             time_after = datetime.utcnow()
             time_taken = (time_after - time_before).total_seconds()
-            time.sleep(retrieval_interval - time_taken)
+            sleep_time = retrieval_interval - time_taken
+            logger.debug("Sleeping for %d seconds", sleep_time)
+            time.sleep(sleep_time)
 
     def _get_flights(self) -> List[Dict[str, Any]]:
+        logger.debug("Retrieving flights for account")
         webdriver = WebDriver(self.checkin_scheduler)
 
         try:
             flights = webdriver.get_flights(self)
         except LoginError as err:
+            logger.debug("Error logging in. Error: %s. Exiting", err)
             self.notification_handler.failed_login(err)
             sys.exit()
 
+        logger.debug("Successfully retrieved %d flights", len(flights))
         return flights
