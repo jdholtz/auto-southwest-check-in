@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING, Any, Dict, List
 
 import apprise
@@ -11,6 +12,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from .flight_retriever import FlightRetriever
 
 MANUAL_CHECKIN_URL = "https://mobile.southwest.com/check-in"
+logger = logging.getLogger(__name__)
 
 
 class NotificationHandler:
@@ -25,7 +27,7 @@ class NotificationHandler:
         return f"{self.flight_retriever.first_name} {self.flight_retriever.last_name}"
 
     def send_notification(self, body: str, level: int = None) -> None:
-        print(body)
+        print(body)  # This isn't logged as it contains sensitive information
 
         # Check the level to see if we still want to send it. If level is none, it means
         # the message will always be printed. For example, this is used when testing notifications.
@@ -46,6 +48,7 @@ class NotificationHandler:
         for flight in flights:
             flight_schedule_message += f"Flight from {flight.departure_airport} to {flight.destination_airport} at {flight.departure_time} UTC\n"
 
+        logger.debug("Sending new flights notification")
         self.send_notification(flight_schedule_message, NotificationLevel.INFO)
 
     def failed_reservation_retrieval(self, error: CheckInError, confirmation_number: str) -> None:
@@ -54,6 +57,7 @@ class NotificationHandler:
             f"with confirmation number {confirmation_number}. Reason: {error}.\n"
             f"Make sure the flight information is correct and try again.\n"
         )
+        logger.debug("Sending failed reservation retrieval notification...")
         self.send_notification(error_message, NotificationLevel.ERROR)
 
     def failed_login(self, error: LoginError) -> None:
@@ -61,6 +65,7 @@ class NotificationHandler:
             f"Failed to log in to account with username {self.flight_retriever.username}. "
             f"Status Code: {error}.\nMake sure the login information is correct and try again.\n"
         )
+        logger.debug("Sending failed login notification...")
         self.send_notification(error_message, NotificationLevel.ERROR)
 
     def successful_checkin(self, boarding_pass: Dict[str, Any], flight: Flight) -> None:
@@ -73,6 +78,7 @@ class NotificationHandler:
             for passenger in flight_info["passengers"]:
                 success_message += f"{passenger['name']} got {passenger['boardingGroup']}{passenger['boardingPosition']}!\n"
 
+        logger.debug("Sending successful check-in notification...")
         self.send_notification(success_message, NotificationLevel.INFO)
 
     def failed_checkin(self, error: CheckInError, flight: Flight) -> None:
@@ -80,4 +86,5 @@ class NotificationHandler:
             f"Failed to check in to flight {flight.confirmation_number} for {self._get_account_name()} "
             f"Reason: {error}.\nCheck in at this url: {MANUAL_CHECKIN_URL}\n"
         )
+        logger.debug("Sending failed check-in notification...")
         self.send_notification(error_message, NotificationLevel.ERROR)

@@ -7,4 +7,5 @@
 # Program files
 config.json
 .coverage
+logs/
 Pipfile
