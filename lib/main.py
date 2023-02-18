@@ -23,13 +23,13 @@ Log into your account:
 
 Options:
     --test-notifications Test the notification URLs configuration and exit
+    -v, --verbose        Emit debug messages to stderr
     -h, --help           Display this help and exit
-    -v, --version        Display version information and exit
+    -V, --version        Display version information and exit
 
 For more information, check out https://github.com/jdholtz/auto-southwest-check-in#readme"""
 
 LOG_FILE = "logs/auto-southwest-check-in.log"
-VERBOSITY_LEVEL = logging.INFO
 
 # Use the parent logger so the logger config is applied to every module
 # when using getLogger(__name__)
@@ -47,7 +47,7 @@ def print_usage():
 
 def check_flags(arguments: List[str]) -> None:
     """Checks for version and help flags and exits the script on success"""
-    if "--version" in arguments or "-v" in arguments:
+    if "--version" in arguments or "-V" in arguments:
         print_version()
         sys.exit()
     elif "--help" in arguments or "-h" in arguments:
@@ -55,7 +55,7 @@ def check_flags(arguments: List[str]) -> None:
         sys.exit()
 
 
-def init_logging() -> None:
+def init_logging(arguments: List[str]) -> None:
     """Sets the logger configuration for the script"""
     # Make the logging directory if it doesn't exist
     os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
@@ -75,7 +75,12 @@ def init_logging() -> None:
     file_handler.doRollover()  # Create a new log file when starting the application
 
     stream_handler = logging.StreamHandler()
-    stream_handler.setLevel(VERBOSITY_LEVEL)
+
+    if "--verbose" in arguments or "-v" in arguments:
+        stream_handler.setLevel(logging.DEBUG)
+        stream_handler.setFormatter(formatter)
+    else:
+        stream_handler.setLevel(logging.INFO)
 
     logger.addHandler(file_handler)
     logger.addHandler(stream_handler)
@@ -144,5 +149,5 @@ def set_up_check_in(arguments: List[str]):
 
 def main(arguments: List[str]) -> None:
     check_flags(arguments)
-    init_logging()
+    init_logging(arguments)
     set_up_check_in(arguments)

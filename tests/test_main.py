@@ -31,7 +31,7 @@ def test_print_usage_prints_script_usage(capsys: pytest.CaptureFixture[str]) -> 
     assert main.__doc__ in output
 
 
-@pytest.mark.parametrize("flag", ["-v", "--version"])
+@pytest.mark.parametrize("flag", ["-V", "--version"])
 def test_check_flags_prints_version_when_version_flag_is_passed(
     mocker: MockerFixture,
     flag: str,
@@ -65,17 +65,33 @@ def test_check_flags_does_not_exit_when_flags_are_not_matched(
     mock_exit.assert_not_called()
 
 
-def test_init_logging_initializes_the_logger_correctly(mocker: MockerFixture) -> None:
+@pytest.mark.parametrize(
+    ["arguments", "verbosity_level"],
+    [
+        ([], logging.INFO),
+        (["-v"], logging.DEBUG),
+        (["--verbose"], logging.DEBUG),
+    ],
+)
+def test_init_logging_sets_verbosity_level_correctly(
+    mocker: MockerFixture,
+    arguments: List[str],
+    verbosity_level: int,
+) -> None:
     mock_makedirs = mocker.patch("os.makedirs")
 
     # Don't actually rollover during testing
     mocker.patch.object(logging.handlers.RotatingFileHandler, "doRollover")
 
-    main.init_logging()
+    main.init_logging(arguments)
     logger = logging.getLogger("lib")
 
     mock_makedirs.assert_called_once()
     assert len(logger.handlers) == 2
+    assert logger.handlers[1].level == verbosity_level
+
+    # Reset logger handlers so they don't carry to the next test
+    logger.handlers = []
 
 
 def test_set_up_accounts_starts_all_accounts_in_proceses(mocker: MockerFixture) -> None:
