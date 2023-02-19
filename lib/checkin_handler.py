@@ -72,8 +72,8 @@ class CheckInHandler:
         account_name = f"{self.first_name} {self.last_name}"
         logger.debug("Attempting to check in")
         print(
-            f"Checking in to flight from '{self.flight.departure_airport}' to '{self.flight.destination_airport}' "
-            f"for {account_name}\n"
+            f"Checking in to flight from '{self.flight.departure_airport}' to "
+            f"'{self.flight.destination_airport}' for {account_name}\n"
         )  # Don't log as it has sensitve information
 
         headers = self.checkin_scheduler.headers

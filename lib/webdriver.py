@@ -113,16 +113,19 @@ class WebDriver:
             error = self._handle_login_error(response)
             raise error
 
-        # If this is the first time logging in, the account name needs to be set because that info is needed later
+        # If this is the first time logging in, the account name needs to be set
+        # because that info is needed later
         if flight_retriever.first_name is None:
             logger.debug("First time logging in. Setting account name")
             response_body = json.loads(response.body)
             self._set_account_name(flight_retriever, response_body)
             print(
-                f"Successfully logged in to {flight_retriever.first_name} {flight_retriever.last_name}'s account\n"
+                f"Successfully logged in to {flight_retriever.first_name} "
+                f"{flight_retriever.last_name}'s account\n"
             )  # Don't log as it contains sensitive information
 
-        # This page is also loaded when we log in, so we might as well grab it instead of requesting again later
+        # This page is also loaded when we log in, so we might as well grab it instead of
+        # requesting again later
         flights = json.loads(driver.requests[1].response.body)["upcomingTripsPage"]
 
         driver.quit()

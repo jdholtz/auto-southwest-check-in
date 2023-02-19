@@ -44,9 +44,15 @@ class NotificationHandler:
         if len(flights) == 0:
             return
 
-        flight_schedule_message = f"Successfully scheduled the following flights to check in for {self._get_account_name()}:\n"
+        flight_schedule_message = (
+            f"Successfully scheduled the following flights to check in for "
+            f"{self._get_account_name()}:\n"
+        )
         for flight in flights:
-            flight_schedule_message += f"Flight from {flight.departure_airport} to {flight.destination_airport} at {flight.departure_time} UTC\n"
+            flight_schedule_message += (
+                f"Flight from {flight.departure_airport} to {flight.destination_airport} at "
+                f"{flight.departure_time} UTC\n"
+            )
 
         logger.debug("Sending new flights notification")
         self.send_notification(flight_schedule_message, NotificationLevel.INFO)
@@ -61,7 +67,10 @@ class NotificationHandler:
         self.send_notification(error_message, NotificationLevel.ERROR)
 
     def failed_login(self, error: LoginError) -> None:
-        error_message = f"Failed to log in to account with username {self.flight_retriever.username}. {error}.\n"
+        error_message = (
+            f"Failed to log in to account with username {self.flight_retriever.username}. "
+            f"{error}.\n"
+        )
         logger.debug("Sending failed login notification...")
         self.send_notification(error_message, NotificationLevel.ERROR)
 
@@ -73,15 +82,19 @@ class NotificationHandler:
 
         for flight_info in boarding_pass["flights"]:
             for passenger in flight_info["passengers"]:
-                success_message += f"{passenger['name']} got {passenger['boardingGroup']}{passenger['boardingPosition']}!\n"
+                success_message += (
+                    f"{passenger['name']} got "
+                    f"{passenger['boardingGroup']}{passenger['boardingPosition']}!\n"
+                )
 
         logger.debug("Sending successful check-in notification...")
         self.send_notification(success_message, NotificationLevel.INFO)
 
     def failed_checkin(self, error: CheckInError, flight: Flight) -> None:
         error_message = (
-            f"Failed to check in to flight {flight.confirmation_number} for {self._get_account_name()} "
-            f"Reason: {error}.\nCheck in at this url: {MANUAL_CHECKIN_URL}\n"
+            f"Failed to check in to flight {flight.confirmation_number} for "
+            f"{self._get_account_name()}. Reason: {error}.\nCheck in at this url: "
+            f"{MANUAL_CHECKIN_URL}\n"
         )
         logger.debug("Sending failed check-in notification...")
         self.send_notification(error_message, NotificationLevel.ERROR)
