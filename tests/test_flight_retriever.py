@@ -46,6 +46,26 @@ def test_account_FR_monitors_the_account_continuously(mocker: MockerFixture) -> 
     assert mock_remove_departed_flights.call_count == 2
 
 
+def test_account_FR_checks_flights_once_if_retrieval_interval_is_zero(
+    mocker: MockerFixture,
+) -> None:
+    mock_sleep = mocker.patch("time.sleep")
+    mock_get_flights = mocker.patch.object(AccountFlightRetriever, "_get_flights")
+    mock_schedule_reservations = mocker.patch.object(FlightRetriever, "schedule_reservations")
+    mock_remove_departed_flights = mocker.patch.object(CheckInScheduler, "remove_departed_flights")
+
+    config = Config()
+    config.retrieval_interval = 0
+    test_retriever = AccountFlightRetriever(config, "", "")
+
+    test_retriever.monitor_account()
+
+    mock_sleep.assert_not_called()
+    mock_get_flights.assert_called_once()
+    mock_schedule_reservations.assert_called_once()
+    mock_remove_departed_flights.assert_called_once()
+
+
 def test_get_flights_exits_on_login_error(mocker: MockerFixture) -> None:
     mocker.patch.object(WebDriver, "get_flights", side_effect=LoginError)
     mock_failed_login = mocker.patch.object(NotificationHandler, "failed_login")

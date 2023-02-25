@@ -58,7 +58,7 @@ class CheckInScheduler:
                 self.flights.remove(flight)
 
         logger.debug(
-            "Successfully removed departed flights. Now %d flights are scheduled", len(self.flights)
+            "Successfully removed departed flights. %d flights are now scheduled", len(self.flights)
         )
 
     def _schedule_flights(self, confirmation_number: str) -> None:

@@ -10,6 +10,12 @@ If there is no "Upgrading" header for that version, no post-upgrade actions need
 ([#47](https://github.com/jdholtz/auto-southwest-check-in/pull/47))
 - A verbosity flag can be specified (`--verbose` or `-v`) to print debug messages to stderr. Shorthand
 for `--version` flag is now `-V` ([#47](https://github.com/jdholtz/auto-southwest-check-in/pull/47))
+- Account monitoring can now be disabled by providing a value of `0` to the `retrieval_interval`
+configuration option (The account will only be checked once)
+
+### Bug Fixes
+- Sleep time no longer overflows for flights very far into the future
+([#50](https://github.com/jdholtz/auto-southwest-check-in/pull/50))
 
 
 ## 2.0 (2023-02-13)

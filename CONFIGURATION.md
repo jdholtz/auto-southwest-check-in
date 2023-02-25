@@ -72,7 +72,7 @@ Default: 24 hours \
 Type: Integer
 
 If you provide login credentials to the script, you can choose how often the script checks for new flights
-(in hours).
+(in hours). To disable account monitoring, set this option to `0` (The account will only be checked once).
 ```json
 {
     "retrieval_interval": 24

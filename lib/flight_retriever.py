@@ -49,8 +49,13 @@ class AccountFlightRetriever(FlightRetriever):
         super().__init__(config)
 
     def monitor_account(self) -> None:
+        """
+        Check for newly booked flights to check in for the account every
+        X hours (retrieval interval). Monitoring can be turned off by
+        providing a value of 0 for the 'retrieval_interval' field in the
+        configuration file.
+        """
         # Convert hours to seconds
-        # TODO: Don't loop if retrieval_interval is 0
         retrieval_interval = self.config.retrieval_interval * 60 * 60
 
         while True:
@@ -59,6 +64,10 @@ class AccountFlightRetriever(FlightRetriever):
             flights = self._get_flights()
             self.schedule_reservations(flights)
             self.checkin_scheduler.remove_departed_flights()
+
+            if retrieval_interval <= 0:
+                logger.debug("Account monitoring is disabled as retrieval interval is 0")
+                break
 
             # Account for the time it takes to retrieve the flights when
             # deciding how long to sleep

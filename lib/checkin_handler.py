@@ -67,9 +67,9 @@ class CheckInHandler:
     @staticmethod
     def safe_sleep(total_sleep_time: int) -> None:
         """
-        If the total sleep time is too long, an overflow error could be reached.
-        Therefore, the script will continuously sleep in two week periods to avoid
-        this issue
+        If the total sleep time is too long, an overflow error could occur.
+        Therefore, the script will continuously sleep in two week periods
+        to avoid this issue.
         """
         two_weeks = 60 * 60 * 24 * 14
         while total_sleep_time > 0:

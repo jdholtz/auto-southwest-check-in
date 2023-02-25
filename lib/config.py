@@ -97,7 +97,7 @@ class Config:
             if not isinstance(self.retrieval_interval, int):
                 raise TypeError("'retrieval_interval' must be an integer")
 
-            if self.retrieval_interval < 1:
+            if self.retrieval_interval < 0:
                 logger.warning(
                     "Setting 'retrieval_interval' to 1 hour as %s hours is too low",
                     self.retrieval_interval,
