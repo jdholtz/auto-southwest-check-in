@@ -149,6 +149,11 @@ def set_up_check_in(arguments: List[str]):
 
 
 def main(arguments: List[str]) -> None:
+    flags_to_remove = ["-v", "--verbose"]
+
     check_flags(arguments)
     init_logging(arguments)
+
+    # Remove flags now that they are not needed (and will mess up parsing)
+    arguments = [x for x in arguments if x not in flags_to_remove]
     set_up_check_in(arguments)

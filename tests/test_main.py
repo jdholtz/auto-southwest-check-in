@@ -167,9 +167,11 @@ def test_main_sets_up_the_script(mocker: MockerFixture) -> None:
     mock_check_flags = mocker.patch("lib.main.check_flags")
     mock_init_logging = mocker.patch("lib.main.init_logging")
     mock_set_up_check_in = mocker.patch("lib.main.set_up_check_in")
-    arguments = ["test", "arguments"]
+    arguments = ["test", "arguments", "--verbose", "-v"]
 
     main.main(arguments)
     mock_check_flags.assert_called_once_with(arguments)
     mock_init_logging.assert_called_once()
-    mock_set_up_check_in.assert_called_once_with(arguments)
+
+    # Ensure the '--verbose' and '-v' flags are removed
+    mock_set_up_check_in.assert_called_once_with(arguments[:2])
