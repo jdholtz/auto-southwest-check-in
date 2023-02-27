@@ -5,7 +5,7 @@ WORKDIR /app
 # Needed for python to show logs in all processes
 ENV PYTHONUNBUFFERED 1
 
-RUN apt-get update && apt-get install -y python3 python3-pip wget curl
+RUN apt-get update && apt-get install -y python3 python3-pip wget
 
 COPY . .
 RUN pip3 install --no-cache-dir -r requirements.txt
