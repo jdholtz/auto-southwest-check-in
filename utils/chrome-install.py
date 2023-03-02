@@ -3,12 +3,9 @@
 
 import os
 import requests
-import json
 
-# Load config
-file = open('config.json')
-config = json.load(file)
-chrome_version = config['chrome_version']
+# Get configured major chrome_version
+chrome_version = os.getenv('chrome_version')
 
 def get_default_version(data):
     return data['versions'][0]

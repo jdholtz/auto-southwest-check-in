@@ -1,5 +1,7 @@
 FROM ubuntu:22.10
 
+ARG chrome_version=109
+
 WORKDIR /app
 
 # Needed for python to show logs in all processes
