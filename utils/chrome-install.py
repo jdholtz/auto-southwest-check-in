@@ -5,7 +5,7 @@ import os
 import requests
 
 # Get configured major chrome_version
-chrome_version = os.getenv('chrome_version')
+chrome_version = os.getenv('CHROME_VERSION', None)
 
 def get_default_version(data):
     return data['versions'][0]
