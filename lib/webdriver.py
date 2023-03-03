@@ -130,7 +130,7 @@ class WebDriver:
 
         driver.quit()
 
-        return flights
+        return [flight for flight in flights if flight["tripType"] == "FLIGHT"]
 
     def _get_driver(self) -> Chrome:
         logger.debug("Starting webdriver for current session")
