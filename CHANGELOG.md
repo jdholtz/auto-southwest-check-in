@@ -16,6 +16,9 @@ configuration option (The account will only be checked once)
 ### Bug Fixes
 - Sleep time no longer overflows for flights very far into the future
 ([#50](https://github.com/jdholtz/auto-southwest-check-in/pull/50))
+- Only attempt to schedule reservations that are flights
+([#53](https://github.com/jdholtz/auto-southwest-check-in/pull/53)
+by [@samdatkins](https://github.com/samdatkins))
 
 
 ## 2.0 (2023-02-13)
