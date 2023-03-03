@@ -82,7 +82,7 @@ def test_get_flights_sets_account_name_when_it_is_not_set(
 
     mock_set_headers_from_request.assert_called_once_with(mock_driver)
     mock_set_account_name.assert_called_once_with(mock_flight_retriever, {"name": "John Doe"})
-    assert flights == [{'tripType': 'FLIGHT'}]
+    assert flights == [{"tripType": "FLIGHT"}]
 
 
 @pytest.mark.usefixtures("mock_get_options")
@@ -117,15 +117,17 @@ def test_get_flights_only_returns_flight_trip_type(
 ) -> None:
     mocker.patch("lib.webdriver.WebDriverWait")
     mocker.patch.object(WebDriver, "_get_driver", return_value=mock_driver)
-    mock_set_headers_from_request = mocker.patch.object(WebDriver, "_set_headers_from_request")
-    mock_set_account_name = mocker.patch.object(WebDriver, "_set_account_name")
+    mocker.patch.object(WebDriver, "_set_headers_from_request")
 
     request_one = Request(method="GET", url="", headers={})
     request_one.response = Response(status_code=200, reason="", headers={})
 
     request_two = Request(method="GET", url="", headers={})
     request_two.response = Response(status_code=200, reason="", headers={})
-    request_two.response.body = '{"upcomingTripsPage": [{"tripType": "FLIGHT"}, {"tripType": "FLIGHT"}, {"tripType": "CAR"}]}'
+    request_two.response.body = (
+        '{"upcomingTripsPage": [{"tripType": "FLIGHT"}, '
+        '{"tripType": "FLIGHT"}, {"tripType": "CAR"}]}'
+    )
 
     mock_driver.requests = [request_one, request_two]
 
