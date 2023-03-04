@@ -18,6 +18,13 @@ def mock_open(mocker: MockerFixture) -> None:
     mocker.patch("json.load")
 
 
+def test_config_sets_chrome_version_from_the_environment_variable(mocker: MockerFixture) -> None:
+    mocker.patch("os.getenv", return_value="10")
+
+    test_config = config.Config()
+    assert test_config.chrome_version == 10
+
+
 def test_config_exits_on_error_in_config_file(mocker: MockerFixture) -> None:
     mocker.patch.object(config.Config, "_parse_config", side_effect=TypeError())
 

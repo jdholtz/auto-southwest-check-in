@@ -82,6 +82,8 @@ by adding the `--volume /path/to/config.json:/app/config.json` flag before the i
 
 **Note**: The recommended restart policy for the container is `on-failed` or `no`
 
+Additional usage for the Docker container can be found in the [public repository][4].
+
 ## Configuration
 To use the default configuration file, copy `config.example.json` to `config.json`.
 
