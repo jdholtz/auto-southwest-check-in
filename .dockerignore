@@ -13,5 +13,6 @@ Dockerfile
 LICENSE
 logs/
 pyproject.toml
+setup.cfg
 tests/
 venv

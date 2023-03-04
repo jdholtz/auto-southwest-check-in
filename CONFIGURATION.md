@@ -61,6 +61,8 @@ Type: Integer
 
 You can specify a specific version of Google Chrome for the script to use (only the main version - e.g. 108, 109, etc.).
 This is highly recommended if you don't want to continuously keep Google Chrome on the latest version.
+
+**Note**: This should not be used in a Docker container because the Google Chrome version is retrieved automatically.
 ```json
 {
     "chrome_version": 110

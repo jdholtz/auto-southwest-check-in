@@ -1,0 +1,45 @@
+name: Build and Publish Docker Images
+
+on:
+  release:
+    types: [published]
+
+  push:
+    branches:
+      - develop
+
+jobs:
+  run-tests:
+    uses: ./.github/workflows/tests.yml
+  build-and-push-images:
+    runs-on: ubuntu-latest
+    # Do not build and push the images if all of the tests don't pass
+    needs: run-tests
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+
+      # A new tagged release is published, which builds :tag and :latest
+      - name: Build and push :tag
+        if: github.event_name == 'release'
+        uses: docker/build-push-action@v4
+        with:
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_HUB_USERNAME }}/auto-southwest-check-in:${{ github.event.release.tag_name }}
+            ${{ secrets.DOCKER_HUB_USERNAME }}/auto-southwest-check-in:latest
+
+      # Develop branch push, which builds :develop
+      - name: Build and push :develop
+        if: ${{ github.ref }} == "refs/heads/develop"
+        uses: docker/build-push-action@v4
+        with:
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_HUB_USERNAME }}/auto-southwest-check-in:develop

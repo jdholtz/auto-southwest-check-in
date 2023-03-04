@@ -65,24 +65,22 @@ If you want the latest features of the script, you can use the `develop` branch 
 can be viewed in the Changelog). However, keep in mind that changes to this branch do not ensure reliability.
 
 ### Running In Docker
-
-The application can also be run in a container using [Docker][3]. To build the image, run the following command:
+The application can also be run in a container using [Docker][3]. The Docker repository for this project
+can be found [here][4]. To pull the latest image, run:
 ```shell
-$ docker build -f Dockerfile . -t auto-southwest-check-in
+$ docker pull jdholtz/auto-southwest-check-in
 ```
-**Note**: Re-run the build command whenever you update the script.
+To download a specific version, append `:vX.X.X` to the end of the image name. Additionally, you can append the
+`:develop` tag to use the latest development version.
 
 To run the image, you can use a command such as:
 ```shell
-docker run -d auto-southwest-check-in ARGS
+docker run -d jdholtz/auto-southwest-check-in ARGS
 ```
-See above for the arguments that can be passed in.
+See above for the arguments that can be passed in. You can optionally attach a configuration file to the container
+by adding the `--volume /path/to/config.json:/app/config.json` flag before the image name.
 
 **Note**: The recommended restart policy for the container is `on-failed` or `no`
-
-It is advised that you [specify](CONFIGURATION.md#chrome-version) a Google Chrome version in the configuration
-file so you don't need to rebuild your Docker image often. Find the latest version that will be downloaded
-[here][4].
 
 ## Configuration
 To use the default configuration file, copy `config.example.json` to `config.json`.
@@ -108,6 +106,6 @@ Contributions are always welcome. Please read [Contributing.md](CONTRIBUTING.md)
 [1]: https://pip.pypa.io/en/stable/installation/
 [2]: https://www.google.com/chrome/
 [3]: https://www.docker.com/
-[4]: https://www.ubuntuupdates.org/package/google_chrome/stable/main/base/google-chrome-stable?id=202706&page=1
+[4]: https://hub.docker.com/repository/docker/jdholtz/auto-southwest-check-in
 [5]: https://github.com/jdholtz/auto-southwest-check-in/issues/new/choose
 [6]: https://github.com/jdholtz/auto-southwest-check-in/discussions/new/choose

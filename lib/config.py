@@ -17,11 +17,17 @@ class Config:
     def __init__(self):
         # Default values are set
         self.accounts = []
-        self.chrome_version = None
         self.flights = []
         self.notification_level = NotificationLevel.INFO
         self.notification_urls = []
         self.retrieval_interval = 24
+
+        # _CHROME_VERSION will be set in the Docker container
+        self.chrome_version = os.getenv("_CHROME_VERSION")
+        if isinstance(self.chrome_version, str):
+            # Environment variables are strings but chrome_version needs
+            # to be an integer
+            self.chrome_version = int(self.chrome_version)
 
         # Set the configuration values if provided
         try:
