@@ -7,14 +7,25 @@ on:
   push:
     branches:
       - develop
+    # Only build the image when a file in the image is updated
+    # These paths are files in the git repository from
+    # .dockerignore (except the Docker files)
+    paths-ignore:
+      - ".editorconfig"
+      - ".github"
+      - "!.github/workflows/docker.yml" # Still run on changes to this file
+      - ".gitignore"
+      - ".pre-commit-config.yaml"
+      - "**.md"
+      - "config.example.json"
+      - "LICENSE"
+      - "pyproject.toml"
+      - "setup.cfg"
+      - "tests"
 
 jobs:
-  run-tests:
-    uses: ./.github/workflows/tests.yml
   build-and-push-images:
     runs-on: ubuntu-latest
-    # Do not build and push the images if all of the tests don't pass
-    needs: run-tests
     steps:
       - name: Checkout
         uses: actions/checkout@v3
