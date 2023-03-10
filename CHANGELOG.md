@@ -12,6 +12,8 @@ If there is no "Upgrading" header for that version, no post-upgrade actions need
 for `--version` flag is now `-V` ([#47](https://github.com/jdholtz/auto-southwest-check-in/pull/47))
 - Account monitoring can now be disabled by providing a value of `0` to the `retrieval_interval`
 configuration option (The account will only be checked once)
+- The Docker image is now available in the public repository. See the `Running in Docker` section of the
+Readme for more details ([#55](https://github.com/jdholtz/auto-southwest-check-in/pull/55))
 
 ### Bug Fixes
 - Sleep time no longer overflows for flights very far into the future
