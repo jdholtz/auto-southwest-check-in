@@ -77,7 +77,7 @@ can be found [here][4]. To pull the latest image, run:
 ```shell
 docker pull jdholtz/auto-southwest-check-in
 ```
-To download a specific version, append `:vX.X.X` to the end of the image name. You can also append the
+To download a specific version, append `:vX.X` to the end of the image name. You can also append the
 `:develop` tag instead to use the latest development version.
 
 To run the image, you can use a command such as:
