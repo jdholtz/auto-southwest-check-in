@@ -3,7 +3,7 @@ When upgrading to a new version, make sure to follow the directions under the "U
 If there is no "Upgrading" header for that version, no post-upgrade actions need to be performed.
 
 
-## Upcoming
+## 3.0 (2023-03-10)
 
 ### New features
 - A logger was added to enable better troubleshooting for both users and developers
@@ -21,6 +21,9 @@ Readme for more details ([#55](https://github.com/jdholtz/auto-southwest-check-i
 - Only attempt to schedule reservations that are flights
 ([#53](https://github.com/jdholtz/auto-southwest-check-in/pull/53)
 by [@samdatkins](https://github.com/samdatkins))
+
+### Upgrading
+Upgrade the dependencies to the latest versions by running `pip install -r requirements.txt`
 
 
 ## 2.0 (2023-02-13)
