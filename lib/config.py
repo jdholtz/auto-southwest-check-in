@@ -1,16 +1,16 @@
 import json
-import logging
 import os
 import sys
 from typing import Any, Dict, List
 
 from .general import NotificationLevel
+from .log import get_logger
 
 # Type alias for JSON
 JSON = Dict[str, Any]
 
 CONFIG_FILE_NAME = "config.json"
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class Config:

@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-import logging
-import logging.handlers
-import os
 import sys
 from multiprocessing import Process
 from typing import TYPE_CHECKING, List
+
+from lib import log
 
 if TYPE_CHECKING:  # pragma: no cover
     from config import Config
@@ -31,16 +30,14 @@ For more information, check out https://github.com/jdholtz/auto-southwest-check-
 
 LOG_FILE = "logs/auto-southwest-check-in.log"
 
-# Use the parent logger so the logger config is applied to every module
-# when using getLogger(__name__)
-logger = logging.getLogger("lib")
+logger = log.get_logger(__name__)
 
 
-def print_version():
+def print_version() -> None:
     print("Auto-Southwest Check-In " + __version__)
 
 
-def print_usage():
+def print_usage() -> None:
     print_version()
     print(__doc__)
 
@@ -53,39 +50,6 @@ def check_flags(arguments: List[str]) -> None:
     elif "--help" in arguments or "-h" in arguments:
         print_usage()
         sys.exit()
-
-
-def init_logging(arguments: List[str]) -> None:
-    """Sets the logger configuration for the script"""
-    # Make the logging directory if it doesn't exist
-    os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
-
-    logger.setLevel(logging.DEBUG)  # The minimum level for every handler
-
-    formatter = logging.Formatter(
-        "%(asctime)s %(levelname)s %(processName)s[%(module)s]: %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-    )
-
-    file_handler = logging.handlers.RotatingFileHandler(
-        LOG_FILE, maxBytes=2 * 1024 * 1024, backupCount=4
-    )
-    file_handler.setLevel(logging.DEBUG)
-    file_handler.setFormatter(formatter)
-    file_handler.doRollover()  # Create a new log file when starting the application
-
-    stream_handler = logging.StreamHandler()
-
-    if "--verbose" in arguments or "-v" in arguments:
-        stream_handler.setLevel(logging.DEBUG)
-        stream_handler.setFormatter(formatter)
-    else:
-        stream_handler.setLevel(logging.INFO)
-
-    logger.addHandler(file_handler)
-    logger.addHandler(stream_handler)
-
-    logger.debug("Initialized the application")
 
 
 def set_up_accounts(config: Config) -> None:
@@ -115,7 +79,7 @@ def set_up_flights(config: Config) -> None:
         process.start()
 
 
-def set_up_check_in(arguments: List[str]):
+def set_up_check_in(arguments: List[str]) -> None:
     """Initialize a specific Flight Retriever based on the arguments passed in"""
     logger.debug("Called with %d arguments", len(arguments))
 
@@ -152,7 +116,7 @@ def main(arguments: List[str]) -> None:
     flags_to_remove = ["-v", "--verbose"]
 
     check_flags(arguments)
-    init_logging(arguments)
+    log.init_main_logging()
 
     # Remove flags now that they are not needed (and will mess up parsing)
     arguments = [x for x in arguments if x not in flags_to_remove]

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import logging
 import re
 import time
 from typing import TYPE_CHECKING, Any, Dict
@@ -13,6 +12,7 @@ from seleniumwire.request import Response
 from seleniumwire.undetected_chromedriver import Chrome, ChromeOptions
 
 from .general import LoginError
+from .log import get_logger
 
 if TYPE_CHECKING:  # pragma: no cover
     from .checkin_scheduler import CheckInScheduler
@@ -28,7 +28,7 @@ RESERVATION_URL = BASE_URL + "/api/mobile-air-operations/v1/mobile-air-operation
 # Southwest's code when logging in with the incorrect information
 INVALID_CREDENTIALS_CODE = 400518024
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class WebDriver:

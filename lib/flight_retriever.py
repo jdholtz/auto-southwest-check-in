@@ -1,4 +1,3 @@
-import logging
 import sys
 import time
 from datetime import datetime
@@ -7,10 +6,11 @@ from typing import Any, Dict, List
 from .checkin_scheduler import CheckInScheduler
 from .config import Config
 from .general import LoginError
+from .log import get_logger
 from .notification_handler import NotificationHandler
 from .webdriver import WebDriver
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class FlightRetriever:

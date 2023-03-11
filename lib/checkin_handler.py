@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 import time
 from datetime import datetime, timedelta
 from multiprocessing import Process
@@ -8,6 +7,7 @@ from typing import TYPE_CHECKING
 
 from .flight import Flight
 from .general import CheckInError, make_request
+from .log import get_logger
 
 if TYPE_CHECKING:  # pragma: no cover
     from .checkin_scheduler import CheckInScheduler
@@ -15,7 +15,7 @@ if TYPE_CHECKING:  # pragma: no cover
 CHECKIN_URL = "mobile-air-operations/v1/mobile-air-operations/page/check-in/"
 MANUAL_CHECKIN_URL = "https://mobile.southwest.com/check-in"
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class CheckInHandler:

@@ -1,18 +1,18 @@
 from __future__ import annotations
 
-import logging
 from typing import TYPE_CHECKING, Any, Dict, List
 
 import apprise
 
 from .flight import Flight
 from .general import CheckInError, LoginError, NotificationLevel
+from .log import get_logger
 
 if TYPE_CHECKING:  # pragma: no cover
     from .flight_retriever import FlightRetriever
 
 MANUAL_CHECKIN_URL = "https://mobile.southwest.com/check-in"
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class NotificationHandler:

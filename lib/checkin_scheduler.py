@@ -1,19 +1,19 @@
 from __future__ import annotations
 
-import logging
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Dict, List
 
 from .checkin_handler import CheckInHandler
 from .flight import Flight
 from .general import CheckInError, make_request
+from .log import get_logger
 from .webdriver import WebDriver
 
 if TYPE_CHECKING:  # pragma: no cover
     from .flight_retriever import FlightRetriever
 
 VIEW_RESERVATION_URL = "mobile-air-booking/v1/mobile-air-booking/page/view-reservation/"
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class CheckInScheduler:

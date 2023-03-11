@@ -9,9 +9,6 @@ from lib import main
 from lib.config import Config
 from lib.notification_handler import NotificationHandler
 
-# Don't write logs to a file during testing
-main.LOG_FILE = "/dev/null"
-
 
 # We don't actually want the config to read the file for these tests
 @pytest.fixture(autouse=True)
@@ -63,35 +60,6 @@ def test_check_flags_does_not_exit_when_flags_are_not_matched(
     mock_exit = mocker.patch("sys.exit")
     main.check_flags(["--invalid-flag"])
     mock_exit.assert_not_called()
-
-
-@pytest.mark.parametrize(
-    ["arguments", "verbosity_level"],
-    [
-        ([], logging.INFO),
-        (["-v"], logging.DEBUG),
-        (["--verbose"], logging.DEBUG),
-    ],
-)
-def test_init_logging_sets_verbosity_level_correctly(
-    mocker: MockerFixture,
-    arguments: List[str],
-    verbosity_level: int,
-) -> None:
-    mock_makedirs = mocker.patch("os.makedirs")
-
-    # Don't actually rollover during testing
-    mocker.patch.object(logging.handlers.RotatingFileHandler, "doRollover")
-
-    main.init_logging(arguments)
-    logger = logging.getLogger("lib")
-
-    mock_makedirs.assert_called_once()
-    assert len(logger.handlers) == 2
-    assert logger.handlers[1].level == verbosity_level
-
-    # Reset logger handlers so they don't carry to the next test
-    logger.handlers = []
 
 
 def test_set_up_accounts_starts_all_accounts_in_proceses(mocker: MockerFixture) -> None:
@@ -156,7 +124,7 @@ def test_set_up_check_in_sends_error_message_when_arguments_are_invalid(
 
     with pytest.raises(SystemExit):
         main.set_up_check_in(arguments)
-    output = caplog.record_tuples[1]
+    output = caplog.record_tuples[-1]
 
     assert output[1] == logging.ERROR
     assert "Invalid arguments" in output[2]
@@ -165,13 +133,13 @@ def test_set_up_check_in_sends_error_message_when_arguments_are_invalid(
 
 def test_main_sets_up_the_script(mocker: MockerFixture) -> None:
     mock_check_flags = mocker.patch("lib.main.check_flags")
-    mock_init_logging = mocker.patch("lib.main.init_logging")
+    mock_init_main_logging = mocker.patch("lib.log.init_main_logging")
     mock_set_up_check_in = mocker.patch("lib.main.set_up_check_in")
     arguments = ["test", "arguments", "--verbose", "-v"]
 
     main.main(arguments)
     mock_check_flags.assert_called_once_with(arguments)
-    mock_init_logging.assert_called_once()
+    mock_init_main_logging.assert_called_once()
 
     # Ensure the '--verbose' and '-v' flags are removed
     mock_set_up_check_in.assert_called_once_with(arguments[:2])
