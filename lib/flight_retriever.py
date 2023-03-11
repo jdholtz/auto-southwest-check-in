@@ -6,8 +6,11 @@ from typing import Any, Dict, List
 from .checkin_scheduler import CheckInScheduler
 from .config import Config
 from .general import LoginError
+from .log import get_logger
 from .notification_handler import NotificationHandler
 from .webdriver import WebDriver
+
+logger = get_logger(__name__)
 
 
 class FlightRetriever:
@@ -25,6 +28,7 @@ class FlightRetriever:
         self.checkin_scheduler = CheckInScheduler(self)
 
     def schedule_reservations(self, flights: List[Dict[str, Any]]) -> None:
+        logger.debug("Scheduling reservations for %d flights", len(flights))
         confirmation_numbers = []
 
         for flight in flights:
@@ -45,8 +49,13 @@ class AccountFlightRetriever(FlightRetriever):
         super().__init__(config)
 
     def monitor_account(self) -> None:
+        """
+        Check for newly booked flights to check in for the account every
+        X hours (retrieval interval). Monitoring can be turned off by
+        providing a value of 0 for the 'retrieval_interval' field in the
+        configuration file.
+        """
         # Convert hours to seconds
-        # TODO: Don't loop if retrieval_interval is 0
         retrieval_interval = self.config.retrieval_interval * 60 * 60
 
         while True:
@@ -56,19 +65,28 @@ class AccountFlightRetriever(FlightRetriever):
             self.schedule_reservations(flights)
             self.checkin_scheduler.remove_departed_flights()
 
+            if retrieval_interval <= 0:
+                logger.debug("Account monitoring is disabled as retrieval interval is 0")
+                break
+
             # Account for the time it takes to retrieve the flights when
             # deciding how long to sleep
             time_after = datetime.utcnow()
             time_taken = (time_after - time_before).total_seconds()
-            time.sleep(retrieval_interval - time_taken)
+            sleep_time = retrieval_interval - time_taken
+            logger.debug("Sleeping for %d seconds", sleep_time)
+            time.sleep(sleep_time)
 
     def _get_flights(self) -> List[Dict[str, Any]]:
+        logger.debug("Retrieving flights for account")
         webdriver = WebDriver(self.checkin_scheduler)
 
         try:
             flights = webdriver.get_flights(self)
         except LoginError as err:
+            logger.debug("Error logging in. %s. Exiting", err)
             self.notification_handler.failed_login(err)
             sys.exit()
 
+        logger.debug("Successfully retrieved %d flights", len(flights))
         return flights

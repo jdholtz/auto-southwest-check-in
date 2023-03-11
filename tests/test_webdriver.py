@@ -7,7 +7,7 @@ from seleniumwire.request import Request, Response
 
 from lib.checkin_scheduler import CheckInScheduler
 from lib.general import LoginError
-from lib.webdriver import USER_AGENT, WebDriver
+from lib.webdriver import INVALID_CREDENTIALS_CODE, USER_AGENT, WebDriver
 
 # This needs to be accessed to be tested
 # pylint: disable=protected-access
@@ -44,6 +44,7 @@ def test_get_flights_raises_exception_on_failed_login(
 ) -> None:
     mocker.patch("lib.webdriver.WebDriverWait")
     mocker.patch.object(WebDriver, "_get_driver", return_value=mock_driver)
+    mocker.patch.object(WebDriver, "_handle_login_error", return_value=LoginError())
     mock_set_headers_from_request = mocker.patch.object(WebDriver, "_set_headers_from_request")
 
     request_one = Request(method="GET", url="", headers={})
@@ -72,7 +73,7 @@ def test_get_flights_sets_account_name_when_it_is_not_set(
 
     request_two = Request(method="GET", url="", headers={})
     request_two.response = Response(status_code=200, reason="", headers={})
-    request_two.response.body = '{"upcomingTripsPage": "new flights"}'
+    request_two.response.body = '{"upcomingTripsPage": [{"tripType": "FLIGHT"}]}'
 
     mock_driver.requests = [request_one, request_two]
 
@@ -81,7 +82,7 @@ def test_get_flights_sets_account_name_when_it_is_not_set(
 
     mock_set_headers_from_request.assert_called_once_with(mock_driver)
     mock_set_account_name.assert_called_once_with(mock_flight_retriever, {"name": "John Doe"})
-    assert flights == "new flights"
+    assert flights == [{"tripType": "FLIGHT"}]
 
 
 @pytest.mark.usefixtures("mock_get_options")
@@ -98,7 +99,7 @@ def test_get_flights_does_not_set_account_name_when_it_is_already_set(
 
     request_two = Request(method="GET", url="", headers={})
     request_two.response = Response(status_code=200, reason="", headers={})
-    request_two.response.body = '{"upcomingTripsPage": "new flights"}'
+    request_two.response.body = '{"upcomingTripsPage": [{"tripType": "FLIGHT"}]}'
 
     mock_driver.requests = [request_one, request_two]
 
@@ -107,7 +108,32 @@ def test_get_flights_does_not_set_account_name_when_it_is_already_set(
 
     mock_set_headers_from_request.assert_called_once_with(mock_driver)
     mock_set_account_name.assert_not_called()
-    assert flights == "new flights"
+    assert flights == [{"tripType": "FLIGHT"}]
+
+
+@pytest.mark.usefixtures("mock_get_options")
+def test_get_flights_only_returns_flight_trip_type(
+    mocker: MockerFixture, mock_driver: mock.Mock, mock_flight_retriever: mock.Mock
+) -> None:
+    mocker.patch("lib.webdriver.WebDriverWait")
+    mocker.patch.object(WebDriver, "_get_driver", return_value=mock_driver)
+    mocker.patch.object(WebDriver, "_set_headers_from_request")
+
+    request_one = Request(method="GET", url="", headers={})
+    request_one.response = Response(status_code=200, reason="", headers={})
+
+    request_two = Request(method="GET", url="", headers={})
+    request_two.response = Response(status_code=200, reason="", headers={})
+    request_two.response.body = (
+        '{"upcomingTripsPage": [{"tripType": "FLIGHT"}, '
+        '{"tripType": "FLIGHT"}, {"tripType": "CAR"}]}'
+    )
+
+    mock_driver.requests = [request_one, request_two]
+
+    mock_flight_retriever.first_name = "John"
+    flights = WebDriver(None).get_flights(mock_flight_retriever)
+    assert len(flights) == 2
 
 
 @pytest.mark.usefixtures("mock_get_options")
@@ -153,6 +179,32 @@ def test_get_options_adds_the_correct_headless_option(
     assert "--disable-dev-shm-usage" in options.arguments
     assert f"--headless={option}" in options.arguments
     assert "--user-agent=" + USER_AGENT in options.arguments
+
+
+def test_handle_login_error_handles_invalid_credentials() -> None:
+    response = Response(
+        status_code=400,
+        reason="",
+        headers={},
+        body=f'{{"code": {INVALID_CREDENTIALS_CODE}}}',
+    )
+
+    error = WebDriver._handle_login_error(response)
+    assert "Reason: Invalid credentials" in str(error)
+    assert "Status code: 400" in str(error)
+
+
+def test_handle_login_error_handles_unknown_errors() -> None:
+    response = Response(
+        status_code=429,
+        reason="",
+        headers={},
+        body="{}",
+    )
+
+    error = WebDriver._handle_login_error(response)
+    assert "Reason: Unknown" in str(error)
+    assert "Status code: 429" in str(error)
 
 
 @pytest.mark.parametrize(

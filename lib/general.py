@@ -1,3 +1,4 @@
+import logging
 import time
 from enum import IntEnum
 from typing import Any, Dict
@@ -5,6 +6,7 @@ from typing import Any, Dict
 import requests
 
 BASE_URL = "https://mobile.southwest.com/api/"
+logger = logging.getLogger(__name__)
 
 
 def make_request(
@@ -22,12 +24,15 @@ def make_request(
             response = requests.get(url, headers=headers, params=info)
 
         if response.status_code == 200:
+            logger.debug("Successfully made request after %d attempts", attempts)
             return response.json()
 
         attempts += 1
         time.sleep(0.5)
 
-    raise CheckInError(response.reason + " " + str(response.status_code))
+    error = response.reason + " " + str(response.status_code)
+    logger.debug("Failed to make request: %s", error)
+    raise CheckInError(error)
 
 
 # Make a custom exception when a check-in fails

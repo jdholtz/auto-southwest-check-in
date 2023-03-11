@@ -61,6 +61,8 @@ Type: Integer
 
 You can specify a specific version of Google Chrome for the script to use (only the main version - e.g. 108, 109, etc.).
 This is highly recommended if you don't want to continuously keep Google Chrome on the latest version.
+
+**Note**: This should not be used in a Docker container because the Google Chrome version is retrieved automatically.
 ```json
 {
     "chrome_version": 110
@@ -72,7 +74,7 @@ Default: 24 hours \
 Type: Integer
 
 If you provide login credentials to the script, you can choose how often the script checks for new flights
-(in hours).
+(in hours). To disable account monitoring, set this option to `0` (The account will only be checked once).
 ```json
 {
     "retrieval_interval": 24

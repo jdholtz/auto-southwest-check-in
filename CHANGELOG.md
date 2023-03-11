@@ -3,6 +3,29 @@ When upgrading to a new version, make sure to follow the directions under the "U
 If there is no "Upgrading" header for that version, no post-upgrade actions need to be performed.
 
 
+## 3.0 (2023-03-10)
+
+### New features
+- A logger was added to enable better troubleshooting for both users and developers
+([#47](https://github.com/jdholtz/auto-southwest-check-in/pull/47))
+- A verbosity flag can be specified (`--verbose` or `-v`) to print debug messages to stderr. Shorthand
+for `--version` flag is now `-V` ([#47](https://github.com/jdholtz/auto-southwest-check-in/pull/47))
+- Account monitoring can now be disabled by providing a value of `0` to the `retrieval_interval`
+configuration option (The account will only be checked once)
+- The Docker image is now available in the public repository. See the `Running in Docker` section of the
+Readme for more details ([#55](https://github.com/jdholtz/auto-southwest-check-in/pull/55))
+
+### Bug Fixes
+- Sleep time no longer overflows for flights very far into the future
+([#50](https://github.com/jdholtz/auto-southwest-check-in/pull/50))
+- Only attempt to schedule reservations that are flights
+([#53](https://github.com/jdholtz/auto-southwest-check-in/pull/53)
+by [@samdatkins](https://github.com/samdatkins))
+
+### Upgrading
+Upgrade the dependencies to the latest versions by running `pip install -r requirements.txt`
+
+
 ## 2.0 (2023-02-13)
 
 ### New features

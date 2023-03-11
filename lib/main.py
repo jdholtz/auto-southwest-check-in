@@ -6,10 +6,12 @@ import sys
 from multiprocessing import Process
 from typing import TYPE_CHECKING, List
 
+from lib import log
+
 if TYPE_CHECKING:  # pragma: no cover
     from config import Config
 
-__version__ = "v2.0"
+__version__ = "v3.0"
 
 __doc__ = """
 Schedule a check-in:
@@ -20,24 +22,29 @@ Log into your account:
 
 Options:
     --test-notifications Test the notification URLs configuration and exit
+    -v, --verbose        Emit debug messages to stderr
     -h, --help           Display this help and exit
-    -v, --version        Display version information and exit
+    -V, --version        Display version information and exit
 
 For more information, check out https://github.com/jdholtz/auto-southwest-check-in#readme"""
 
+LOG_FILE = "logs/auto-southwest-check-in.log"
 
-def print_version():
+logger = log.get_logger(__name__)
+
+
+def print_version() -> None:
     print("Auto-Southwest Check-In " + __version__)
 
 
-def print_usage():
+def print_usage() -> None:
     print_version()
     print(__doc__)
 
 
 def check_flags(arguments: List[str]) -> None:
     """Checks for version and help flags and exits the script on success"""
-    if "--version" in arguments or "-v" in arguments:
+    if "--version" in arguments or "-V" in arguments:
         print_version()
         sys.exit()
     elif "--help" in arguments or "-h" in arguments:
@@ -72,8 +79,9 @@ def set_up_flights(config: Config) -> None:
         process.start()
 
 
-def set_up(arguments: List[str]):
+def set_up_check_in(arguments: List[str]) -> None:
     """Initialize a specific Flight Retriever based on the arguments passed in"""
+    logger.debug("Called with %d arguments", len(arguments))
 
     # Imported here to avoid needing dependencies to retrieve the script's
     # version or usage
@@ -86,20 +94,30 @@ def set_up(arguments: List[str]):
     if "--test-notifications" in arguments:
         flight_retriever = FlightRetriever(config)
 
-        print("Sending test notifications...")
+        logger.info("Sending test notifications...")
         flight_retriever.notification_handler.send_notification("This is a test message")
+        sys.exit()
     elif len(arguments) == 2:
         config.accounts.append([arguments[0], arguments[1]])
+        logger.debug("Account added through CLI arguments")
     elif len(arguments) == 3:
         config.flights.append([arguments[0], arguments[1], arguments[2]])
+        logger.debug("Flight added through CLI arguments")
     elif len(arguments) > 3:
-        print("Invalid arguments. For more information, try '--help'")
+        logger.error("Invalid arguments. For more information, try '--help'")
         sys.exit()
 
+    logger.debug("Monitoring %d accounts and %d flights", len(config.accounts), len(config.flights))
     set_up_accounts(config)
     set_up_flights(config)
 
 
 def main(arguments: List[str]) -> None:
+    flags_to_remove = ["-v", "--verbose"]
+
     check_flags(arguments)
-    set_up(arguments)
+    log.init_main_logging()
+
+    # Remove flags now that they are not needed (and will mess up parsing)
+    arguments = [x for x in arguments if x not in flags_to_remove]
+    set_up_check_in(arguments)

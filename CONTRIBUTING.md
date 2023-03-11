@@ -11,6 +11,7 @@ Pull Request (This can be done after submitting the PR or separately by me).
 ## Table of Contents
 - [Testing](#testing)
 - [Coding Conventions](#coding-conventions)
+    * [Linting](#linting)
     * [Formatting](#formatting)
 
 ## Testing
@@ -24,13 +25,18 @@ Try to stay consistent with the current layout/format of the project. Please use
 
 It is highly recommended for you to use [pre-commit][1] to ensure you are following these conventions.
 
-### Formatting
-[Black][2] is used to format all the Python code to a consistent style. Additionally, [isort][3] is used to provide a consistent ordering to imports.
+### Linting
+[Flake8][2] is used to lint the Python code. When validating your code against flake8, use your best judgement to determine whether to fix
+the issue or disable the warning.
 
-It is also highly recommended to use an [EditorConfig][4] plugin for your code editor to maintain a consistent coding style for all project files.
+### Formatting
+[Black][3] is used to format all the Python code to a consistent style. Additionally, [isort][4] is used to provide a consistent ordering to imports.
+
+It is also highly recommended to use an [EditorConfig][5] plugin for your code editor to maintain a consistent coding style for all project files.
 
 [0]: https://docs.pytest.org
 [1]: https://pre-commit.com
-[2]: https://black.readthedocs.io/en/stable
-[3]: https://pycqa.github.io/isort/
-[4]: https://editorconfig.org/
+[2]: https://flake8.pycqa.org/en/latest
+[3]: https://black.readthedocs.io/en/stable
+[4]: https://pycqa.github.io/isort/
+[5]: https://editorconfig.org/

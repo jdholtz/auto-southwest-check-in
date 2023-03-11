@@ -11,6 +11,8 @@
 config.example.json
 Dockerfile
 LICENSE
+logs/
 pyproject.toml
+setup.cfg
 tests/
 venv

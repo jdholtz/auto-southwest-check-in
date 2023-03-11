@@ -1,3 +1,4 @@
+import logging
 from typing import List
 from unittest import mock
 
@@ -5,9 +6,7 @@ import pytest
 from pytest_mock import MockerFixture
 
 from lib import main
-from lib.checkin_scheduler import CheckInScheduler
 from lib.config import Config
-from lib.flight_retriever import AccountFlightRetriever, FlightRetriever
 from lib.notification_handler import NotificationHandler
 
 
@@ -29,7 +28,7 @@ def test_print_usage_prints_script_usage(capsys: pytest.CaptureFixture[str]) -> 
     assert main.__doc__ in output
 
 
-@pytest.mark.parametrize("flag", ["-v", "--version"])
+@pytest.mark.parametrize("flag", ["-V", "--version"])
 def test_check_flags_prints_version_when_version_flag_is_passed(
     mocker: MockerFixture,
     flag: str,
@@ -89,9 +88,12 @@ def test_set_up_flights_starts_all_flights_in_proceses(mocker: MockerFixture) ->
     assert mock_process.return_value.start.call_count == len(config.flights)
 
 
-def test_set_up_sends_test_notifications_when_flag_is_passed(mocker: MockerFixture) -> None:
+def test_set_up_check_in_sends_test_notifications_when_flag_is_passed(
+    mocker: MockerFixture,
+) -> None:
     mock_send_notification = mocker.patch.object(NotificationHandler, "send_notification")
-    main.set_up(["--test-notifications"])
+    with pytest.raises(SystemExit):
+        main.set_up_check_in(["--test-notifications"])
     mock_send_notification.assert_called_once()
 
 
@@ -103,37 +105,41 @@ def test_set_up_sends_test_notifications_when_flag_is_passed(mocker: MockerFixtu
         (["test", "John", "Doe"], 0, 1),
     ],
 )
-def test_set_up_sets_up_account_and_flight_with_arguments(
+def test_set_up_check_in_sets_up_account_and_flight_with_arguments(
     mocker: MockerFixture, arguments: List[str], accounts_len: int, flights_len: int
 ) -> None:
     mock_set_up_accounts = mocker.patch("lib.main.set_up_accounts")
     mock_set_up_flights = mocker.patch("lib.main.set_up_flights")
 
-    main.set_up(arguments)
+    main.set_up_check_in(arguments)
 
     assert len(mock_set_up_accounts.call_args[0][0].accounts) == accounts_len
     assert len(mock_set_up_flights.call_args[0][0].flights) == flights_len
 
 
-def test_set_up_sends_error_message_when_arguments_are_invalid(
-    capsys: pytest.CaptureFixture[str],
+def test_set_up_check_in_sends_error_message_when_arguments_are_invalid(
+    caplog: pytest.CaptureFixture[str],
 ) -> None:
     arguments = ["1", "2", "3", "4"]
 
     with pytest.raises(SystemExit):
-        main.set_up(arguments)
+        main.set_up_check_in(arguments)
+    output = caplog.record_tuples[-1]
 
-    output = capsys.readouterr().out
+    assert output[1] == logging.ERROR
+    assert "Invalid arguments" in output[2]
+    assert "--help" in output[2]
 
-    assert "Invalid arguments" in output
-    assert "--help" in output
 
-
-def test_main_sets_up_script(mocker: MockerFixture) -> None:
+def test_main_sets_up_the_script(mocker: MockerFixture) -> None:
     mock_check_flags = mocker.patch("lib.main.check_flags")
-    mock_set_up = mocker.patch("lib.main.set_up")
-    arguments = ["test", "arguments"]
+    mock_init_main_logging = mocker.patch("lib.log.init_main_logging")
+    mock_set_up_check_in = mocker.patch("lib.main.set_up_check_in")
+    arguments = ["test", "arguments", "--verbose", "-v"]
 
     main.main(arguments)
     mock_check_flags.assert_called_once_with(arguments)
-    mock_set_up.assert_called_once_with(arguments)
+    mock_init_main_logging.assert_called_once()
+
+    # Ensure the '--verbose' and '-v' flags are removed
+    mock_set_up_check_in.assert_called_once_with(arguments[:2])
