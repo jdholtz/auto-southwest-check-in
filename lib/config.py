@@ -110,59 +110,39 @@ class Config:
                 )
                 self.retrieval_interval = 1
 
-    def _parse_accounts(self, accounts: List[JSON]) -> None:
-        logger.debug("Adding %d accounts from configuration file", len(accounts))
-        for account in accounts:
-            if not isinstance(account, dict):
-                raise TypeError("'accounts' must only contain dictionaries")
+    def _parse_accounts(self, account_config: List[JSON]) -> None:
+        logger.debug("Adding %d accounts from configuration file", len(account_config))
+        keys = ["username", "password"]
+        accounts = self._parse_objects(account_config, keys, "account")
+        self.accounts.extend(accounts)
 
-            self._parse_account(account)
+    def _parse_flights(self, flight_config: List[JSON]) -> None:
+        logger.debug("Adding %d flights from configuration file", len(flight_config))
+        keys = ["confirmationNumber", "firstName", "lastName"]
+        flights = self._parse_objects(flight_config, keys, "flight")
+        self.flights.extend(flights)
 
-    def _parse_account(self, account: JSON) -> None:
-        if "username" not in account:
-            raise TypeError("'username' must be in every account")
+    def _parse_objects(self, objs: List[JSON], keys: List[str], obj_type: str) -> List[List[str]]:
+        parsed_objects = []
+        for obj in objs:
+            if not isinstance(obj, dict):
+                raise TypeError(f"'{obj_type}s' must only contain dictionaries")
 
-        if "password" not in account:
-            raise TypeError("'password' must be in every account")
+            parsed_object = self._parse_object(obj, keys, obj_type)
+            parsed_objects.append(parsed_object)
 
-        username = account["username"]
-        if not isinstance(username, str):
-            raise TypeError("'username' must be a string")
+        return parsed_objects
 
-        password = account["password"]
-        if not isinstance(password, str):
-            raise TypeError("'password' must be a string")
+    def _parse_object(self, obj: JSON, keys: List[str], obj_type: str) -> List[str]:
+        object_info = []
+        for key in keys:
+            value = obj.get(key)
+            if value is None:
+                raise TypeError(f"'{key}' must be in every {obj_type}")
 
-        self.accounts.append([username, password])
+            if not isinstance(value, str):
+                raise TypeError(f"'{key}' must be a string")
 
-    def _parse_flights(self, flights: List[JSON]) -> None:
-        logger.debug("Adding %d flights from configuration file", len(flights))
-        for flight in flights:
-            if not isinstance(flight, dict):
-                raise TypeError("'flights' must only contain dictionaries")
+            object_info.append(value)
 
-            self._parse_flight(flight)
-
-    def _parse_flight(self, flight: JSON) -> None:
-        if "confirmationNumber" not in flight:
-            raise TypeError("'confirmationNumber' must be in every flight")
-
-        if "firstName" not in flight:
-            raise TypeError("'firstName' must be in every flight")
-
-        if "lastName" not in flight:
-            raise TypeError("'lastName' must be in every flight")
-
-        confirmation_number = flight["confirmationNumber"]
-        if not isinstance(confirmation_number, str):
-            raise TypeError("'confirmationNumber' must be a string")
-
-        first_name = flight["firstName"]
-        if not isinstance(first_name, str):
-            raise TypeError("'firstName' must be a string")
-
-        last_name = flight["lastName"]
-        if not isinstance(last_name, str):
-            raise TypeError("'lastName' must be a string")
-
-        self.flights.append([confirmation_number, first_name, last_name])
+        return object_info

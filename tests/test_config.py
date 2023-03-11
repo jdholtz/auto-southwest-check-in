@@ -129,85 +129,60 @@ def test_parse_config_parses_flights(mocker: MockerFixture) -> None:
     mock_parse_flights.assert_called_once()
 
 
-@pytest.mark.parametrize("account_content", [[""], [1], [True]])
-def test_parse_accounts_raises_exception_with_invalid_entries(account_content: List[Any]) -> None:
+def test_parse_accounts_parses_objects_correctly(mocker: MockerFixture) -> None:
+    accounts = [["account1"], ["account2"]]
+    mocker.patch.object(config.Config, "_parse_objects", return_value=accounts)
+
+    test_config = config.Config()
+    test_config._parse_accounts([])
+
+    assert test_config.accounts == accounts
+
+
+def test_parse_flights_parses_objects_correctly(mocker: MockerFixture) -> None:
+    flights = [["flight1"], ["flight2"]]
+    mocker.patch.object(config.Config, "_parse_objects", return_value=flights)
+
+    test_config = config.Config()
+    test_config._parse_flights([])
+
+    assert test_config.flights == flights
+
+
+@pytest.mark.parametrize("objects", [[""], [1], [True]])
+def test_parse_objects_raises_exception_with_invalid_types(objects: List[Any]) -> None:
     test_config = config.Config()
 
     with pytest.raises(TypeError):
-        test_config._parse_accounts(account_content)
+        test_config._parse_objects(objects, [], "")
 
 
-def test_parse_accounts_parses_every_account(mocker: MockerFixture) -> None:
-    mock_parse_account = mocker.patch.object(config.Config, "_parse_account")
+def test_parse_objects_parses_every_object(mocker: MockerFixture) -> None:
+    mock_parse_object = mocker.patch.object(config.Config, "_parse_object")
     test_config = config.Config()
-    test_config._parse_accounts([{}, {}])
+    test_config._parse_objects([{}, {}], [], "")
 
-    assert mock_parse_account.call_count == 2
+    assert mock_parse_object.call_count == 2
 
 
-@pytest.mark.parametrize(
-    "account_content",
-    [
-        {},
-        {"username": ""},  # No password
-        {"password": ""},  # No username
-        {"username": 1, "password": ""},  # Invalid username
-        {"username": "", "password": 1},  # Invalid password
-    ],
-)
-def test_parse_account_raises_exception_with_invalid_entries(account_content: List[Any]) -> None:
+@pytest.mark.parametrize("object_config", [{}, {"key": None}])
+def test_parse_object_raises_excpetion_when_key_is_not_in_object(
+    object_config: Dict[str, Any]
+) -> None:
     test_config = config.Config()
-
     with pytest.raises(TypeError):
-        test_config._parse_account(account_content)
+        test_config._parse_object(object_config, ["key"], "")
 
 
-def test_parse_account_adds_an_account() -> None:
+def test_parse_object_raises_exception_when_value_of_key_is_not_a_string() -> None:
     test_config = config.Config()
-    test_config._parse_account({"username": "user", "password": "pass"})
-
-    assert len(test_config.accounts) == 1
-    assert test_config.accounts[0] == ["user", "pass"]
-
-
-@pytest.mark.parametrize("flight_content", [[""], [1], [True]])
-def test_parse_flights_raises_exception_with_invalid_entries(flight_content: List[Any]) -> None:
-    test_config = config.Config()
-
     with pytest.raises(TypeError):
-        test_config._parse_flights(flight_content)
+        test_config._parse_object({"key": 1}, ["key"], "")
 
 
-def test_parse_flights_parses_every_flight(mocker: MockerFixture) -> None:
-    mock_parse_flight = mocker.patch.object(config.Config, "_parse_flight")
+def test_parse_object_parses_an_object_correctly() -> None:
+    obj = {"key1": "value1", "key2": "value2"}
     test_config = config.Config()
-    test_config._parse_flights([{}, {}])
+    obj_info = test_config._parse_object(obj, list(obj.keys()), "")
 
-    assert mock_parse_flight.call_count == 2
-
-
-@pytest.mark.parametrize(
-    "flight_content",
-    [
-        {},
-        {"firstName": "", "lastName": ""},  # No confirmation number
-        {"confirmationNumber": "", "lastName": ""},  # No first name
-        {"confirmationNumber": "", "firstName": ""},  # No first name
-        {"confirmationNumber": 1, "firstName": "", "lastName": ""},  # Invalid confirmation number
-        {"confirmationNumber": "", "firstName": 1, "lastName": ""},  # Invalid first name
-        {"confirmationNumber": "", "firstName": "", "lastName": 1},  # Invalid last name
-    ],
-)
-def test_parse_flight_raises_exception_with_invalid_entries(flight_content: List[Any]) -> None:
-    test_config = config.Config()
-
-    with pytest.raises(TypeError):
-        test_config._parse_flight(flight_content)
-
-
-def test_parse_flight_adds_a_flight() -> None:
-    test_config = config.Config()
-    test_config._parse_flight({"confirmationNumber": "num", "firstName": "John", "lastName": "Doe"})
-
-    assert len(test_config.flights) == 1
-    assert test_config.flights[0] == ["num", "John", "Doe"]
+    assert obj_info == list(obj.values())
