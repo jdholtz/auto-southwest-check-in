@@ -91,6 +91,7 @@ class WebDriver:
         logger.debug("Logging into Southwest account to get scheduled flights and valid headers")
 
         # Log in to retrieve the account's trips and needed headers for later requests
+        WebDriverWait(driver, 30).until(EC.invisibility_of_element((By.CLASS_NAME, "dimmer")))
         WebDriverWait(driver, 30).until(
             EC.element_to_be_clickable((By.CLASS_NAME, "login-button--box"))
         ).click()
