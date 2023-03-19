@@ -62,7 +62,7 @@ python3 southwest.py USERNAME PASSWORD
 
 For the full usage of the script, run:
 ```shell
-python southwest.py --help
+python3 southwest.py --help
 ```
 
 **Note**: The script will check the entire party in under the same reservation, so there is no need
