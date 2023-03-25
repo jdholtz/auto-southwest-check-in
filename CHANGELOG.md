@@ -2,6 +2,16 @@
 When upgrading to a new version, make sure to follow the directions under the "Upgrading" header of the corresponding version.
 If there is no "Upgrading" header for that version, no post-upgrade actions need to be performed.
 
+## 3.1 (2023-03-25)
+
+### New features
+- Users can now specify a custom path to a Chromedriver executable
+([#65](https://github.com/jdholtz/auto-southwest-check-in/pull/65))
+- All Chromium-based browsers are now officially supported
+- Docker image optimizations ([#65](https://github.com/jdholtz/auto-southwest-check-in/pull/65)):
+    - Official ARM support ([#27](https://github.com/jdholtz/auto-southwest-check-in/issues/27))
+    - Alpine Linux is now used, reducing image size by 40%
+
 
 ## 3.0 (2023-03-10)
 
