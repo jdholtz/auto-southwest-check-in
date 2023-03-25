@@ -9,3 +9,4 @@ config.json
 .coverage
 logs/
 Pipfile
+venv/

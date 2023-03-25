@@ -14,7 +14,6 @@ log.LOG_FILE = "/dev/null"
 @pytest.fixture(autouse=True)
 def logger():
     logger = logging.getLogger("lib")
-    print("h")
     yield logger
     logger.handlers = []  # Clean up after test
 

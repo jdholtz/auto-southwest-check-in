@@ -4,7 +4,7 @@ target-version = ['py37']
 
 [tool.coverage.run]
 branch = true
-omit = ["venv/*"]
+omit = ["**/venv/*"]
 
 [tool.coverage.report]
 show_missing = true
