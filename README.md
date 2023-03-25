@@ -22,7 +22,7 @@ information beforehand.
 ### Prerequisites
 - [Python 3.7+][0]
 - [Pip][1]
-- [Google Chrome (Version 101+)][2]
+- [Any Chromium-based browser][2]
 
 First, download the script onto your computer
 ```shell
@@ -113,7 +113,7 @@ Contributions are always welcome. Please read [Contributing.md](CONTRIBUTING.md)
 
 [0]: https://www.python.org/downloads/
 [1]: https://pip.pypa.io/en/stable/installation/
-[2]: https://www.google.com/chrome/
+[2]: https://en.wikipedia.org/wiki/Chromium_(web_browser)#Active
 [3]: https://www.docker.com/
 [4]: https://hub.docker.com/repository/docker/jdholtz/auto-southwest-check-in
 [5]: https://github.com/jdholtz/auto-southwest-check-in/issues/new/choose
