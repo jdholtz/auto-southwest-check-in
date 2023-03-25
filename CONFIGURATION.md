@@ -8,6 +8,7 @@ file can be found at [config.example.json](config.example.json)
     * [Notification Level](#notification-level)
     * [Test The Notifications](#test-the-notifications)
 - [Chrome Version](#chrome-version)
+- [Chromedriver Path](#chromedriver-path)
 - [Retrieval Interval](#retrieval-interval)
 - [Accounts](#accounts)
 - [Flights](#flights)
@@ -66,6 +67,19 @@ This is highly recommended if you don't want to continuously keep Google Chrome 
 ```json
 {
     "chrome_version": 110
+}
+```
+
+## Chromedriver Path
+Default: The path of the Chromedriver executable downloaded by undetected_chromedriver \
+Type: String
+
+You can specify a custom path of the Chromedriver executable for the script to use.
+
+**Note**: This should not be used in a Docker container because the Chromedriver path is set automatically.
+```json
+{
+    "chromedriver_path": "/usr/bin/chromedriver"
 }
 ```
 

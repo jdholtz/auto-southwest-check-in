@@ -135,8 +135,10 @@ class WebDriver:
 
     def _get_driver(self) -> Chrome:
         logger.debug("Starting webdriver for current session")
+        chromedriver_path = self.checkin_scheduler.flight_retriever.config.chromedriver_path
         chrome_version = self.checkin_scheduler.flight_retriever.config.chrome_version
         driver = Chrome(
+            driver_executable_path=chromedriver_path,
             options=self.options,
             seleniumwire_options=self.seleniumwire_options,
             version_main=chrome_version,

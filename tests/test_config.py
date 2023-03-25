@@ -18,11 +18,11 @@ def mock_open(mocker: MockerFixture) -> None:
     mocker.patch("json.load")
 
 
-def test_config_sets_chrome_version_from_the_environment_variable(mocker: MockerFixture) -> None:
-    mocker.patch("os.getenv", return_value="10")
+def test_config_sets_chromedriver_path_from_environment_variable(mocker: MockerFixture) -> None:
+    mocker.patch("os.getenv", return_value="/test/path")
 
     test_config = config.Config()
-    assert test_config.chrome_version == 10
+    assert test_config.chromedriver_path == "/test/path"
 
 
 def test_config_exits_on_error_in_config_file(mocker: MockerFixture) -> None:
@@ -59,6 +59,7 @@ def test_read_config_returns_empty_config_when_file_is_not_found(mocker: MockerF
     [
         {"accounts": "invalid"},
         {"chrome_version": "invalid"},
+        {"chromedriver_path": None},
         {"flights": "invalid"},
         {"notification_level": "invalid"},
         {"notification_urls": None},
@@ -77,6 +78,7 @@ def test_parse_config_sets_the_correct_config_values() -> None:
     test_config._parse_config(
         {
             "chrome_version": 10,
+            "chromedriver_path": "/test/path",
             "notification_level": 20,
             "notification_urls": "test_url",
             "retrieval_interval": 30,
@@ -84,6 +86,7 @@ def test_parse_config_sets_the_correct_config_values() -> None:
     )
 
     assert test_config.chrome_version == 10
+    assert test_config.chromedriver_path == "/test/path"
     assert test_config.notification_level == 20
     assert test_config.notification_urls == "test_url"
     assert test_config.retrieval_interval == 30
