@@ -17,17 +17,14 @@ class Config:
     def __init__(self):
         # Default values are set
         self.accounts = []
+        self.chrome_version = None
         self.flights = []
         self.notification_level = NotificationLevel.INFO
         self.notification_urls = []
         self.retrieval_interval = 24
 
-        # _CHROME_VERSION will be set in the Docker container
-        self.chrome_version = os.getenv("_CHROME_VERSION")
-        if isinstance(self.chrome_version, str):
-            # Environment variables are strings but chrome_version needs
-            # to be an integer
-            self.chrome_version = int(self.chrome_version)
+        # _CHROMEDRIVER_PATH is set in the Docker container
+        self.chromedriver_path = os.getenv("_CHROMEDRIVER_PATH", None)
 
         # Set the configuration values if provided
         try:
@@ -69,6 +66,13 @@ class Config:
 
             if not isinstance(self.chrome_version, int):
                 raise TypeError("'chrome_version' must be an integer")
+
+        if "chromedriver_path" in config:
+            self.chromedriver_path = config["chromedriver_path"]
+            logger.debug("Setting custom Chromedriver path")
+
+            if not isinstance(self.chromedriver_path, str):
+                raise TypeError("'chromedriver_path' must be a string")
 
         if "flights" in config:
             flights = config["flights"]

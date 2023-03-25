@@ -8,6 +8,7 @@ file can be found at [config.example.json](config.example.json)
     * [Notification Level](#notification-level)
     * [Test The Notifications](#test-the-notifications)
 - [Chrome Version](#chrome-version)
+- [Chromedriver Path](#chromedriver-path)
 - [Retrieval Interval](#retrieval-interval)
 - [Accounts](#accounts)
 - [Flights](#flights)
@@ -59,13 +60,24 @@ $ python3 southwest.py --test-notifications
 Default: The latest stable version \
 Type: Integer
 
-You can specify a specific version of Google Chrome for the script to use (only the main version - e.g. 108, 109, etc.).
-This is highly recommended if you don't want to continuously keep Google Chrome on the latest version.
-
-**Note**: This should not be used in a Docker container because the Google Chrome version is retrieved automatically.
+You can specify a specific version of your Chromium browser for the script to use (only the main version - e.g. 108, 109, etc.).
+This is highly recommended if you don't want to continuously keep your Chromium browser on the latest version.
 ```json
 {
     "chrome_version": 110
+}
+```
+
+## Chromedriver Path
+Default: The path of the Chromedriver executable downloaded by undetected_chromedriver \
+Type: String
+
+You can specify a custom path of the Chromedriver executable for the script to use.
+
+**Note**: This should not be used in a Docker container because the Chromedriver path is set automatically.
+```json
+{
+    "chromedriver_path": "/usr/bin/chromedriver"
 }
 ```
 
