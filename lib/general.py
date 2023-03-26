@@ -16,8 +16,8 @@ def make_request(
 
     # In the case that your server and the Southwest server aren't in sync,
     # this requests multiple times for a better chance at success when checking in
-    attempts = 0
-    while attempts < 20:
+    attempts = 1
+    while attempts <= 20:
         if method == "POST":
             response = requests.post(url, headers=headers, json=info)
         else:
