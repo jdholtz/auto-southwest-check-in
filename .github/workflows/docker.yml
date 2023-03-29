@@ -44,7 +44,7 @@ jobs:
 
       # A new tagged release is published, which builds :tag and :latest
       - name: Build and push :tag
-        if: github.event_name == "release"
+        if: github.event_name == 'release'
         uses: docker/build-push-action@v4
         with:
           context: ./
@@ -56,7 +56,7 @@ jobs:
 
       # Develop branch push, which builds :develop
       - name: Build and push :develop
-        if: github.event_name == "push"
+        if: github.event_name == 'push'
         uses: docker/build-push-action@v4
         with:
           context: ./
