@@ -7,7 +7,7 @@ from seleniumwire.request import Request, Response
 
 from lib.checkin_scheduler import CheckInScheduler
 from lib.general import LoginError
-from lib.webdriver import INVALID_CREDENTIALS_CODE, USER_AGENT, WebDriver
+from lib.webdriver import INVALID_CREDENTIALS_CODE, WebDriver
 
 # This needs to be accessed to be tested
 # pylint: disable=protected-access
@@ -178,7 +178,6 @@ def test_get_options_adds_the_correct_headless_option(
 
     assert "--disable-dev-shm-usage" in options.arguments
     assert f"--headless={option}" in options.arguments
-    assert "--user-agent=" + USER_AGENT in options.arguments
 
 
 def test_handle_login_error_handles_invalid_credentials() -> None:

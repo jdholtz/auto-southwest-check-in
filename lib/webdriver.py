@@ -18,7 +18,6 @@ if TYPE_CHECKING:  # pragma: no cover
     from .checkin_scheduler import CheckInScheduler
     from .flight_retriever import AccountFlightRetriever
 
-USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64; rv:96.0) Gecko/20100101 Firefox/96.0"
 BASE_URL = "https://mobile.southwest.com"
 LOGIN_URL = BASE_URL + "/api/security/v4/security/token"
 TRIPS_URL = BASE_URL + "/api/mobile-misc/v1/mobile-misc/page/upcoming-trips"
@@ -160,9 +159,6 @@ class WebDriver:
     def _get_options(self) -> ChromeOptions:
         options = ChromeOptions()
         options.add_argument("--disable-dev-shm-usage")  # For docker containers
-
-        # Southwest detects headless browser user agents, so we have to set our own
-        options.add_argument("--user-agent=" + USER_AGENT)
 
         # This is a temporary workaround for later chrome versions. Currently, the latest
         # version of undetected_chromedriver adds this argument correctly, but it gets
