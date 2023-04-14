@@ -33,8 +33,8 @@ Then, install the needed packages for the script
 ```shell
 pip install -r requirements.txt
 ```
-
-See [Running in Docker](#running-in-docker) for information on how to install and run the script in Docker.
+You may want to install the requirements in a [Python virtual environment][3] to ensure they don't conflict
+with other Python projects on your system.
 
 ### Upgrading
 When updating the script, it is important to follow the [Changelog](CHANGELOG.md) for any actions
@@ -74,8 +74,8 @@ If you want the latest features of the script, you can use the `develop` branch 
 can be viewed in the Changelog). However, keep in mind that changes to this branch do not ensure reliability.
 
 ### Running in Docker
-The application can also be run in a container using [Docker][3]. The Docker repository for this project
-can be found [here][4]. To pull the latest image, run:
+The application can also be run in a container using [Docker][4]. The Docker repository for this project
+can be found [here][5]. To pull the latest image, run:
 ```shell
 docker pull jdholtz/auto-southwest-check-in
 ```
@@ -91,7 +91,7 @@ by adding the `--volume /path/to/config.json:/app/config.json` flag before the i
 
 **Note**: The recommended restart policy for the container is `on-failed` or `no`
 
-Additional information on the Docker container can be found in the [public repository][4].
+Additional information on the Docker container can be found in the [public repository][5].
 
 ## Configuration
 To use the default configuration file, copy `config.example.json` to `config.json`.
@@ -102,13 +102,14 @@ For information on how to set up the configuration, see [Configuration.md](CONFI
 file for your changes to be applied.
 
 ## Troubleshooting
-To troubleshoot a problem, run the script with the `--verbose` flag. This will print all debug messages to stderr.
+To troubleshoot a problem, run the script with the `--verbose` flag. This will display debug messages so you can
+get a better overview of the problem.
 
-If you run into any issues, please file it via [GitHub Issues][5]. Please attach any relevant logs (found in
+If you run into any issues, please file it via [GitHub Issues][6]. Please attach any relevant logs (found in
 `logs/auto-southwest-check-in.log`) to the issue. The logs should not have any personal information but check to make
 sure before attaching it.
 
-If you have any questions or discussion topics, start a [GitHub Discussion][6].
+If you have any questions or discussion topics, start a [GitHub Discussion][7].
 
 ## Contributing
 Contributions are always welcome. Please read [Contributing.md](CONTRIBUTING.md) if you are considering making contributions.
@@ -116,7 +117,8 @@ Contributions are always welcome. Please read [Contributing.md](CONTRIBUTING.md)
 [0]: https://www.python.org/downloads/
 [1]: https://pip.pypa.io/en/stable/installation/
 [2]: https://en.wikipedia.org/wiki/Chromium_(web_browser)#Active
-[3]: https://www.docker.com/
-[4]: https://hub.docker.com/repository/docker/jdholtz/auto-southwest-check-in
-[5]: https://github.com/jdholtz/auto-southwest-check-in/issues/new/choose
-[6]: https://github.com/jdholtz/auto-southwest-check-in/discussions/new/choose
+[3]: https://virtualenv.pypa.io/en/stable/
+[4]: https://www.docker.com/
+[5]: https://hub.docker.com/repository/docker/jdholtz/auto-southwest-check-in
+[6]: https://github.com/jdholtz/auto-southwest-check-in/issues/new/choose
+[7]: https://github.com/jdholtz/auto-southwest-check-in/discussions/new/choose
