@@ -59,6 +59,8 @@ Alternatively, you can log in to your account, which will automatically check yo
 ```shell
 python3 southwest.py USERNAME PASSWORD
 ```
+**Note**: If any arguments contain special characters, make sure to escape them so they are passed into
+the script correctly.
 
 For the full usage of the script, run:
 ```shell
