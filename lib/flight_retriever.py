@@ -5,9 +5,10 @@ from typing import Any, Dict, List
 
 from .checkin_scheduler import CheckInScheduler
 from .config import Config
+from .fare_checker import FareChecker
 from .log import get_logger
 from .notification_handler import NotificationHandler
-from .utils import LoginError
+from .utils import LoginError, RequestError
 from .webdriver import WebDriver
 
 logger = get_logger(__name__)
@@ -27,6 +28,30 @@ class FlightRetriever:
         self.notification_handler = NotificationHandler(self)
         self.checkin_scheduler = CheckInScheduler(self)
 
+    def monitor_flights(self, flights: List[Dict[str, Any]]) -> None:
+        """
+        Check for lower fares every X hours (retrieval interval). Will exit
+        when no more flights are scheduled.
+        """
+        self.schedule_reservations(flights)
+
+        while True:
+            time_before = datetime.utcnow()
+            self.checkin_scheduler.remove_departed_flights()
+            self._check_flight_fares()
+
+            if len(self.checkin_scheduler.flights) <= 0:
+                logger.debug("No more flights are scheduled. Exiting...")
+                break
+
+            if self.config.retrieval_interval <= 0:
+                logger.debug(
+                    "Monitoring flights for lower fares is disabled as retrieval interval is 0"
+                )
+                break
+
+            self._smart_sleep(time_before)
+
     def schedule_reservations(self, flights: List[Dict[str, Any]]) -> None:
         logger.debug("Scheduling reservations for %d flights", len(flights))
         confirmation_numbers = []
@@ -35,6 +60,33 @@ class FlightRetriever:
             confirmation_numbers.append(flight["confirmationNumber"])
 
         self.checkin_scheduler.schedule(confirmation_numbers)
+
+    def _check_flight_fares(self) -> None:
+        if not self.config.check_fares:
+            return
+
+        flights = self.checkin_scheduler.flights
+        logger.debug("Checking fares for %d flights", len(flights))
+
+        fare_checker = FareChecker(self)
+        for flight in flights:
+            # If a fare check fails, don't completely exit. Just print the error
+            # and continue
+            try:
+                fare_checker.check_flight_price(flight)
+            except RequestError as err:
+                logger.error("Requesting error during fare check. %s. Skipping...", err)
+
+    def _smart_sleep(self, previous_time: datetime) -> None:
+        """
+        Account for the time it took to do recurring tasks so the sleep interval
+        is the exact time provided in the configuration file.
+        """
+        current_time = datetime.utcnow()
+        time_taken = (current_time - previous_time).total_seconds()
+        sleep_time = self.config.retrieval_interval - time_taken
+        logger.debug("Sleeping for %d seconds", sleep_time)
+        time.sleep(sleep_time)
 
 
 class AccountFlightRetriever(FlightRetriever):
@@ -55,27 +107,19 @@ class AccountFlightRetriever(FlightRetriever):
         providing a value of 0 for the 'retrieval_interval' field in the
         configuration file.
         """
-        # Convert hours to seconds
-        retrieval_interval = self.config.retrieval_interval * 60 * 60
-
         while True:
             time_before = datetime.utcnow()
 
             flights = self._get_flights()
             self.schedule_reservations(flights)
             self.checkin_scheduler.remove_departed_flights()
+            self._check_flight_fares()
 
-            if retrieval_interval <= 0:
+            if self.config.retrieval_interval <= 0:
                 logger.debug("Account monitoring is disabled as retrieval interval is 0")
                 break
 
-            # Account for the time it takes to retrieve the flights when
-            # deciding how long to sleep
-            time_after = datetime.utcnow()
-            time_taken = (time_after - time_before).total_seconds()
-            sleep_time = retrieval_interval - time_taken
-            logger.debug("Sleeping for %d seconds", sleep_time)
-            time.sleep(sleep_time)
+            self._smart_sleep(time_before)
 
     def _get_flights(self) -> List[Dict[str, Any]]:
         logger.debug("Retrieving flights for account")

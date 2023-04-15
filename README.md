@@ -1,5 +1,7 @@
 ## Auto-Southwest Check-In
-Running this script will automatically check you into your flight 24 hours beforehand.
+Running this script will automatically check you into your flight 24 hours beforehand. Additionally,
+the script can notify you if the price of your flight drops before departure
+(see [Fare Check](CONFIGURATION.md#fare-check)).
 
 This script can also log in to your Southwest account and automatically schedule check-ins as
 flights are scheduled.

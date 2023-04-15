@@ -73,7 +73,7 @@ def set_up_flights(config: Config) -> None:
 
         # Start each flight in a separate process to run them in parallel
         process = Process(
-            target=flight_retriever.schedule_reservations,
+            target=flight_retriever.monitor_flights,
             args=([{"confirmationNumber": flight[0]}],),
         )
         process.start()
