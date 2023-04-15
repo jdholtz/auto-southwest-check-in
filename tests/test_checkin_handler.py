@@ -5,7 +5,7 @@ import pytest
 from pytest_mock import MockerFixture
 
 from lib.checkin_handler import CheckInHandler
-from lib.general import RequestError
+from lib.utils import RequestError
 
 # This needs to be accessed to be tested
 # pylint: disable=protected-access

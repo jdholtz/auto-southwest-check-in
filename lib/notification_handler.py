@@ -5,8 +5,8 @@ from typing import TYPE_CHECKING, Any, Dict, List
 import apprise
 
 from .flight import Flight
-from .general import LoginError, NotificationLevel, RequestError
 from .log import get_logger
+from .utils import LoginError, NotificationLevel, RequestError
 
 if TYPE_CHECKING:  # pragma: no cover
     from .flight_retriever import FlightRetriever

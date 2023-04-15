@@ -2,8 +2,8 @@ import apprise
 import pytest
 from pytest_mock import MockerFixture
 
-from lib.general import NotificationLevel
 from lib.notification_handler import NotificationHandler
+from lib.utils import NotificationLevel
 
 # This needs to be accessed to be tested
 # pylint: disable=protected-access

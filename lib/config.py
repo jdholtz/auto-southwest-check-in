@@ -3,8 +3,8 @@ import os
 import sys
 from typing import Any, Dict, List
 
-from .general import NotificationLevel
 from .log import get_logger
+from .utils import NotificationLevel
 
 # Type alias for JSON
 JSON = Dict[str, Any]

@@ -4,8 +4,8 @@ from pytest_mock import MockerFixture
 from lib.checkin_scheduler import CheckInScheduler
 from lib.config import Config
 from lib.flight_retriever import AccountFlightRetriever, FlightRetriever
-from lib.general import LoginError
 from lib.notification_handler import NotificationHandler
+from lib.utils import LoginError
 from lib.webdriver import WebDriver
 
 # This needs to be accessed to be tested

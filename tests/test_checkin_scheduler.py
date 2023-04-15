@@ -10,8 +10,8 @@ from lib.checkin_scheduler import CheckInScheduler
 from lib.config import Config
 from lib.flight import Flight
 from lib.flight_retriever import FlightRetriever
-from lib.general import RequestError
 from lib.notification_handler import NotificationHandler
+from lib.utils import RequestError
 from lib.webdriver import WebDriver
 
 # This needs to be accessed to be tested

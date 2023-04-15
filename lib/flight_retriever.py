@@ -5,9 +5,9 @@ from typing import Any, Dict, List
 
 from .checkin_scheduler import CheckInScheduler
 from .config import Config
-from .general import LoginError
 from .log import get_logger
 from .notification_handler import NotificationHandler
+from .utils import LoginError
 from .webdriver import WebDriver
 
 logger = get_logger(__name__)

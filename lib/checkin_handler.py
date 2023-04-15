@@ -6,8 +6,8 @@ from multiprocessing import Process
 from typing import TYPE_CHECKING
 
 from .flight import Flight
-from .general import RequestError, make_request
 from .log import get_logger
+from .utils import RequestError, make_request
 
 if TYPE_CHECKING:  # pragma: no cover
     from .checkin_scheduler import CheckInScheduler

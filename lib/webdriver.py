@@ -11,8 +11,8 @@ from selenium.webdriver.support.ui import WebDriverWait
 from seleniumwire.request import Response
 from seleniumwire.undetected_chromedriver import Chrome, ChromeOptions
 
-from .general import LoginError
 from .log import get_logger
+from .utils import LoginError
 
 if TYPE_CHECKING:  # pragma: no cover
     from .checkin_scheduler import CheckInScheduler

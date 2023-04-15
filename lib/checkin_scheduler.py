@@ -5,8 +5,8 @@ from typing import TYPE_CHECKING, Any, Dict, List
 
 from .checkin_handler import CheckInHandler
 from .flight import Flight
-from .general import RequestError, make_request
 from .log import get_logger
+from .utils import RequestError, make_request
 from .webdriver import WebDriver
 
 if TYPE_CHECKING:  # pragma: no cover
