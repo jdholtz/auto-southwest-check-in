@@ -32,11 +32,11 @@ def make_request(
 
     error = response.reason + " " + str(response.status_code)
     logger.debug("Failed to make request: %s", error)
-    raise CheckInError(error)
+    raise RequestError(error)
 
 
-# Make a custom exception when a check-in fails
-class CheckInError(Exception):
+# Make a custom exception when a request fails
+class RequestError(Exception):
     pass
 
 

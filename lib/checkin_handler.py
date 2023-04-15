@@ -6,7 +6,7 @@ from multiprocessing import Process
 from typing import TYPE_CHECKING
 
 from .flight import Flight
-from .general import CheckInError, make_request
+from .general import RequestError, make_request
 from .log import get_logger
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -53,7 +53,7 @@ class CheckInHandler:
         # Refresh headers 10 minutes before to make sure they are valid
         sleep_time = (checkin_time - current_time - timedelta(minutes=10)).total_seconds()
 
-        # Only try to refresh the headers if the checkin is more than ten minutes away
+        # Only try to refresh the headers if the check-in is more than ten minutes away
         if sleep_time > 0:
             logger.debug("Sleeping until ten minutes before check-in...")
             self.safe_sleep(sleep_time)
@@ -105,7 +105,7 @@ class CheckInHandler:
 
             logger.debug("Making POST request to check in")
             reservation = make_request("POST", site, headers, info["body"])
-        except CheckInError as err:
+        except RequestError as err:
             logger.debug("Failed to check in. Error: %s. Exiting", err)
             self.notification_handler.failed_checkin(err, self.flight)
             return

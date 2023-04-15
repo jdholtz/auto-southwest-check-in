@@ -10,7 +10,7 @@ from lib.checkin_scheduler import CheckInScheduler
 from lib.config import Config
 from lib.flight import Flight
 from lib.flight_retriever import FlightRetriever
-from lib.general import CheckInError
+from lib.general import RequestError
 from lib.notification_handler import NotificationHandler
 from lib.webdriver import WebDriver
 
@@ -155,7 +155,7 @@ def test_get_reservation_info_returns_reservation_info(mocker: MockerFixture) ->
 def test_get_reservation_info_sends_error_notification_when_reservation_retrieval_fails(
     mocker: MockerFixture,
 ) -> None:
-    mocker.patch("lib.checkin_scheduler.make_request", side_effect=CheckInError())
+    mocker.patch("lib.checkin_scheduler.make_request", side_effect=RequestError())
     mock_failed_reservation_retrieval = mocker.patch.object(
         NotificationHandler, "failed_reservation_retrieval"
     )

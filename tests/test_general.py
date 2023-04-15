@@ -11,7 +11,7 @@ def test_make_request_raises_exception_on_failure(
     mocker.patch("time.sleep")
     requests_mock.post(general.BASE_URL + "test", status_code=400, reason="error")
 
-    with pytest.raises(general.CheckInError):
+    with pytest.raises(general.RequestError):
         general.make_request("POST", "test", {}, {})
 
 
