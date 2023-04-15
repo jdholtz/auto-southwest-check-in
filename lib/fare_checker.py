@@ -65,7 +65,7 @@ class FareChecker:
         bound_page = "outboundPage" if query["outbound"]["isChangeBound"] else "inboundPage"
 
         logger.debug("Retrieving matching flights")
-        response = make_request("POST", site, self.headers, query)
+        response = make_request("POST", site, self.headers, query, max_attempts=7)
         return response["changeShoppingPage"]["flights"][bound_page]["cards"]
 
     def _get_change_flight_page(self, flight: Flight) -> JSON:
@@ -76,13 +76,13 @@ class FareChecker:
             "last-name": self.flight_retriever.last_name,
         }
         site = VIEW_RESERVATION_URL + flight.confirmation_number
-        response = make_request("GET", site, self.headers, info)
+        response = make_request("GET", site, self.headers, info, max_attempts=7)
 
         # Next, get the search information needed to change the flight
         logger.debug("Retrieving search information for the current flight")
         info = response["viewReservationViewPage"]["_links"]["change"]
         site = BOOKING_URL + info["href"]
-        response = make_request("GET", site, self.headers, info["query"])
+        response = make_request("GET", site, self.headers, info["query"], max_attempts=7)
 
         return response["changeFlightPage"]
 

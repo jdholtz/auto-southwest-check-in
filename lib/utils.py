@@ -10,14 +10,14 @@ logger = logging.getLogger(__name__)
 
 
 def make_request(
-    method: str, site: str, headers: Dict[str, Any], info: Dict[str, str]
+    method: str, site: str, headers: Dict[str, Any], info: Dict[str, str], max_attempts=20
 ) -> Dict[str, Any]:
     url = BASE_URL + site
 
     # In the case that your server and the Southwest server aren't in sync,
     # this requests multiple times for a better chance at success when checking in
     attempts = 1
-    while attempts <= 20:
+    while attempts <= max_attempts:
         if method == "POST":
             response = requests.post(url, headers=headers, json=info)
         else:

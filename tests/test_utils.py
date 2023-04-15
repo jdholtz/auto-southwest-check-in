@@ -8,11 +8,13 @@ from lib import utils
 def test_make_request_raises_exception_on_failure(
     requests_mock: requests_mock.mocker.Mocker, mocker: MockerFixture
 ) -> None:
-    mocker.patch("time.sleep")
+    mock_sleep = mocker.patch("time.sleep")
     requests_mock.post(utils.BASE_URL + "test", status_code=400, reason="error")
 
     with pytest.raises(utils.RequestError):
-        utils.make_request("POST", "test", {}, {})
+        utils.make_request("POST", "test", {}, {}, max_attempts=5)
+
+    assert mock_sleep.call_count == 5
 
 
 def test_make_request_correctly_posts_data(requests_mock: requests_mock.mocker.Mocker) -> None:
