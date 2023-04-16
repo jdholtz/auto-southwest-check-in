@@ -110,3 +110,13 @@ def test_failed_checkin_sends_error_notification(
 
     notification_handler.failed_checkin("", mock_flight)
     assert mock_send_notification.call_args[0][1] == NotificationLevel.ERROR
+
+
+def test_lower_fare_sends_lower_fare_notification(
+    mocker: MockerFixture, notification_handler: NotificationHandler
+) -> None:
+    mock_send_notification = mocker.patch.object(NotificationHandler, "send_notification")
+    mock_flight = mocker.patch("lib.notification_handler.Flight")
+
+    notification_handler.lower_fare(mock_flight, "")
+    assert mock_send_notification.call_args[0][1] == NotificationLevel.INFO

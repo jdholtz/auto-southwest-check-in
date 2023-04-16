@@ -58,6 +58,7 @@ def test_read_config_returns_empty_config_when_file_is_not_found(mocker: MockerF
     "config_content",
     [
         {"accounts": "invalid"},
+        {"check_fares": "invalid"},
         {"chrome_version": "invalid"},
         {"chromedriver_path": None},
         {"flights": "invalid"},
@@ -77,6 +78,7 @@ def test_parse_config_sets_the_correct_config_values() -> None:
     test_config = config.Config()
     test_config._parse_config(
         {
+            "check_fares": True,
             "chrome_version": 10,
             "chromedriver_path": "/test/path",
             "notification_level": 20,
@@ -85,11 +87,12 @@ def test_parse_config_sets_the_correct_config_values() -> None:
         }
     )
 
+    assert test_config.check_fares is True
     assert test_config.chrome_version == 10
     assert test_config.chromedriver_path == "/test/path"
     assert test_config.notification_level == 20
     assert test_config.notification_urls == "test_url"
-    assert test_config.retrieval_interval == 30
+    assert test_config.retrieval_interval == 30 * 60 * 60
 
 
 def test_parse_config_does_not_set_values_when_a_config_value_is_empty(
@@ -102,9 +105,12 @@ def test_parse_config_does_not_set_values_when_a_config_value_is_empty(
 
     test_config._parse_config({})
 
+    assert test_config.check_fares == expected_config.check_fares
+    assert test_config.chrome_version == expected_config.chrome_version
+    assert test_config.chromedriver_path == expected_config.chromedriver_path
     assert test_config.notification_urls == expected_config.notification_urls
     assert test_config.notification_level == expected_config.notification_level
-    assert test_config.retrieval_interval == test_config.retrieval_interval
+    assert test_config.retrieval_interval == expected_config.retrieval_interval
     mock_parse_accounts.assert_not_called()
     mock_parse_flights.assert_not_called()
 
@@ -113,7 +119,7 @@ def test_parse_config_sets_retrieval_interval_to_a_minimum() -> None:
     test_config = config.Config()
     test_config._parse_config({"retrieval_interval": -1})
 
-    assert test_config.retrieval_interval == 1
+    assert test_config.retrieval_interval == 1 * 60 * 60
 
 
 def test_parse_config_parses_accounts(mocker: MockerFixture) -> None:

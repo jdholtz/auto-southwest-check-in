@@ -33,7 +33,7 @@ class FlightRetriever:
         Check for lower fares every X hours (retrieval interval). Will exit
         when no more flights are scheduled.
         """
-        self.schedule_reservations(flights)
+        self._schedule_reservations(flights)
 
         while True:
             time_before = datetime.utcnow()
@@ -52,7 +52,7 @@ class FlightRetriever:
 
             self._smart_sleep(time_before)
 
-    def schedule_reservations(self, flights: List[Dict[str, Any]]) -> None:
+    def _schedule_reservations(self, flights: List[Dict[str, Any]]) -> None:
         logger.debug("Scheduling reservations for %d flights", len(flights))
         confirmation_numbers = []
 
@@ -111,7 +111,7 @@ class AccountFlightRetriever(FlightRetriever):
             time_before = datetime.utcnow()
 
             flights = self._get_flights()
-            self.schedule_reservations(flights)
+            self._schedule_reservations(flights)
             self.checkin_scheduler.remove_departed_flights()
             self._check_flight_fares()
 

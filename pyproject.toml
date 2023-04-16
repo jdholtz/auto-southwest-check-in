@@ -15,3 +15,9 @@ exclude_lines = [
     # This is not feasible to test as it requires some really wonky module loading.
     'if __name__ == "__main__":',
 ]
+
+[tool.pytest.ini_options]
+filterwarnings = [
+    # Currently imported by seleniumwire. Remove once seleniumwire removes it
+    "ignore:pkg_resources is deprecated:DeprecationWarning"
+]

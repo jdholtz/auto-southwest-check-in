@@ -14,7 +14,11 @@ from lib.flight import TZ_FILE_PATH, Flight
 
 @pytest.fixture
 def test_flight() -> Flight:
-    flight_info = {"departureAirport": {"name": None}, "arrivalAirport": {"name": None}}
+    flight_info = {
+        "departureAirport": {"name": None},
+        "arrivalAirport": {"name": None},
+        "departureTime": None,
+    }
 
     # Needs to be mocked so it isn't run only when Flight is instantiated
     with mock.patch.object(Flight, "_get_flight_time"):
