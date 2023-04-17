@@ -28,6 +28,7 @@ def test_flight_retriever_monitors_flights_continuously(mocker: MockerFixture) -
     mock_schedule_reservations = mocker.patch.object(FlightRetriever, "_schedule_reservations")
     mock_remove_departed_flights = mocker.patch.object(CheckInScheduler, "remove_departed_flights")
     mock_check_flight_fares = mocker.patch.object(FlightRetriever, "_check_flight_fares")
+    mock_refresh_headers = mocker.patch.object(CheckInScheduler, "refresh_headers")
 
     test_retriever = FlightRetriever(Config())
     test_retriever.checkin_scheduler.flights = ["test_flight"]
@@ -38,6 +39,8 @@ def test_flight_retriever_monitors_flights_continuously(mocker: MockerFixture) -
     mock_schedule_reservations.assert_called_once_with([{"test": "flight"}])
     assert mock_remove_departed_flights.call_count == 2
     assert mock_check_flight_fares.call_count == 2
+    # Called after sleep, so it should only be called once
+    assert mock_refresh_headers.call_count == 1
 
 
 def test_flight_retriever_stops_monitoring_when_no_flights_are_scheduled(

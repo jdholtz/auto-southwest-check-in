@@ -51,6 +51,8 @@ class FlightRetriever:
                 break
 
             self._smart_sleep(time_before)
+            # Ensure we have valid headers before the next cycle
+            self.checkin_scheduler.refresh_headers()
 
     def _schedule_reservations(self, flights: List[Dict[str, Any]]) -> None:
         logger.debug("Scheduling reservations for %d flights", len(flights))
