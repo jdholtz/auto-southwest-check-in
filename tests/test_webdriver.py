@@ -141,7 +141,7 @@ def test_get_driver_returns_a_webdriver_with_one_request(mocker: MockerFixture) 
     mock_checkin_scheduler = mocker.patch("lib.checkin_scheduler.CheckInScheduler")
     driver = WebDriver(mock_checkin_scheduler)._get_driver()
     assert isinstance(driver, mock.Mock)
-    assert driver.get.call_count == 1  # pylint: disable=no-member
+    assert driver.get.call_count == 1
 
 
 @pytest.mark.usefixtures("mock_get_options")

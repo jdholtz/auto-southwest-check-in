@@ -142,7 +142,12 @@ class WebDriver:
             seleniumwire_options=self.seleniumwire_options,
             version_main=chrome_version,
         )
-        driver.scopes = [LOGIN_URL, TRIPS_URL, RESERVATION_URL]  # Filter out unneeded URLs
+
+        # Delete any requests that could have been made while the driver was being initialized
+        del driver.requests
+
+        # Filter out unneeded URLs
+        driver.scopes = [LOGIN_URL, TRIPS_URL, RESERVATION_URL]
 
         logger.debug("Loading Southwest Check-In page")
         driver.get(CHECKIN_URL)
