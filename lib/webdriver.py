@@ -27,9 +27,6 @@ RESERVATION_URL = BASE_URL + "/api/mobile-air-operations/v1/mobile-air-operation
 # Southwest's code when logging in with the incorrect information
 INVALID_CREDENTIALS_CODE = 400518024
 
-# Southwest's code when logging too many requests
-TOO_MANY_REQUESTS_CODE = 429999999
-
 logger = get_logger(__name__)
 
 
@@ -131,9 +128,9 @@ class WebDriver:
         # This page is also loaded when we log in, so we might as well grab it instead of
         # requesting again later
 
-        while len(driver.requests) <2 or not driver.requests[1].response:
+        while len(driver.requests) < 2 or not driver.requests[1].response:
             time.sleep(0.5)
-            
+
         flights = json.loads(driver.requests[1].response.body)["upcomingTripsPage"]
 
         driver.quit()
@@ -162,11 +159,11 @@ class WebDriver:
         logger.debug("Setting valid headers from previous request")
         request_headers = driver.requests[0].headers
         self.checkin_scheduler.headers = self._get_needed_headers(request_headers)
-        
+
     def _wait_for_response(self, driver: Chrome) -> Response:
         while not driver.requests or not driver.requests[0].response:
             time.sleep(0.5)
-            
+
         return driver.requests[0].response
 
     def _get_options(self) -> ChromeOptions:
@@ -190,9 +187,6 @@ class WebDriver:
         if body.get("code") == INVALID_CREDENTIALS_CODE:
             logger.debug("Invalid credentials provided when attempting to log in")
             reason = "Invalid credentials"
-        elif body.get("code") == TOO_MANY_REQUESTS_CODE:
-            logger.debug("Too many requests have been made to the Southwest API.")
-            reason = "Too many requests"
         else:
             logger.debug("Logging in failed for an unknown reason")
             reason = "Unknown"
