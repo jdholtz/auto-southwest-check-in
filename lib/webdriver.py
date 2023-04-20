@@ -3,8 +3,8 @@ from __future__ import annotations
 import json
 import re
 import time
-
 from typing import TYPE_CHECKING, Any, Dict
+
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
