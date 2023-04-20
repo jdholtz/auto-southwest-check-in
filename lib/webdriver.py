@@ -106,12 +106,13 @@ class WebDriver:
         password_element.send_keys(flight_retriever.password)
         password_element.submit()
 
-        self._set_headers_from_request(driver)
-
-        response = driver.requests[0].response
+        response = self._wait_for_response(driver)
         if response.status_code != 200:
+            driver.quit()
             error = self._handle_login_error(response)
             raise error
+        
+        self._set_headers_from_request(driver)
 
         # If this is the first time logging in, the account name needs to be set
         # because that info is needed later
@@ -126,6 +127,10 @@ class WebDriver:
 
         # This page is also loaded when we log in, so we might as well grab it instead of
         # requesting again later
+        
+        while len(driver.requests) < 2 or not driver.requests[1].response:
+            time.sleep(0.5)
+            
         flights = json.loads(driver.requests[1].response.body)["upcomingTripsPage"]
 
         driver.quit()
@@ -155,11 +160,15 @@ class WebDriver:
 
     def _set_headers_from_request(self, driver: Chrome) -> None:
         # Retrieving the headers could fail if the form isn't given enough time to submit
-        time.sleep(10)
-
         logger.debug("Setting valid headers from previous request")
         request_headers = driver.requests[0].headers
         self.checkin_scheduler.headers = self._get_needed_headers(request_headers)
+        
+    def _wait_for_response(self, driver: Chrome) -> Response:
+        while not driver.requests or not driver.requests[0].response:
+            time.sleep(0.5)
+            
+        return driver.requests[0].response
 
     def _get_options(self) -> ChromeOptions:
         options = ChromeOptions()
