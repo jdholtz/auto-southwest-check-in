@@ -34,7 +34,6 @@ class FareChecker:
         # The sign key will not exist if the price amount is 0
         sign = flight_price.get("sign", "")
         price_info = f"{sign}{flight_price['amount']} {flight_price['currencyCode']}"
-
         logger.debug("Flight price change found for %s", price_info)
 
         if sign == "-":

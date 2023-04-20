@@ -11,8 +11,8 @@ from selenium.webdriver.support.ui import WebDriverWait
 from seleniumwire.request import Response
 from seleniumwire.undetected_chromedriver import Chrome, ChromeOptions
 
+from .general import LoginError
 from .log import get_logger
-from .utils import LoginError
 
 if TYPE_CHECKING:  # pragma: no cover
     from .checkin_scheduler import CheckInScheduler
@@ -26,9 +26,6 @@ RESERVATION_URL = BASE_URL + "/api/mobile-air-operations/v1/mobile-air-operation
 
 # Southwest's code when logging in with the incorrect information
 INVALID_CREDENTIALS_CODE = 400518024
-
-# Southwest's code when logging too many requests
-TOO_MANY_REQUESTS_CODE = 429999999
 
 logger = get_logger(__name__)
 
@@ -109,13 +106,7 @@ class WebDriver:
         password_element.send_keys(flight_retriever.password)
         password_element.submit()
 
-        while not driver.requests:
-            time.sleep(0.5)
-
-        while driver.requests[0].response is None:
-            time.sleep(0.5)
-
-        response = driver.requests[0].response
+        response = self._wait_for_response(driver)
         if response.status_code != 200:
             driver.quit()
             error = self._handle_login_error(response)
@@ -137,6 +128,9 @@ class WebDriver:
         # This page is also loaded when we log in, so we might as well grab it instead of
         # requesting again later
 
+        while len(driver.requests) < 2 or not driver.requests[1].response:
+            time.sleep(0.5)
+
         flights = json.loads(driver.requests[1].response.body)["upcomingTripsPage"]
 
         driver.quit()
@@ -153,8 +147,12 @@ class WebDriver:
             seleniumwire_options=self.seleniumwire_options,
             version_main=chrome_version,
         )
+
+        # Delete any requests that could have been made while the driver was being initialized
         del driver.requests
-        driver.scopes = [LOGIN_URL, TRIPS_URL, RESERVATION_URL]  # Filter out unneeded URLs
+
+        # Filter out unneeded URLs
+        driver.scopes = [LOGIN_URL, TRIPS_URL, RESERVATION_URL]
 
         logger.debug("Loading Southwest Check-In page")
         driver.get(CHECKIN_URL)
@@ -162,21 +160,15 @@ class WebDriver:
 
     def _set_headers_from_request(self, driver: Chrome) -> None:
         # Retrieving the headers could fail if the form isn't given enough time to submit
-        WebDriverWait(driver, 60).until(
-            EC.element_to_be_clickable(
-                (
-                    By.CSS_SELECTOR,
-                    """#appContents > div.check-in >
-                                    div > div.reservation-retrieval-form > div >
-                                    form > fieldset > div > div.segment > button""",
-                )
-            )
-        )
-
-        time.sleep(1)
         logger.debug("Setting valid headers from previous request")
         request_headers = driver.requests[0].headers
         self.checkin_scheduler.headers = self._get_needed_headers(request_headers)
+
+    def _wait_for_response(self, driver: Chrome) -> Response:
+        while not driver.requests or not driver.requests[0].response:
+            time.sleep(0.5)
+
+        return driver.requests[0].response
 
     def _get_options(self) -> ChromeOptions:
         options = ChromeOptions()
@@ -199,9 +191,6 @@ class WebDriver:
         if body.get("code") == INVALID_CREDENTIALS_CODE:
             logger.debug("Invalid credentials provided when attempting to log in")
             reason = "Invalid credentials"
-        elif body.get("code") == TOO_MANY_REQUESTS_CODE:
-            logger.debug("Too many requests have been made to the Southwest API.")
-            reason = "Too many requests"
         else:
             logger.debug("Logging in failed for an unknown reason")
             reason = "Unknown"
