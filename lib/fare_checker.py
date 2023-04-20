@@ -92,6 +92,10 @@ class FareChecker:
         # Next, get the search information needed to change the flight
         logger.debug("Retrieving search information for the current flight")
         info = response["viewReservationViewPage"]["_links"]["change"]
+        
+        # Fix for Southwest API adding an extra slash in changeFlightPage's href.
+        if "/v1/" in info["href"]:
+            info["href"] = info["href"][1:]
         site = BOOKING_URL + info["href"]
         response = make_request("GET", site, self.headers, info["query"], max_attempts=7)
 
