@@ -164,6 +164,7 @@ class WebDriver:
         self.checkin_scheduler.headers = self._get_needed_headers(request_headers)
 
     def _wait_for_response(self, driver: Chrome) -> Response:
+        # Retrieving the headers could fail if the form isn't given enough time to submit
         while not driver.requests or not driver.requests[0].response:
             time.sleep(0.5)
 
