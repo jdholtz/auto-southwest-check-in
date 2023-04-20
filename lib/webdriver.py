@@ -76,6 +76,7 @@ class WebDriver:
         last_name_element.send_keys("Doe")
         last_name_element.submit()
 
+        self._wait_for_response(driver, 0)
         self._set_headers_from_request(driver)
         driver.quit()
 
@@ -106,7 +107,7 @@ class WebDriver:
         password_element.send_keys(flight_retriever.password)
         password_element.submit()
 
-        response = self._wait_for_response(driver)
+        response = self._wait_for_response(driver, 0)
         if response.status_code != 200:
             driver.quit()
             error = self._handle_login_error(response)
@@ -125,13 +126,10 @@ class WebDriver:
                 f"{flight_retriever.last_name}'s account\n"
             )  # Don't log as it contains sensitive information
 
-        # First we need to wait for the request/response for the flight page.
-        while len(driver.requests) < 2 or not driver.requests[1].response:
-            time.sleep(0.5)
-
         # This page is also loaded when we log in, so we might as well grab it instead of
         # requesting again later
-        flights = json.loads(driver.requests[1].response.body)["upcomingTripsPage"]
+        flight_response = self._wait_for_response(driver, 1)
+        flights = json.loads(flight_response.body)["upcomingTripsPage"]
 
         driver.quit()
 
@@ -158,17 +156,24 @@ class WebDriver:
         driver.get(CHECKIN_URL)
         return driver
 
+    def _wait_for_response(self, driver: Chrome, response_num: int) -> Response:
+        """
+        Wait for the specified response from the driver. Gathering information from Southwest
+        could fail if the responses aren't given enough time to be retrieved.
+        """
+        while (
+            not driver.requests
+            or len(driver.requests) < response_num + 1
+            or not driver.requests[response_num].response
+        ):
+            time.sleep(0.5)
+
+        return driver.requests[response_num].response
+
     def _set_headers_from_request(self, driver: Chrome) -> None:
         logger.debug("Setting valid headers from previous request")
         request_headers = driver.requests[0].headers
         self.checkin_scheduler.headers = self._get_needed_headers(request_headers)
-
-    def _wait_for_response(self, driver: Chrome) -> Response:
-        # Retrieving the headers could fail if the form isn't given enough time to submit
-        while not driver.requests or not driver.requests[0].response:
-            time.sleep(0.5)
-
-        return driver.requests[0].response
 
     def _get_options(self) -> ChromeOptions:
         options = ChromeOptions()
