@@ -29,7 +29,8 @@ class FareChecker:
         If it is, send a notification to the user about the lower fare.
         """
         logger.debug("Checking current price for flight")
-        flight_price = self._get_flight_price(flight)
+        fare_type = self._get_fare_type(flight)
+        flight_price = self._get_flight_price(flight, fare_type)
 
         # The sign key will not exist if the price amount is 0
         sign = flight_price.get("sign", "")
@@ -40,13 +41,36 @@ class FareChecker:
             # Lower fare!
             self.flight_retriever.notification_handler.lower_fare(flight, price_info)
 
-    def _get_flight_price(self, flight: Flight) -> JSON:
+    def _get_fare_type(self, flight: Flight) -> JSON:
+        logger.debug("Fetching reservation information")
+        info = {
+            "first-name": self.flight_retriever.first_name,
+            "last-name": self.flight_retriever.last_name,
+        }
+        site = VIEW_RESERVATION_URL + flight.confirmation_number
+        response = make_request("GET", site, self.headers, info, max_attempts=7)
+
+        # Next, get the fare type (WGA, WGA+, Anytime, or BS) of the currently booked flight
+        logger.debug("Retrieving fare type for the current flight")
+        fare_type = response["viewReservationViewPage"]["bounds"][0]["fareProductDetails"][
+            "fareProductId"
+        ]
+
+        return fare_type
+
+    def _get_flight_price(self, flight: Flight, fare_type) -> JSON:
         """Get the price difference of the flight"""
         flights = self._get_matching_flights(flight)
         logger.debug("Found %d matching flights", len(flights))
         for new_flight in flights:
             if new_flight["departureTime"] == flight.local_departure_time:
-                return new_flight["startingFromPriceDifference"]
+                flight_fares = new_flight["fares"]
+                break
+
+        # Ensure we are comparing equivalent fare types
+        for fare in flight_fares:
+            if fare["_meta"]["fareProductId"] == fare_type:
+                return fare["priceDifference"]
 
     def _get_matching_flights(self, flight: Flight) -> List[JSON]:
         """
