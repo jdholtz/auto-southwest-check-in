@@ -34,7 +34,7 @@ class FareChecker:
         # The sign key will not exist if the price amount is 0
         sign = flight_price.get("sign", "")
         price_info = f"{sign}{flight_price['amount']} {flight_price['currencyCode']}"
-        
+
         logger.debug("Flight price change found for %s", price_info)
 
         if sign == "-":
@@ -70,9 +70,9 @@ class FareChecker:
         # we need to know what page to get based on what flight we requested (in case two flights
         # (round-trip flights) are on the same reservation)
         bound_page = "outboundPage" if query["outbound"]["isChangeBound"] else "inboundPage"
-        
+
         bound = 0 if bound_page == "outboundPage" else 1
-        
+
         fare_type = fare_type_bounds[bound]["fareProductDetails"]["fareProductId"]
 
         logger.debug("Retrieving matching flights")
