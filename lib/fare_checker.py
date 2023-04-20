@@ -29,8 +29,7 @@ class FareChecker:
         If it is, send a notification to the user about the lower fare.
         """
         logger.debug("Checking current price for flight")
-        fare_type = self._get_fare_type(flight)
-        flight_price = self._get_flight_price(flight, fare_type)
+        flight_price = self._get_flight_price(flight)
 
         # The sign key will not exist if the price amount is 0
         sign = flight_price.get("sign", "")
@@ -41,26 +40,9 @@ class FareChecker:
             # Lower fare!
             self.flight_retriever.notification_handler.lower_fare(flight, price_info)
 
-    def _get_fare_type(self, flight: Flight) -> JSON:
-        logger.debug("Fetching reservation information")
-        info = {
-            "first-name": self.flight_retriever.first_name,
-            "last-name": self.flight_retriever.last_name,
-        }
-        site = VIEW_RESERVATION_URL + flight.confirmation_number
-        response = make_request("GET", site, self.headers, info, max_attempts=7)
-
-        # Next, get the fare type (WGA, WGA+, Anytime, or BS) of the currently booked flight
-        logger.debug("Retrieving fare type for the current flight")
-        fare_type = response["viewReservationViewPage"]["bounds"][0]["fareProductDetails"][
-            "fareProductId"
-        ]
-
-        return fare_type
-
-    def _get_flight_price(self, flight: Flight, fare_type) -> JSON:
+    def _get_flight_price(self, flight: Flight) -> JSON:
         """Get the price difference of the flight"""
-        flights = self._get_matching_flights(flight)
+        flights, fare_type = self._get_matching_flights(flight)
         logger.debug("Found %d matching flights", len(flights))
         for new_flight in flights:
             if new_flight["departureTime"] == flight.local_departure_time:
@@ -77,7 +59,7 @@ class FareChecker:
         Get all of the flights that match the current flight's departure airport,
         arrival airport, and departure date.
         """
-        change_flight_page = self._get_change_flight_page(flight)
+        change_flight_page, fare_type_bounds = self._get_change_flight_page(flight)
         query = self._get_search_query(change_flight_page, flight)
 
         info = change_flight_page["_links"]["changeShopping"]
@@ -87,10 +69,18 @@ class FareChecker:
         # we need to know what page to get based on what flight we requested (in case two flights
         # (round-trip flights) are on the same reservation)
         bound_page = "outboundPage" if query["outbound"]["isChangeBound"] else "inboundPage"
+        if bound_page == "outboundPage":
+            fare_type = fare_type_bounds[0]["fareProductDetails"][
+            "fareProductId"
+        ]
+        else:
+            fare_type = fare_type_bounds[1]["fareProductDetails"][
+            "fareProductId"
+        ]
 
         logger.debug("Retrieving matching flights")
         response = make_request("POST", site, self.headers, query, max_attempts=7)
-        return response["changeShoppingPage"]["flights"][bound_page]["cards"]
+        return response["changeShoppingPage"]["flights"][bound_page]["cards"], fare_type
 
     def _get_change_flight_page(self, flight: Flight) -> JSON:
         # First, get the reservation information
@@ -101,6 +91,7 @@ class FareChecker:
         }
         site = VIEW_RESERVATION_URL + flight.confirmation_number
         response = make_request("GET", site, self.headers, info, max_attempts=7)
+        fare_type_bounds = response["viewReservationViewPage"]["bounds"]
 
         # Next, get the search information needed to change the flight
         logger.debug("Retrieving search information for the current flight")
@@ -108,7 +99,7 @@ class FareChecker:
         site = BOOKING_URL + info["href"]
         response = make_request("GET", site, self.headers, info["query"], max_attempts=7)
 
-        return response["changeFlightPage"]
+        return response["changeFlightPage"], fare_type_bounds
 
     def _get_search_query(self, flight_page: JSON, flight: Flight) -> JSON:
         """
