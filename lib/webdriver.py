@@ -125,12 +125,12 @@ class WebDriver:
                 f"{flight_retriever.last_name}'s account\n"
             )  # Don't log as it contains sensitive information
 
-        # This page is also loaded when we log in, so we might as well grab it instead of
-        # requesting again later
-
+        # First we need to wait for the request/response for the flight page.
         while len(driver.requests) < 2 or not driver.requests[1].response:
             time.sleep(0.5)
 
+        # This page is also loaded when we log in, so we might as well grab it instead of
+        # requesting again later
         flights = json.loads(driver.requests[1].response.body)["upcomingTripsPage"]
 
         driver.quit()
