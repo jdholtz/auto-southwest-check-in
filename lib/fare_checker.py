@@ -70,13 +70,9 @@ class FareChecker:
         # (round-trip flights) are on the same reservation)
         bound_page = "outboundPage" if query["outbound"]["isChangeBound"] else "inboundPage"
         if bound_page == "outboundPage":
-            fare_type = fare_type_bounds[0]["fareProductDetails"][
-            "fareProductId"
-        ]
+            fare_type = fare_type_bounds[0]["fareProductDetails"]["fareProductId"]
         else:
-            fare_type = fare_type_bounds[1]["fareProductDetails"][
-            "fareProductId"
-        ]
+            fare_type = fare_type_bounds[1]["fareProductDetails"]["fareProductId"]
 
         logger.debug("Retrieving matching flights")
         response = make_request("POST", site, self.headers, query, max_attempts=7)
