@@ -159,7 +159,6 @@ class WebDriver:
         return driver
 
     def _set_headers_from_request(self, driver: Chrome) -> None:
-        # Retrieving the headers could fail if the form isn't given enough time to submit
         logger.debug("Setting valid headers from previous request")
         request_headers = driver.requests[0].headers
         self.checkin_scheduler.headers = self._get_needed_headers(request_headers)
