@@ -1,18 +1,16 @@
 from __future__ import annotations
-
 import json
 import re
 import time
 from typing import TYPE_CHECKING, Any, Dict
-
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 from seleniumwire.request import Response
 from seleniumwire.undetected_chromedriver import Chrome, ChromeOptions
 
+from .general import LoginError
 from .log import get_logger
-from .utils import LoginError
 
 if TYPE_CHECKING:  # pragma: no cover
     from .checkin_scheduler import CheckInScheduler
@@ -147,8 +145,12 @@ class WebDriver:
             seleniumwire_options=self.seleniumwire_options,
             version_main=chrome_version,
         )
+
+        # Delete any requests that could have been made while the driver was being initialized
         del driver.requests
-        driver.scopes = [LOGIN_URL, TRIPS_URL, RESERVATION_URL]  # Filter out unneeded URLs
+
+        # Filter out unneeded URLs
+        driver.scopes = [LOGIN_URL, TRIPS_URL, RESERVATION_URL]
 
         logger.debug("Loading Southwest Check-In page")
         driver.get(CHECKIN_URL)
