@@ -47,13 +47,7 @@ class FareChecker:
         # Get the fares from the same flight
         for new_flight in flights:
             if new_flight["departureTime"] == flight.local_departure_time:
-                flight_fares = new_flight["fares"]
-                break
-
-        # Ensure we are comparing equivalent fare types
-        for fare in flight_fares:
-            if fare["_meta"]["fareProductId"] == fare_type:
-                return fare["priceDifference"]
+                return self._get_matching_fare(new_flight["fares"], fare_type)
 
     def _get_matching_flights(self, flight: Flight) -> Union[List[JSON], str]:
         """
@@ -127,3 +121,11 @@ class FareChecker:
         # is round-trip. Otherwise, just generate a query including 'outbound'
         bounds = ["outbound", "inbound"]
         return dict(zip(bounds, search_terms))
+
+    @staticmethod
+    def _get_matching_fare(fares: JSON, fare_type: str) -> JSON:
+        for fare in fares:
+            if fare["_meta"]["fareProductId"] == fare_type:
+                return fare["priceDifference"]
+
+        raise KeyError(f"No fare type found matching {fare_type}")

@@ -57,15 +57,19 @@ def test_get_flight_price_gets_flight_price_matching_current_flight(
 ) -> None:
     flights = [
         {"departureTime": "10:30"},
-        {"departureTime": "11:30", "startingFromPriceDifference": "price"},
+        {"departureTime": "11:30", "fares": ["fare_one", "fare_two"]},
     ]
-    mocker.patch.object(FareChecker, "_get_matching_flights", return_value=flights)
+    mocker.patch.object(FareChecker, "_get_matching_flights", return_value=(flights, "test_fare"))
+    mock_get_matching_fare = mocker.patch.object(
+        FareChecker, "_get_matching_fare", return_value="price"
+    )
 
     test_flight.local_departure_time = "11:30"
     fare_checker = FareChecker(FlightRetriever(Config()))
     price = fare_checker._get_flight_price(test_flight)
 
     assert price == "price"
+    mock_get_matching_fare.assert_called_once_with(["fare_one", "fare_two"], "test_fare")
 
 
 # This scenario should not happen because Southwest should always have a flight
@@ -74,7 +78,7 @@ def test_get_flight_price_returns_nothing_when_no_matching_flights_appear(
     mocker: MockerFixture, test_flight: Flight
 ) -> None:
     flights = [{"departureTime": "10:30"}, {"departureTime": "11:30"}]
-    mocker.patch.object(FareChecker, "_get_matching_flights", return_value=flights)
+    mocker.patch.object(FareChecker, "_get_matching_flights", return_value=(flights, "test_fare"))
 
     test_flight.local_departure_time = "12:00"
     fare_checker = FareChecker(FlightRetriever(Config()))
@@ -88,7 +92,13 @@ def test_get_matching_flights_retrieves_correct_bound_page(
     mocker: MockerFixture, bound: str
 ) -> None:
     change_flight_page = {"_links": {"changeShopping": {"href": "test_link"}}}
-    mocker.patch.object(FareChecker, "_get_change_flight_page", return_value=change_flight_page)
+    fare_type_bounds = [
+        {"fareProductDetails": {"fareProductId": "outbound_fare"}},
+        {"fareProductDetails": {"fareProductId": "inbound_fare"}},
+    ]
+    mocker.patch.object(
+        FareChecker, "_get_change_flight_page", return_value=(change_flight_page, fare_type_bounds)
+    )
 
     search_query = {"outbound": {"isChangeBound": False}}
     search_query.update({bound: {"isChangeBound": True}})
@@ -98,16 +108,20 @@ def test_get_matching_flights_retrieves_correct_bound_page(
     mocker.patch("lib.fare_checker.make_request", return_value=response)
 
     fare_checker = FareChecker(FlightRetriever(Config()))
-    matching_flights = fare_checker._get_matching_flights(None)
+    matching_flights, fare_type = fare_checker._get_matching_flights(None)
 
     assert matching_flights == "test_cards"
+    assert fare_type == bound + "_fare"
 
 
 def test_get_change_flight_page_retrieves_change_flight_page(
     mocker: MockerFixture, test_flight: Flight
 ) -> None:
     reservation_info = {
-        "viewReservationViewPage": {"_links": {"change": {"href": "test_link", "query": "query"}}}
+        "viewReservationViewPage": {
+            "bounds": ["bound_one", "bound_two"],
+            "_links": {"change": {"href": "test_link", "query": "query"}},
+        }
     }
     expected_page = {"changeFlightPage": "test_page"}
     mock_make_request = mocker.patch(
@@ -115,9 +129,10 @@ def test_get_change_flight_page_retrieves_change_flight_page(
     )
 
     fare_checker = FareChecker(FlightRetriever(Config()))
-    change_flight_page = fare_checker._get_change_flight_page(test_flight)
+    change_flight_page, fare_type_bounds = fare_checker._get_change_flight_page(test_flight)
 
     assert change_flight_page == "test_page"
+    assert fare_type_bounds == ["bound_one", "bound_two"]
 
     call_args = mock_make_request.call_args[0]
     assert call_args[1] == BOOKING_URL + "test_link"
@@ -191,3 +206,18 @@ def test_get_search_query_returns_the_correct_query_for_round_trip(test_flight: 
         "origin-airport": "LAX",
         "isChangeBound": True,
     }
+
+
+def test_get_matching_fare_returns_the_correct_fare() -> None:
+    fares = [
+        {"_meta": {"fareProductId": "wrong_fare"}, "priceDifference": "fake_price"},
+        {"_meta": {"fareProductId": "right_fare"}, "priceDifference": "price"},
+    ]
+    fare_price = FareChecker._get_matching_fare(fares, "right_fare")
+    assert fare_price == "price"
+
+
+def test_get_matching_fare_throws_exception_when_fare_does_not_exist() -> None:
+    fares = [{"_meta": {"fareProductId": "wrong_fare"}}]
+    with pytest.raises(KeyError):
+        FareChecker._get_matching_fare(fares, "right_fare")
