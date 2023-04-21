@@ -12,6 +12,9 @@ logger = logging.getLogger(__name__)
 def make_request(
     method: str, site: str, headers: Dict[str, Any], info: Dict[str, str], max_attempts=20
 ) -> Dict[str, Any]:
+    # Ensure the URL is not malformed
+    site = site.replace("//", "/").lstrip("/")
+
     url = BASE_URL + site
 
     # In the case that your server and the Southwest server aren't in sync,
