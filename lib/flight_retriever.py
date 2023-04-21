@@ -8,7 +8,7 @@ from .config import Config
 from .fare_checker import FareChecker
 from .log import get_logger
 from .notification_handler import NotificationHandler
-from .utils import LoginError, RequestError, CompanionError
+from .utils import CompanionError, LoginError, RequestError
 from .webdriver import WebDriver
 
 logger = get_logger(__name__)
