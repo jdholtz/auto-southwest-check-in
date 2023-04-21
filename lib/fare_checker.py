@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Union
 from .checkin_scheduler import VIEW_RESERVATION_URL
 from .flight import Flight
 from .log import get_logger
-from .utils import make_request
+from .utils import make_request, CompanionError
 
 if TYPE_CHECKING:  # pragma: no cover
     from .flight_retriever import FlightRetriever
@@ -127,7 +127,7 @@ class FareChecker:
         if companion_added is None:
             return
 
-        raise ValueError(
+        raise CompanionError(
             "A companion has been added to this flight, so the fare price cannot be checked"
         )
 

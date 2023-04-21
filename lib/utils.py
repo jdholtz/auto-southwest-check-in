@@ -47,6 +47,10 @@ class RequestError(Exception):
 class LoginError(Exception):
     pass
 
+# Make a custom exception when a companion pass is detected
+class CompanionError(Exception):
+    pass
+
 
 class NotificationLevel(IntEnum):
     INFO = 1
