@@ -85,9 +85,9 @@ class FareChecker:
         site = VIEW_RESERVATION_URL + flight.confirmation_number
         response = make_request("GET", site, self.headers, info, max_attempts=7)
         fare_type_bounds = response["viewReservationViewPage"]["bounds"]
-        
+
         # Next, we need to check if a companion has been added.
-        companion_added = self._check_for_added_companion(response)
+        self._check_for_added_companion(response)
 
         # Next, get the search information needed to change the flight
         logger.debug("Retrieving search information for the current flight")
@@ -120,15 +120,17 @@ class FareChecker:
         # is round-trip. Otherwise, just generate a query including 'outbound'
         bounds = ["outbound", "inbound"]
         return dict(zip(bounds, search_terms))
-    
+
     @staticmethod
     def _check_for_added_companion(flight_page: JSON) -> None:
         companion_added = flight_page["viewReservationViewPage"]["greyBoxMessage"]
         if companion_added is None:
             return
-        
-        raise ValueError("A companion has been added to this flight, so the fare price cannot be checked")
-        
+
+        raise ValueError(
+            "A companion has been added to this flight, so the fare price cannot be checked"
+        )
+
     @staticmethod
     def _get_matching_fare(fares: JSON, fare_type: str) -> JSON:
         for fare in fares:
