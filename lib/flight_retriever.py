@@ -76,8 +76,8 @@ class FlightRetriever:
             # and continue
             try:
                 fare_checker.check_flight_price(flight)
-            except RequestError as err:
-                logger.error("Requesting error during fare check. %s. Skipping...", err)
+            except Exception as err:
+                logger.error("Error during fare check. %s. Skipping...", err)
 
     def _smart_sleep(self, previous_time: datetime) -> None:
         """
