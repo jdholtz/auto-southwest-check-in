@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, List
+from typing import TYPE_CHECKING, Any, Dict, List, Union
 
 from .checkin_scheduler import VIEW_RESERVATION_URL
 from .flight import Flight
@@ -14,7 +14,6 @@ if TYPE_CHECKING:  # pragma: no cover
 JSON = Dict[str, Any]
 
 BOOKING_URL = "mobile-air-booking/"
-BASE_URL = "https://mobile.southwest.com/api/" + BOOKING_URL
 logger = get_logger(__name__)
 
 
@@ -44,6 +43,8 @@ class FareChecker:
         """Get the price difference of the flight"""
         flights, fare_type = self._get_matching_flights(flight)
         logger.debug("Found %d matching flights", len(flights))
+
+        # Get the fares from the same flight
         for new_flight in flights:
             if new_flight["departureTime"] == flight.local_departure_time:
                 flight_fares = new_flight["fares"]
@@ -54,10 +55,13 @@ class FareChecker:
             if fare["_meta"]["fareProductId"] == fare_type:
                 return fare["priceDifference"]
 
-    def _get_matching_flights(self, flight: Flight) -> List[JSON]:
+    def _get_matching_flights(self, flight: Flight) -> Union[List[JSON], str]:
         """
         Get all of the flights that match the current flight's departure airport,
         arrival airport, and departure date.
+
+        Additionally, retrieve the flight's fare type so we can check the correct
+        fare for a price drop.
         """
         change_flight_page, fare_type_bounds = self._get_change_flight_page(flight)
         query = self._get_search_query(change_flight_page, flight)
@@ -71,14 +75,13 @@ class FareChecker:
         bound_page = "outboundPage" if query["outbound"]["isChangeBound"] else "inboundPage"
 
         bound = 0 if bound_page == "outboundPage" else 1
-
         fare_type = fare_type_bounds[bound]["fareProductDetails"]["fareProductId"]
 
         logger.debug("Retrieving matching flights")
         response = make_request("POST", site, self.headers, query, max_attempts=7)
         return response["changeShoppingPage"]["flights"][bound_page]["cards"], fare_type
 
-    def _get_change_flight_page(self, flight: Flight) -> JSON:
+    def _get_change_flight_page(self, flight: Flight) -> Union[JSON, JSON]:
         # First, get the reservation information
         logger.debug("Fetching reservation information")
         info = {
