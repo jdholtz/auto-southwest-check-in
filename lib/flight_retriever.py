@@ -80,6 +80,8 @@ class FlightRetriever:
                 logger.error("Requesting error during fare check. %s. Skipping...", err)
             except CompanionError:
                 logger.debug("Fare check is not supported with companion passes. Skipping...")
+            except Exception as e:
+                logger.exception("Unexpected error during fare check: %s", repr(e))
 
     def _smart_sleep(self, previous_time: datetime) -> None:
         """

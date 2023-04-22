@@ -114,7 +114,7 @@ def test_flight_retriever_checks_fares_on_all_flights(mocker: MockerFixture) -> 
     assert mock_check_flight_price.call_count == len(test_retriever.checkin_scheduler.flights)
 
 
-@pytest.mark.parametrize("exception", [RequestError, CompanionError])
+@pytest.mark.parametrize("exception", [RequestError, CompanionError, Exception])
 def test_flight_retriever_catches_error_when_checking_fares(
     mocker: MockerFixture, exception: Exception
 ) -> None:
