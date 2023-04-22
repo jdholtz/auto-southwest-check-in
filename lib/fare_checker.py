@@ -86,8 +86,9 @@ class FareChecker:
         response = make_request("GET", site, self.headers, info, max_attempts=7)
         fare_type_bounds = response["viewReservationViewPage"]["bounds"]
 
-        # Next, we need to check if a companion has been added.
-        self._check_for_added_companion(response)
+        # Ensure the flight does not have a companion pass connected to it
+        # as companion passes are not supported.
+        self._check_for_companion(response)
 
         # Next, get the search information needed to change the flight
         logger.debug("Retrieving search information for the current flight")
@@ -122,7 +123,7 @@ class FareChecker:
         return dict(zip(bounds, search_terms))
 
     @staticmethod
-    def _check_for_added_companion(flight_page: JSON) -> None:
+    def _check_for_companion(flight_page: JSON) -> None:
         grey_box_message = flight_page["viewReservationViewPage"]["greyBoxMessage"]
         if "body" in grey_box_message and "companion" in grey_box_message["body"]:
             raise CompanionError(
