@@ -157,8 +157,7 @@ def test_get_search_query_returns_the_correct_query_for_one_way(test_flight: Fli
     }
 
     test_flight.local_departure_time = "12:00"
-    fare_checker = FareChecker(FlightRetriever(Config()))
-    search_query = fare_checker._get_search_query(flight_page, test_flight)
+    search_query = FareChecker._get_search_query(flight_page, test_flight)
 
     assert len(search_query) == 1
     assert search_query.get("outbound") == {
@@ -193,8 +192,7 @@ def test_get_search_query_returns_the_correct_query_for_round_trip(test_flight: 
     }
 
     test_flight.local_departure_time = "1:00"
-    fare_checker = FareChecker(FlightRetriever(Config()))
-    search_query = fare_checker._get_search_query(flight_page, test_flight)
+    search_query = FareChecker._get_search_query(flight_page, test_flight)
 
     assert len(search_query) == 2
     assert search_query.get("outbound") == {

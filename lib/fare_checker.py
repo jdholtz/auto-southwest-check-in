@@ -98,7 +98,8 @@ class FareChecker:
 
         return response["changeFlightPage"], fare_type_bounds
 
-    def _get_search_query(self, flight_page: JSON, flight: Flight) -> JSON:
+    @staticmethod
+    def _get_search_query(flight_page: JSON, flight: Flight) -> JSON:
         """
         Generate the search query needed to get matching flights. The search query
         is different if the reservation is one-way vs. round-trip
