@@ -20,6 +20,8 @@ Type: Boolean
 
 In addition to automatically checking in, check for price drops on an interval
 (see [Retrieval Interval](#retrieval-interval)). If a lower fare is found, the user will be notified.
+
+**Note**: Companion passes are not supported for fare checking.
 ```json
 {
     "check_fares": true

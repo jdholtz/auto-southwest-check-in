@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Union
 from .checkin_scheduler import VIEW_RESERVATION_URL
 from .flight import Flight
 from .log import get_logger
-from .utils import make_request
+from .utils import CompanionError, make_request
 
 if TYPE_CHECKING:  # pragma: no cover
     from .flight_retriever import FlightRetriever
@@ -86,6 +86,10 @@ class FareChecker:
         response = make_request("GET", site, self.headers, info, max_attempts=7)
         fare_type_bounds = response["viewReservationViewPage"]["bounds"]
 
+        # Ensure the flight does not have a companion pass connected to it
+        # as companion passes are not supported.
+        self._check_for_companion(response)
+
         # Next, get the search information needed to change the flight
         logger.debug("Retrieving search information for the current flight")
         info = response["viewReservationViewPage"]["_links"]["change"]
@@ -117,6 +121,14 @@ class FareChecker:
         # is round-trip. Otherwise, just generate a query including 'outbound'
         bounds = ["outbound", "inbound"]
         return dict(zip(bounds, search_terms))
+
+    @staticmethod
+    def _check_for_companion(flight_page: JSON) -> None:
+        grey_box_message = flight_page["viewReservationViewPage"]["greyBoxMessage"]
+        if "body" in grey_box_message and "companion" in grey_box_message["body"]:
+            raise CompanionError(
+                "A companion has been added to this flight, so the fare price cannot be checked"
+            )
 
     @staticmethod
     def _get_matching_fare(fares: JSON, fare_type: str) -> JSON:

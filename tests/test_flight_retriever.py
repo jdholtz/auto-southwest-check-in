@@ -8,7 +8,7 @@ from lib.config import Config
 from lib.fare_checker import FareChecker
 from lib.flight_retriever import AccountFlightRetriever, FlightRetriever
 from lib.notification_handler import NotificationHandler
-from lib.utils import LoginError, RequestError
+from lib.utils import CompanionError, LoginError, RequestError
 from lib.webdriver import WebDriver
 
 # This needs to be accessed to be tested
@@ -114,9 +114,12 @@ def test_flight_retriever_checks_fares_on_all_flights(mocker: MockerFixture) -> 
     assert mock_check_flight_price.call_count == len(test_retriever.checkin_scheduler.flights)
 
 
-def test_flight_retriever_catches_error_when_checking_fares(mocker: MockerFixture) -> None:
+@pytest.mark.parametrize("exception", [RequestError, CompanionError])
+def test_flight_retriever_catches_error_when_checking_fares(
+    mocker: MockerFixture, exception: Exception
+) -> None:
     mock_check_flight_price = mocker.patch.object(
-        FareChecker, "check_flight_price", side_effect=["", RequestError]
+        FareChecker, "check_flight_price", side_effect=["", exception]
     )
 
     test_retriever = FlightRetriever(Config())
