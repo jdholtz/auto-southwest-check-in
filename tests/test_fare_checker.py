@@ -217,6 +217,12 @@ def test_get_matching_fare_returns_the_correct_fare() -> None:
     assert fare_price == "price"
 
 
+def test_get_matching_fare_returns_default_price_when_price_is_not_available() -> None:
+    fares = [{"_meta": {"fareProductId": "right_fare"}}]
+    fare_price = FareChecker._get_matching_fare(fares, "right_fare")
+    assert fare_price == {"amount": 0, "currencyCode": "USD"}
+
+
 def test_get_matching_fare_throws_exception_when_fare_does_not_exist() -> None:
     fares = [{"_meta": {"fareProductId": "wrong_fare"}}]
     with pytest.raises(KeyError):

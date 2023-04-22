@@ -122,6 +122,14 @@ class FareChecker:
     def _get_matching_fare(fares: JSON, fare_type: str) -> JSON:
         for fare in fares:
             if fare["_meta"]["fareProductId"] == fare_type:
-                return fare["priceDifference"]
+                if "priceDifference" in fare:
+                    return fare["priceDifference"]
+
+                # The fare is no longer available (most likely due to tickets of that fare
+                # type not being sold anymore). Therefore, report back a 0 USD difference.
+                logger.debug(
+                    "Fare %s is not availiable. Setting price difference to 0 USD", fare_type
+                )
+                return {"amount": 0, "currencyCode": "USD"}
 
         raise KeyError(f"No fare type found matching {fare_type}")
