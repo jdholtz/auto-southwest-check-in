@@ -125,7 +125,11 @@ class FareChecker:
     @staticmethod
     def _check_for_companion(flight_page: JSON) -> None:
         grey_box_message = flight_page["viewReservationViewPage"]["greyBoxMessage"]
-        if "body" in grey_box_message and "companion" in grey_box_message["body"]:
+        if (
+            grey_box_message
+            and "body" in grey_box_message
+            and "companion" in grey_box_message["body"]
+        ):
             raise CompanionError(
                 "A companion has been added to this flight, so the fare price cannot be checked"
             )

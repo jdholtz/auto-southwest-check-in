@@ -229,7 +229,10 @@ def test_check_for_companion_raises_exception_when_a_companion_is_detected() -> 
         FareChecker._check_for_companion(flight_page)
 
 
-@pytest.mark.parametrize("reservation", [{"greyBoxMessage": {}}, {"greyBoxMessage": {"body": ""}}])
+@pytest.mark.parametrize(
+    "reservation",
+    [{"greyBoxMessage": None}, {"greyBoxMessage": {}}, {"greyBoxMessage": {"body": ""}}],
+)
 def test_check_for_companion_passes_when_no_companion_exists(reservation: Dict[str, Any]) -> None:
     flight_page = {"viewReservationViewPage": reservation}
     # It will throw an exception if the test does not pass
