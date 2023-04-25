@@ -3,8 +3,8 @@ import os
 import sys
 from typing import Any, Dict, List
 
-from .general import NotificationLevel
 from .log import get_logger
+from .utils import NotificationLevel
 
 # Type alias for JSON
 JSON = Dict[str, Any]
@@ -17,11 +17,12 @@ class Config:
     def __init__(self):
         # Default values are set
         self.accounts = []
+        self.check_fares = False
         self.chrome_version = None
         self.flights = []
         self.notification_level = NotificationLevel.INFO
         self.notification_urls = []
-        self.retrieval_interval = 24
+        self.retrieval_interval = 24 * 60 * 60
 
         # _CHROMEDRIVER_PATH is set in the Docker container
         self.chromedriver_path = os.getenv("_CHROMEDRIVER_PATH", None)
@@ -59,6 +60,13 @@ class Config:
                 raise TypeError("'accounts' must be a list")
 
             self._parse_accounts(accounts)
+
+        if "check_fares" in config:
+            self.check_fares = config["check_fares"]
+            logger.debug("Setting check fares to %s", self.check_fares)
+
+            if not isinstance(self.check_fares, bool):
+                raise TypeError("'check_fares' must be a boolean")
 
         if "chrome_version" in config:
             self.chrome_version = config["chrome_version"]
@@ -113,6 +121,9 @@ class Config:
                     self.retrieval_interval,
                 )
                 self.retrieval_interval = 1
+
+            # Convert hours to seconds
+            self.retrieval_interval *= 60 * 60
 
     def _parse_accounts(self, account_config: List[JSON]) -> None:
         logger.debug("Adding %d accounts from configuration file", len(account_config))

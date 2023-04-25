@@ -22,7 +22,7 @@ Log into your account:
 
 Options:
     --test-notifications Test the notification URLs configuration and exit
-    -v, --verbose        Emit debug messages to stderr
+    -v, --verbose        Display debug messages
     -h, --help           Display this help and exit
     -V, --version        Display version information and exit
 
@@ -73,7 +73,7 @@ def set_up_flights(config: Config) -> None:
 
         # Start each flight in a separate process to run them in parallel
         process = Process(
-            target=flight_retriever.schedule_reservations,
+            target=flight_retriever.monitor_flights,
             args=([{"confirmationNumber": flight[0]}],),
         )
         process.start()

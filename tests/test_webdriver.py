@@ -6,7 +6,7 @@ from pytest_mock import MockerFixture
 from seleniumwire.request import Request, Response
 
 from lib.checkin_scheduler import CheckInScheduler
-from lib.general import LoginError
+from lib.utils import LoginError
 from lib.webdriver import INVALID_CREDENTIALS_CODE, WebDriver
 
 # This needs to be accessed to be tested

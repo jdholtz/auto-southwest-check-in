@@ -3,6 +3,7 @@ This guide contains all the information you need to configure Auto-Southwest Che
 file can be found at [config.example.json](config.example.json)
 
 ## Table of Contents
+- [Fare Check](#fare-check)
 - [Notifications](#notifications)
     * [Notification URLS](#notification-urls)
     * [Notification Level](#notification-level)
@@ -12,6 +13,20 @@ file can be found at [config.example.json](config.example.json)
 - [Retrieval Interval](#retrieval-interval)
 - [Accounts](#accounts)
 - [Flights](#flights)
+
+## Fare Check
+Default: false \
+Type: Boolean
+
+In addition to automatically checking in, check for price drops on an interval
+(see [Retrieval Interval](#retrieval-interval)). If a lower fare is found, the user will be notified.
+
+**Note**: Companion passes are not supported for fare checking.
+```json
+{
+    "check_fares": true
+}
+```
 
 ## Notifications
 ### Notification URLs
@@ -47,7 +62,7 @@ You can also select the level of notifications you want to receive.
   "notification_level": 1
 }
 ```
-Level 1 means you receive successful scheduling and check-in messages and all messages in later levels.\
+Level 1 means you receive successful scheduling and check-in messages, lower fare messages, and all messages in later levels.\
 Level 2 means you receive only error messages (failed scheduling and check-ins).
 
 ### Test The Notifications
@@ -85,8 +100,9 @@ You can specify a custom path of the Chromedriver executable for the script to u
 Default: 24 hours \
 Type: Integer
 
-If you provide login credentials to the script, you can choose how often the script checks for new flights
-(in hours). To disable account monitoring, set this option to `0` (The account will only be checked once).
+You can choose how often the script checks for lower fares on scheduled flights (in hours). Additionally, this
+interval will also determine how often the script checks for new flights if login credentials are provided. To
+disable account/fare monitoring, set this option to `0` (The account/fares will only be checked once).
 ```json
 {
     "retrieval_interval": 24

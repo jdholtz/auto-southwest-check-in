@@ -10,8 +10,8 @@ from lib.checkin_scheduler import CheckInScheduler
 from lib.config import Config
 from lib.flight import Flight
 from lib.flight_retriever import FlightRetriever
-from lib.general import CheckInError
 from lib.notification_handler import NotificationHandler
+from lib.utils import RequestError
 from lib.webdriver import WebDriver
 
 # This needs to be accessed to be tested
@@ -27,7 +27,12 @@ def mock_config(mocker: MockerFixture) -> None:
 @pytest.fixture
 def test_flight(mocker: MockerFixture) -> Flight:
     mocker.patch.object(Flight, "_get_flight_time")
-    return Flight({"departureAirport": {"name": None}, "arrivalAirport": {"name": None}}, "")
+    flight_info = {
+        "departureAirport": {"name": None},
+        "arrivalAirport": {"name": None},
+        "departureTime": None,
+    }
+    return Flight(flight_info, "")
 
 
 def test_schedule_refreshes_headers_when_empty(mocker: MockerFixture) -> None:
@@ -155,7 +160,7 @@ def test_get_reservation_info_returns_reservation_info(mocker: MockerFixture) ->
 def test_get_reservation_info_sends_error_notification_when_reservation_retrieval_fails(
     mocker: MockerFixture,
 ) -> None:
-    mocker.patch("lib.checkin_scheduler.make_request", side_effect=CheckInError())
+    mocker.patch("lib.checkin_scheduler.make_request", side_effect=RequestError())
     mock_failed_reservation_retrieval = mocker.patch.object(
         NotificationHandler, "failed_reservation_retrieval"
     )
@@ -184,15 +189,27 @@ def test_flight_is_scheduled_returns_true_if_flight_is_already_scheduled(
     ["flight_info", "flight_time"],
     [
         (
-            {"departureAirport": {"name": None}, "arrivalAirport": {"name": None}},
+            {
+                "departureAirport": {"name": None},
+                "arrivalAirport": {"name": None},
+                "departureTime": None,
+            },
             datetime(1999, 12, 30),
         ),
         (
-            {"departureAirport": {"name": "test"}, "arrivalAirport": {"name": None}},
+            {
+                "departureAirport": {"name": "test"},
+                "arrivalAirport": {"name": None},
+                "departureTime": None,
+            },
             datetime(1999, 12, 31),
         ),
         (
-            {"departureAirport": {"name": None}, "arrivalAirport": {"name": "test"}},
+            {
+                "departureAirport": {"name": None},
+                "arrivalAirport": {"name": "test"},
+                "departureTime": None,
+            },
             datetime(1999, 12, 31),
         ),
     ],

@@ -5,8 +5,8 @@ from typing import TYPE_CHECKING, Any, Dict, List
 
 from .checkin_handler import CheckInHandler
 from .flight import Flight
-from .general import CheckInError, make_request
 from .log import get_logger
+from .utils import RequestError, make_request
 from .webdriver import WebDriver
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -87,7 +87,7 @@ class CheckInScheduler:
         try:
             logger.debug("Retrieving reservation info from confirmation number")
             response = make_request("GET", site, self.headers, info)
-        except CheckInError as err:
+        except RequestError as err:
             logger.debug("Failed to retrieve reservation info. Error: %s. Exiting", err)
             self.notification_handler.failed_reservation_retrieval(err, confirmation_number)
             return []

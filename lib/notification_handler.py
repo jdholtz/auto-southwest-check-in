@@ -5,13 +5,14 @@ from typing import TYPE_CHECKING, Any, Dict, List
 import apprise
 
 from .flight import Flight
-from .general import CheckInError, LoginError, NotificationLevel
 from .log import get_logger
+from .utils import LoginError, NotificationLevel, RequestError
 
 if TYPE_CHECKING:  # pragma: no cover
     from .flight_retriever import FlightRetriever
 
 MANUAL_CHECKIN_URL = "https://mobile.southwest.com/check-in"
+MANAGE_RESERVATION_URL = "https://mobile.southwest.com/view-reservation"
 logger = get_logger(__name__)
 
 
@@ -57,7 +58,7 @@ class NotificationHandler:
         logger.debug("Sending new flights notification")
         self.send_notification(flight_schedule_message, NotificationLevel.INFO)
 
-    def failed_reservation_retrieval(self, error: CheckInError, confirmation_number: str) -> None:
+    def failed_reservation_retrieval(self, error: RequestError, confirmation_number: str) -> None:
         error_message = (
             f"Failed to retrieve reservation for {self._get_account_name()} "
             f"with confirmation number {confirmation_number}. Reason: {error}.\n"
@@ -90,7 +91,7 @@ class NotificationHandler:
         logger.debug("Sending successful check-in notification...")
         self.send_notification(success_message, NotificationLevel.INFO)
 
-    def failed_checkin(self, error: CheckInError, flight: Flight) -> None:
+    def failed_checkin(self, error: RequestError, flight: Flight) -> None:
         error_message = (
             f"Failed to check in to flight {flight.confirmation_number} for "
             f"{self._get_account_name()}. Reason: {error}.\nCheck in at this url: "
@@ -98,3 +99,12 @@ class NotificationHandler:
         )
         logger.debug("Sending failed check-in notification...")
         self.send_notification(error_message, NotificationLevel.ERROR)
+
+    def lower_fare(self, flight: Flight, price_info: str) -> None:
+        message = (
+            f"Found lower fare of {price_info} for flight {flight.confirmation_number} "
+            f"from '{flight.departure_airport}' to '{flight.destination_airport}' for "
+            f"{self._get_account_name()}!\nManage your reservation here: {MANAGE_RESERVATION_URL}\n"
+        )
+        logger.debug("Sending lower fare notification...")
+        self.send_notification(message, NotificationLevel.INFO)
