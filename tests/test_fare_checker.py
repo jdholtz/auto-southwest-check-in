@@ -8,7 +8,7 @@ from lib.fare_checker import BOOKING_URL, FareChecker
 from lib.flight import Flight
 from lib.flight_retriever import FlightRetriever
 from lib.notification_handler import NotificationHandler
-from lib.utils import CompanionError
+from lib.utils import FlightChangeError
 
 # This needs to be accessed to be tested
 # pylint: disable=protected-access
@@ -144,6 +144,23 @@ def test_get_change_flight_page_retrieves_change_flight_page(
     assert call_args[3] == "query"
 
 
+def test_get_change_flight_page_raises_exception_when_flight_cannot_be_changed(
+    mocker: MockerFixture, test_flight: Flight
+) -> None:
+    reservation_info = {
+        "viewReservationViewPage": {
+            "greyBoxMessage": None,
+            "bounds": ["bound_one", "bound_two"],
+            "_links": {"change": None},
+        }
+    }
+    mocker.patch("lib.fare_checker.make_request", return_value=reservation_info)
+
+    fare_checker = FareChecker(FlightRetriever(Config()))
+    with pytest.raises(FlightChangeError):
+        fare_checker._get_change_flight_page(test_flight)
+
+
 def test_get_search_query_returns_the_correct_query_for_one_way(test_flight: Flight) -> None:
     bound_one = {
         "originalDate": "1/1",
@@ -212,19 +229,17 @@ def test_get_search_query_returns_the_correct_query_for_round_trip(test_flight: 
 
 
 def test_check_for_companion_raises_exception_when_a_companion_is_detected() -> None:
-    flight_page = {
-        "viewReservationViewPage": {
-            "greyBoxMessage": {
-                "body": (
-                    "In order to change or cancel, you must first cancel the associated "
-                    "companion reservation."
-                )
-            }
+    reservation_info = {
+        "greyBoxMessage": {
+            "body": (
+                "In order to change or cancel, you must first cancel the associated "
+                "companion reservation."
+            )
         }
     }
 
-    with pytest.raises(CompanionError):
-        FareChecker._check_for_companion(flight_page)
+    with pytest.raises(FlightChangeError):
+        FareChecker._check_for_companion(reservation_info)
 
 
 @pytest.mark.parametrize(
@@ -232,9 +247,8 @@ def test_check_for_companion_raises_exception_when_a_companion_is_detected() -> 
     [{"greyBoxMessage": None}, {"greyBoxMessage": {}}, {"greyBoxMessage": {"body": ""}}],
 )
 def test_check_for_companion_passes_when_no_companion_exists(reservation: Dict[str, Any]) -> None:
-    flight_page = {"viewReservationViewPage": reservation}
     # It will throw an exception if the test does not pass
-    FareChecker._check_for_companion(flight_page)
+    FareChecker._check_for_companion(reservation)
 
 
 def test_get_matching_fare_returns_the_correct_fare() -> None:

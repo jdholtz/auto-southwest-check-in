@@ -8,7 +8,7 @@ from .config import Config
 from .fare_checker import FareChecker
 from .log import get_logger
 from .notification_handler import NotificationHandler
-from .utils import CompanionError, LoginError, RequestError
+from .utils import FlightChangeError, LoginError, RequestError
 from .webdriver import WebDriver
 
 logger = get_logger(__name__)
@@ -78,10 +78,10 @@ class FlightRetriever:
                 fare_checker.check_flight_price(flight)
             except RequestError as err:
                 logger.error("Requesting error during fare check. %s. Skipping...", err)
-            except CompanionError:
-                logger.debug("Fare check is not supported with companion passes. Skipping...")
-            except Exception as e:
-                logger.exception("Unexpected error during fare check: %s", repr(e))
+            except FlightChangeError as err:
+                logger.debug("%s. Skipping fare check", err)
+            except Exception as err:
+                logger.exception("Unexpected error during fare check: %s", repr(err))
 
     def _smart_sleep(self, previous_time: datetime) -> None:
         """

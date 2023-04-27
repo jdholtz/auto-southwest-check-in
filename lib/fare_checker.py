@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Union
 from .checkin_scheduler import VIEW_RESERVATION_URL
 from .flight import Flight
 from .log import get_logger
-from .utils import CompanionError, make_request
+from .utils import FlightChangeError, make_request
 
 if TYPE_CHECKING:  # pragma: no cover
     from .flight_retriever import FlightRetriever
@@ -84,15 +84,21 @@ class FareChecker:
         }
         site = VIEW_RESERVATION_URL + flight.confirmation_number
         response = make_request("GET", site, self.headers, info, max_attempts=7)
-        fare_type_bounds = response["viewReservationViewPage"]["bounds"]
+        reservation_info = response["viewReservationViewPage"]
+        fare_type_bounds = reservation_info["bounds"]
 
         # Ensure the flight does not have a companion pass connected to it
         # as companion passes are not supported.
-        self._check_for_companion(response)
+        self._check_for_companion(reservation_info)
 
         # Next, get the search information needed to change the flight
         logger.debug("Retrieving search information for the current flight")
-        info = response["viewReservationViewPage"]["_links"]["change"]
+        info = reservation_info["_links"]["change"]
+
+        # The change link does not exist, so skip fare checking for this flight
+        if info is None:
+            raise FlightChangeError("Flight cannot be changed online")
+
         site = BOOKING_URL + info["href"]
         response = make_request("GET", site, self.headers, info["query"], max_attempts=7)
 
@@ -124,16 +130,14 @@ class FareChecker:
         return dict(zip(bounds, search_terms))
 
     @staticmethod
-    def _check_for_companion(flight_page: JSON) -> None:
-        grey_box_message = flight_page["viewReservationViewPage"]["greyBoxMessage"]
+    def _check_for_companion(reservation_info: JSON) -> None:
+        grey_box_message = reservation_info["greyBoxMessage"]
         if (
             grey_box_message
             and "body" in grey_box_message
             and "companion" in grey_box_message["body"]
         ):
-            raise CompanionError(
-                "A companion has been added to this flight, so the fare price cannot be checked"
-            )
+            raise FlightChangeError("Fare check is not supported with companion passes")
 
     @staticmethod
     def _get_matching_fare(fares: JSON, fare_type: str) -> JSON:

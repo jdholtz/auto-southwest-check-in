@@ -48,8 +48,8 @@ class LoginError(Exception):
     pass
 
 
-# Make a custom exception when a companion pass is detected
-class CompanionError(Exception):
+# Make a custom exception for flights that cannot be changed
+class FlightChangeError(Exception):
     pass
 
 
