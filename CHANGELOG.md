@@ -2,6 +2,28 @@
 When upgrading to a new version, make sure to follow the directions under the "Upgrading" header of the corresponding version.
 If there is no "Upgrading" header for that version, no post-upgrade actions need to be performed.
 
+## Upcoming
+
+### New features
+- Add fare checker ([#73](https://github.com/jdholtz/auto-southwest-check-in/pull/73))
+    - Improvements and fixes by [@fusionneo](https://github.com/fusionneo)
+    - This is currently in beta testing and can be enabled with the
+    [check_fares](CONFIGURATION.md#fare-check) configuration option
+
+### Improvements
+- Improve webdriver speed and reliability
+([#76](https://github.com/jdholtz/auto-southwest-check-in/pull/76)
+by [@fusionneo](https://github.com/fusionneo))
+
+### Bug Fixes
+- Remove the user agent header for the webdriver
+([#58](https://github.com/jdholtz/auto-southwest-check-in/issues/58) and
+[#80](https://github.com/jdholtz/auto-southwest-check-in/issues/80))
+
+### Upgrading
+Upgrade the dependencies to the latest versions by running `pip install -r requirements.txt`
+
+
 ## 3.1 (2023-03-25)
 
 ### New features
