@@ -24,7 +24,7 @@ def mock_config(mocker: MockerFixture) -> None:
 def test_flight_retriever_monitors_flights_continuously(mocker: MockerFixture) -> None:
     # Since the monitor_flights function runs in an infinite loop, throw an Exception
     # when the sleep function is called a second time to break out of the loop.
-    mocker.patch.object(FlightRetriever, "_smart_sleep", side_effect=["", Exception])
+    mocker.patch.object(FlightRetriever, "_smart_sleep", side_effect=["", KeyboardInterrupt])
     mock_schedule_reservations = mocker.patch.object(FlightRetriever, "_schedule_reservations")
     mock_remove_departed_flights = mocker.patch.object(CheckInScheduler, "remove_departed_flights")
     mock_check_flight_fares = mocker.patch.object(FlightRetriever, "_check_flight_fares")
@@ -33,7 +33,7 @@ def test_flight_retriever_monitors_flights_continuously(mocker: MockerFixture) -
     test_retriever = FlightRetriever(Config())
     test_retriever.checkin_scheduler.flights = ["test_flight"]
 
-    with pytest.raises(Exception):
+    with pytest.raises(KeyboardInterrupt):
         test_retriever.monitor_flights([{"test": "flight"}])
 
     mock_schedule_reservations.assert_called_once_with([{"test": "flight"}])
@@ -145,7 +145,7 @@ def test_flight_retriever_smart_sleeps(mocker: MockerFixture) -> None:
 def test_account_FR_monitors_the_account_continuously(mocker: MockerFixture) -> None:
     # Since the monitor_account function runs in an infinite loop, throw an Exception
     # when the sleep function is called a second time to break out of the loop.
-    mocker.patch.object(FlightRetriever, "_smart_sleep", side_effect=["", Exception])
+    mocker.patch.object(FlightRetriever, "_smart_sleep", side_effect=["", KeyboardInterrupt])
     mock_get_flights = mocker.patch.object(AccountFlightRetriever, "_get_flights")
     mock_schedule_reservations = mocker.patch.object(FlightRetriever, "_schedule_reservations")
     mock_remove_departed_flights = mocker.patch.object(CheckInScheduler, "remove_departed_flights")
@@ -153,7 +153,7 @@ def test_account_FR_monitors_the_account_continuously(mocker: MockerFixture) -> 
 
     test_retriever = AccountFlightRetriever(Config(), "", "")
 
-    with pytest.raises(Exception):
+    with pytest.raises(KeyboardInterrupt):
         test_retriever.monitor_account()
 
     assert mock_get_flights.call_count == 2
