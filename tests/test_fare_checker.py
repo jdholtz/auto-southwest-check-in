@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 import pytest
 from pytest_mock import MockerFixture
@@ -12,6 +12,8 @@ from lib.utils import FlightChangeError
 
 # This needs to be accessed to be tested
 # pylint: disable=protected-access
+
+JSON = Dict[str, Any]
 
 
 # Don't read the config file
@@ -246,7 +248,7 @@ def test_check_for_companion_raises_exception_when_a_companion_is_detected() -> 
     "reservation",
     [{"greyBoxMessage": None}, {"greyBoxMessage": {}}, {"greyBoxMessage": {"body": ""}}],
 )
-def test_check_for_companion_passes_when_no_companion_exists(reservation: Dict[str, Any]) -> None:
+def test_check_for_companion_passes_when_no_companion_exists(reservation: JSON) -> None:
     # It will throw an exception if the test does not pass
     FareChecker._check_for_companion(reservation)
 
@@ -256,17 +258,28 @@ def test_get_matching_fare_returns_the_correct_fare() -> None:
         {"_meta": {"fareProductId": "wrong_fare"}, "priceDifference": "fake_price"},
         {"_meta": {"fareProductId": "right_fare"}, "priceDifference": "price"},
     ]
-    fare_price = FareChecker._get_matching_fare(fares, "right_fare")
+    fare_checker = FareChecker(FlightRetriever(Config()))
+    fare_price = fare_checker._get_matching_fare(fares, "right_fare")
     assert fare_price == "price"
 
 
-def test_get_matching_fare_returns_default_price_when_price_is_not_available() -> None:
-    fares = [{"_meta": {"fareProductId": "right_fare"}}]
-    fare_price = FareChecker._get_matching_fare(fares, "right_fare")
+@pytest.mark.parametrize("fares", [None, [{"_meta": {"fareProductId": "right_fare"}}]])
+def test_get_matching_fare_returns_default_price_when_price_is_not_available(
+    fares: List[JSON],
+) -> None:
+    fare_checker = FareChecker(FlightRetriever(Config()))
+    fare_price = fare_checker._get_matching_fare(fares, "right_fare")
     assert fare_price == {"amount": 0, "currencyCode": "USD"}
 
 
 def test_get_matching_fare_raises_exception_when_fare_does_not_exist() -> None:
     fares = [{"_meta": {"fareProductId": "wrong_fare"}}]
+    fare_checker = FareChecker(FlightRetriever(Config()))
     with pytest.raises(KeyError):
-        FareChecker._get_matching_fare(fares, "right_fare")
+        fare_checker._get_matching_fare(fares, "right_fare")
+
+
+def test_unavailable_fare_returns_default_price() -> None:
+    fare_checker = FareChecker(FlightRetriever(Config()))
+    fare_price = fare_checker._unavailable_fare("fare")
+    assert fare_price == {"amount": 0, "currencyCode": "USD"}
