@@ -46,7 +46,10 @@ class FareChecker:
 
         # Get the fares from the same flight
         for new_flight in flights:
-            if new_flight["departureTime"] == flight.local_departure_time:
+            if (
+                new_flight["departureTime"] == flight.local_departure_time
+                and new_flight["arrivalTime"] == flight.local_arrival_time
+            ):
                 return self._get_matching_fare(new_flight["fares"], fare_type)
 
     def _get_matching_flights(self, flight: Flight) -> Union[List[JSON], str]:

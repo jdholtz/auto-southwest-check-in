@@ -31,6 +31,7 @@ def test_flight(mocker: MockerFixture) -> Flight:
         "departureAirport": {"name": None},
         "arrivalAirport": {"name": None},
         "departureTime": None,
+        "arrivalTime": None,
     }
     return Flight(flight_info, "")
 
@@ -193,6 +194,7 @@ def test_flight_is_scheduled_returns_true_if_flight_is_already_scheduled(
                 "departureAirport": {"name": None},
                 "arrivalAirport": {"name": None},
                 "departureTime": None,
+                "arrivalTime": None,
             },
             datetime(1999, 12, 30),
         ),
@@ -201,6 +203,7 @@ def test_flight_is_scheduled_returns_true_if_flight_is_already_scheduled(
                 "departureAirport": {"name": "test"},
                 "arrivalAirport": {"name": None},
                 "departureTime": None,
+                "arrivalTime": None,
             },
             datetime(1999, 12, 31),
         ),
@@ -209,6 +212,7 @@ def test_flight_is_scheduled_returns_true_if_flight_is_already_scheduled(
                 "departureAirport": {"name": None},
                 "arrivalAirport": {"name": "test"},
                 "departureTime": None,
+                "arrivalTime": None,
             },
             datetime(1999, 12, 31),
         ),

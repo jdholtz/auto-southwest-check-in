@@ -18,6 +18,7 @@ def test_flight() -> Flight:
         "departureAirport": {"name": None},
         "arrivalAirport": {"name": None},
         "departureTime": None,
+        "arrivalTime": None,
     }
 
     # Needs to be mocked so it isn't run only when Flight is instantiated

@@ -22,7 +22,10 @@ class Flight:
         self.departure_airport = flight_info["departureAirport"]["name"]
         self.destination_airport = flight_info["arrivalAirport"]["name"]
         self.departure_time = self._get_flight_time(flight_info)
+
+        # Needed for the fare checker
         self.local_departure_time = flight_info["departureTime"]
+        self.local_arrival_time = flight_info["arrivalTime"]
 
     def _get_flight_time(self, flight: Dict[str, Any]) -> datetime:
         flight_date = f"{flight['departureDate']} {flight['departureTime']}"
