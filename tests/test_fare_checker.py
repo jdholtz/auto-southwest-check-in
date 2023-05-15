@@ -29,6 +29,7 @@ def test_flight(mocker: MockerFixture) -> Flight:
         "departureAirport": {"name": None},
         "arrivalAirport": {"name": None},
         "departureTime": None,
+        "arrivalTime": None,
     }
     return Flight(flight_info, "")
 
@@ -61,8 +62,8 @@ def test_get_flight_price_gets_flight_price_matching_current_flight(
     mocker: MockerFixture, test_flight: Flight
 ) -> None:
     flights = [
-        {"departureTime": "10:30"},
-        {"departureTime": "11:30", "fares": ["fare_one", "fare_two"]},
+        {"departureTime": "11:30", "arrivalTime": "14:00"},
+        {"departureTime": "11:30", "arrivalTime": "13:30", "fares": ["fare_one", "fare_two"]},
     ]
     mocker.patch.object(FareChecker, "_get_matching_flights", return_value=(flights, "test_fare"))
     mock_get_matching_fare = mocker.patch.object(
@@ -70,6 +71,7 @@ def test_get_flight_price_gets_flight_price_matching_current_flight(
     )
 
     test_flight.local_departure_time = "11:30"
+    test_flight.local_arrival_time = "13:30"
     fare_checker = FareChecker(FlightRetriever(Config()))
     price = fare_checker._get_flight_price(test_flight)
 
