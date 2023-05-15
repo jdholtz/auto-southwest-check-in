@@ -3,6 +3,7 @@ from unittest import mock
 
 import pytest
 from pytest_mock import MockerFixture
+from selenium.common.exceptions import WebDriverException
 from seleniumwire.request import Request, Response
 
 from lib.checkin_scheduler import CheckInScheduler
@@ -153,10 +154,29 @@ def test_get_flights_only_returns_flight_trip_type(
 
 @pytest.mark.usefixtures("mock_get_options")
 def test_get_driver_returns_a_webdriver_with_one_request(mocker: MockerFixture) -> None:
+    mock_init_driver = mocker.patch.object(WebDriver, "_init_driver")
     mock_checkin_scheduler = mocker.patch("lib.checkin_scheduler.CheckInScheduler")
     driver = WebDriver(mock_checkin_scheduler)._get_driver()
-    assert isinstance(driver, mock.Mock)
+
+    mock_init_driver.assert_called_once()
     assert driver.get.call_count == 1
+
+
+@pytest.mark.usefixtures("mock_get_options")
+def test_init_driver_initializes_the_webdriver_correctly(mocker: MockerFixture) -> None:
+    mock_checkin_scheduler = mocker.patch("lib.checkin_scheduler.CheckInScheduler")
+    driver = WebDriver(mock_checkin_scheduler)._init_driver()
+    assert isinstance(driver, mock.Mock)
+
+
+@pytest.mark.usefixtures("mock_get_options")
+def test_init_driver_raises_error_when_webdriver_fails_to_initialize(mocker: MockerFixture) -> None:
+    mock_chrome = mocker.patch("lib.webdriver.Chrome", side_effect=WebDriverException)
+    mock_checkin_scheduler = mocker.patch("lib.checkin_scheduler.CheckInScheduler")
+    with pytest.raises(RuntimeError):
+        WebDriver(mock_checkin_scheduler)._init_driver()
+
+    assert mock_chrome.call_count == 3
 
 
 @pytest.mark.usefixtures("mock_get_options")

@@ -137,14 +137,7 @@ class WebDriver:
 
     def _get_driver(self) -> Chrome:
         logger.debug("Starting webdriver for current session")
-        chromedriver_path = self.checkin_scheduler.flight_retriever.config.chromedriver_path
-        chrome_version = self.checkin_scheduler.flight_retriever.config.chrome_version
-        driver = Chrome(
-            driver_executable_path=chromedriver_path,
-            options=self.options,
-            seleniumwire_options=self.seleniumwire_options,
-            version_main=chrome_version,
-        )
+        driver = self._init_driver()
 
         # Delete any requests that could have been made while the driver was being initialized
         del driver.requests
@@ -155,6 +148,36 @@ class WebDriver:
         logger.debug("Loading Southwest Check-In page")
         driver.get(CHECKIN_URL)
         return driver
+
+    def _init_driver(self) -> Chrome:
+        """
+        Attempt to initialize the driver multiple times. This is necessary because random
+        initializations can occasionally occur. Trying multiple times makes the initialization
+        more reliable.
+        """
+        chromedriver_path = self.checkin_scheduler.flight_retriever.config.chromedriver_path
+        chrome_version = self.checkin_scheduler.flight_retriever.config.chrome_version
+
+        max_attempts = 3
+        attempts = 0
+        while attempts < max_attempts:
+            try:
+                driver = Chrome(
+                    driver_executable_path=chromedriver_path,
+                    options=self.options,
+                    seleniumwire_options=self.seleniumwire_options,
+                    version_main=chrome_version,
+                )
+                return driver
+            except Exception as err:
+                logger.debug("An exception occured when initializing the webdriver: %s", repr(err))
+                attempts += 1
+                logger.debug("%d more attempts", max_attempts - attempts)
+                error = err
+
+        raise RuntimeError(
+            f"Failed to initialize the webdriver after {max_attempts} attempts"
+        ) from error
 
     def _wait_for_response(self, driver: Chrome, response_num: int) -> Response:
         """
