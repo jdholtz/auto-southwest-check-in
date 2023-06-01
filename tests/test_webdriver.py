@@ -25,8 +25,8 @@ def mock_flight_retriever(mocker: MockerFixture) -> mock.Mock:
 
 
 @pytest.fixture()
-def mock_get_options(mocker: MockerFixture):
-    mocker.patch.object(WebDriver, "_get_options")
+def mock_get_options(mocker: MockerFixture) -> mock.Mock:
+    return mocker.patch.object(WebDriver, "_get_options")
 
 
 @pytest.mark.usefixtures("mock_get_options")
@@ -169,14 +169,16 @@ def test_init_driver_initializes_the_webdriver_correctly(mocker: MockerFixture) 
     assert isinstance(driver, mock.Mock)
 
 
-@pytest.mark.usefixtures("mock_get_options")
-def test_init_driver_raises_error_when_webdriver_fails_to_initialize(mocker: MockerFixture) -> None:
+def test_init_driver_raises_error_when_webdriver_fails_to_initialize(
+    mocker: MockerFixture, mock_get_options: mock.Mock
+) -> None:
     mock_chrome = mocker.patch("lib.webdriver.Chrome", side_effect=WebDriverException)
     mock_checkin_scheduler = mocker.patch("lib.checkin_scheduler.CheckInScheduler")
     with pytest.raises(RuntimeError):
         WebDriver(mock_checkin_scheduler)._init_driver()
 
     assert mock_chrome.call_count == 3
+    assert mock_get_options.call_count == 3
 
 
 @pytest.mark.usefixtures("mock_get_options")

@@ -48,7 +48,6 @@ class WebDriver:
 
     def __init__(self, checkin_scheduler: CheckInScheduler) -> None:
         self.checkin_scheduler = checkin_scheduler
-        self.options = self._get_options()
         self.seleniumwire_options = {"disable_encoding": True}
 
     def set_headers(self) -> None:
@@ -164,13 +163,17 @@ class WebDriver:
             try:
                 driver = Chrome(
                     driver_executable_path=chromedriver_path,
-                    options=self.options,
+                    options=self._get_options(),
                     seleniumwire_options=self.seleniumwire_options,
                     version_main=chrome_version,
                 )
                 return driver
             except Exception as err:
-                logger.debug("An exception occured when initializing the webdriver: %s", repr(err))
+                logger.debug(
+                    "An exception occured when initializing the webdriver: Name: %s. Error: %s",
+                    type(err).__name__,
+                    err,
+                )
                 attempts += 1
                 logger.debug("%d more attempts", max_attempts - attempts)
                 error = err
