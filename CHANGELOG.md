@@ -2,7 +2,7 @@
 When upgrading to a new version, make sure to follow the directions under the "Upgrading" header of the corresponding version.
 If there is no "Upgrading" header for that version, no post-upgrade actions need to be performed.
 
-## Upcoming
+## 4.1 (2023-06-04)
 
 ### Improvements
 - Make the webdriver initialization more resistant to random issues
