@@ -50,7 +50,7 @@ def test_get_flights_raises_exception_on_failed_login(
 
     mocker.patch("lib.webdriver.WebDriverWait")
     mocker.patch.object(WebDriver, "_get_driver", return_value=mock_driver)
-    mocker.patch.object(WebDriver, "_handle_login_error", return_value=LoginError())
+    mocker.patch.object(WebDriver, "_handle_login_error", return_value=LoginError("", 400))
     mock_wait_for_response = mocker.patch.object(
         WebDriver, "_wait_for_response", return_value=request_one.response
     )

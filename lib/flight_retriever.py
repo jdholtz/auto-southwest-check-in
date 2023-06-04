@@ -11,6 +11,8 @@ from .notification_handler import NotificationHandler
 from .utils import FlightChangeError, LoginError, RequestError
 from .webdriver import WebDriver
 
+BAD_REQUESTS_CODE = 429
+
 logger = get_logger(__name__)
 
 
@@ -134,6 +136,14 @@ class AccountFlightRetriever(FlightRetriever):
         try:
             flights = webdriver.get_flights(self)
         except LoginError as err:
+            if err.status_code == BAD_REQUESTS_CODE:
+                # Don't exit when a Bad Request error happens. Instead, just skip the retrieval
+                # until the next time.
+                logger.warning(
+                    "Encountered a bad request error while logging in. Skipping flight retrieval"
+                )
+                return []
+
             logger.debug("Error logging in. %s. Exiting", err)
             self.notification_handler.failed_login(err)
             sys.exit()

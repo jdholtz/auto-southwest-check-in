@@ -45,7 +45,9 @@ class RequestError(Exception):
 
 # Make a custom exception when a login fails
 class LoginError(Exception):
-    pass
+    def __init__(self, reason: str, status_code: int) -> None:
+        super().__init__(f"Reason: {reason}. Status code: {status_code}")
+        self.status_code = status_code
 
 
 # Make a custom exception for flights that cannot be changed

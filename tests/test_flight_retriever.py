@@ -6,7 +6,7 @@ from pytest_mock import MockerFixture
 from lib.checkin_scheduler import CheckInScheduler
 from lib.config import Config
 from lib.fare_checker import FareChecker
-from lib.flight_retriever import AccountFlightRetriever, FlightRetriever
+from lib.flight_retriever import BAD_REQUESTS_CODE, AccountFlightRetriever, FlightRetriever
 from lib.notification_handler import NotificationHandler
 from lib.utils import FlightChangeError, LoginError, RequestError
 from lib.webdriver import WebDriver
@@ -184,8 +184,15 @@ def test_account_FR_checks_flights_once_if_retrieval_interval_is_zero(
     mock_check_flight_fares.assert_called_once()
 
 
+def test_get_flights_skips_retrieval_on_bad_request(mocker: MockerFixture) -> None:
+    mocker.patch.object(WebDriver, "get_flights", side_effect=LoginError("", BAD_REQUESTS_CODE))
+    test_retriever = AccountFlightRetriever(Config(), "", "")
+    flights = test_retriever._get_flights()
+    assert len(flights) == 0
+
+
 def test_get_flights_exits_on_login_error(mocker: MockerFixture) -> None:
-    mocker.patch.object(WebDriver, "get_flights", side_effect=LoginError)
+    mocker.patch.object(WebDriver, "get_flights", side_effect=LoginError("", 400))
     mock_failed_login = mocker.patch.object(NotificationHandler, "failed_login")
 
     with pytest.raises(SystemExit):

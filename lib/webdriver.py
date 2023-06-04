@@ -226,7 +226,7 @@ class WebDriver:
             logger.debug("Logging in failed for an unknown reason")
             reason = "Unknown"
 
-        return LoginError(f"Reason: {reason}. Status code: {response.status_code}")
+        return LoginError(reason, response.status_code)
 
     @staticmethod
     def _get_needed_headers(request_headers: Dict[str, Any]) -> Dict[str, Any]:

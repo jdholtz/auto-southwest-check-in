@@ -4,14 +4,18 @@ If there is no "Upgrading" header for that version, no post-upgrade actions need
 
 ## Upcoming
 
+### Improvements
+- Make the webdriver initialization more resistant to random issues
+([#89](https://github.com/jdholtz/auto-southwest-check-in/issues/89) and
+[#90](https://github.com/jdholtz/auto-southwest-check-in/issues/90))
+- Skip flight retrieval when a bad request is encountered. Previously,
+the script would exit
+
 ### Bug Fixes
 - Handle cases where no fares are available for a flight
 ([#86](https://github.com/jdholtz/auto-southwest-check-in/issues/86))
 - Ensure the correct flight's fares are checked
 ([#92](https://github.com/jdholtz/auto-southwest-check-in/issues/92))
-- Make the webdriver initialization more resistant to random issues
-([#89](https://github.com/jdholtz/auto-southwest-check-in/issues/89) and
-[#90](https://github.com/jdholtz/auto-southwest-check-in/issues/90))
 
 
 ## 4.0 (2023-05-06)
