@@ -30,7 +30,7 @@ def init_logging(logger: logging.Logger) -> None:
     logger.setLevel(logging.DEBUG)  # The minimum level for every handler
 
     formatter = logging.Formatter(
-        "%(asctime)s %(levelname)s %(processName)s[%(module)s]: %(message)s",
+        "%(asctime)s %(levelname)s %(processName)s[%(module)s:%(lineno)d]: %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
