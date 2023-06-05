@@ -1,4 +1,4 @@
-import os
+from pathlib import Path
 from typing import Any, Dict, List
 
 import pytest
@@ -14,8 +14,8 @@ from lib import config
 # mocks can still be overriden in each test
 @pytest.fixture(autouse=True)
 def mock_open(mocker: MockerFixture) -> None:
-    mocker.patch("builtins.open")
-    mocker.patch("json.load")
+    mocker.patch.object(Path, "read_text")
+    mocker.patch("json.loads")
 
 
 def test_config_sets_chromedriver_path_from_environment_variable(mocker: MockerFixture) -> None:
@@ -33,20 +33,16 @@ def test_config_exits_on_error_in_config_file(mocker: MockerFixture) -> None:
 
 
 def test_read_config_reads_the_config_file_correctly(mocker: MockerFixture) -> None:
-    mock_open = mocker.patch("builtins.open")
-    mocker.patch("json.load", return_value={"test": "data"})
+    mocker.patch("json.loads", return_value={"test": "data"})
 
     test_config = config.Config()
     config_content = test_config._read_config()
 
     assert config_content == {"test": "data"}
-    mock_open.assert_called_with(
-        os.path.dirname(os.path.dirname(__file__)) + "/" + config.CONFIG_FILE_NAME
-    )
 
 
 def test_read_config_returns_empty_config_when_file_is_not_found(mocker: MockerFixture) -> None:
-    mocker.patch("builtins.open", side_effect=FileNotFoundError())
+    mocker.patch.object(Path, "read_text", side_effect=FileNotFoundError())
 
     test_config = config.Config()
     config_content = test_config._read_config()

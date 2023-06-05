@@ -1,6 +1,7 @@
 import json
 import os
 import sys
+from pathlib import Path
 from typing import Any, Dict, List
 
 from .log import get_logger
@@ -37,13 +38,12 @@ class Config:
             sys.exit()
 
     def _read_config(self) -> JSON:
-        project_dir = os.path.dirname(os.path.dirname(__file__))
-        config_file = project_dir + "/" + CONFIG_FILE_NAME
+        project_dir = Path(__file__).parents[1]
+        config_file = project_dir / CONFIG_FILE_NAME
 
         logger.debug("Reading the configuration file")
         try:
-            with open(config_file) as file:
-                config = json.load(file)
+            config = json.loads(config_file.read_text())
         except FileNotFoundError:
             logger.debug("No configuration file found. Using defaults")
             config = {}

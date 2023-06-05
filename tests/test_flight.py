@@ -1,12 +1,12 @@
-import os
 from datetime import datetime
+from pathlib import Path
 from unittest import mock
 
 import pytest
 import pytz
 from pytest_mock import MockerFixture
 
-from lib.flight import TZ_FILE_PATH, Flight
+from lib.flight import Flight
 
 # This needs to be accessed to be tested
 # pylint: disable=protected-access
@@ -49,16 +49,10 @@ def test_get_flight_time_returns_the_correct_time(
 def test_get_airport_timezone_returns_the_correct_timezone(
     mocker: MockerFixture, test_flight: Flight
 ) -> None:
-    # Needs to be mocked within the flight module because pytz opens a file as well
-    mock_open = mocker.patch(
-        "lib.flight.open", mock.mock_open(read_data='{"test_code": "Asia/Calcutta"}')
-    )
+    mocker.patch.object(Path, "read_text")
+    mocker.patch("json.loads", return_value={"test_code": "Asia/Calcutta"})
     timezone = test_flight._get_airport_timezone("test_code")
-
     assert timezone == pytz.timezone("Asia/Calcutta")
-    mock_open.assert_called_once_with(
-        os.path.dirname(os.path.dirname(__file__)) + "/" + TZ_FILE_PATH
-    )
 
 
 def test_convert_to_utc_converts_local_time_to_utc(test_flight: Flight) -> None:

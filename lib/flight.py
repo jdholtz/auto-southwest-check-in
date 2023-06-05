@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import json
-import os
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Dict
 
 import pytz
@@ -37,9 +37,9 @@ class Flight:
 
     @staticmethod
     def _get_airport_timezone(airport_code: str) -> Any:
-        project_dir = os.path.dirname(os.path.dirname(__file__))
-        with open(project_dir + "/" + TZ_FILE_PATH) as tz:
-            airport_timezones = json.load(tz)
+        project_dir = Path(__file__).parents[1]
+        tz_file = project_dir / TZ_FILE_PATH
+        airport_timezones = json.loads(tz_file.read_text())
 
         airport_timezone = pytz.timezone(airport_timezones[airport_code])
         return airport_timezone

@@ -3,6 +3,7 @@ import logging.handlers
 import multiprocessing
 import os
 import sys
+from pathlib import Path
 
 LOG_FILE = "logs/auto-southwest-check-in.log"
 LOG_LEVEL = logging.INFO
@@ -25,7 +26,7 @@ def init_main_logging() -> None:
 def init_logging(logger: logging.Logger) -> None:
     """Sets the configuration for the provided logger"""
     # Make the logging directory if it doesn't exist
-    os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
+    os.makedirs(Path(LOG_FILE).parent, exist_ok=True)
 
     logger.setLevel(logging.DEBUG)  # The minimum level for every handler
 
