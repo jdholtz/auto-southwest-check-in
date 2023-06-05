@@ -64,8 +64,7 @@ class CheckInHandler:
         logger.debug("Sleeping until check-in: %d seconds...", sleep_time)
         time.sleep(sleep_time)
 
-    @staticmethod
-    def safe_sleep(total_sleep_time: int) -> None:
+    def safe_sleep(self, total_sleep_time: int) -> None:
         """
         If the total sleep time is too long, an overflow error could occur.
         Therefore, the script will continuously sleep in two week periods

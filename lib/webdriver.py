@@ -216,8 +216,7 @@ class WebDriver:
 
         return options
 
-    @staticmethod
-    def _handle_login_error(response: Response) -> LoginError:
+    def _handle_login_error(self, response: Response) -> LoginError:
         body = json.loads(response.body)
         if body.get("code") == INVALID_CREDENTIALS_CODE:
             logger.debug("Invalid credentials provided when attempting to log in")
@@ -228,8 +227,7 @@ class WebDriver:
 
         return LoginError(reason, response.status_code)
 
-    @staticmethod
-    def _get_needed_headers(request_headers: Dict[str, Any]) -> Dict[str, Any]:
+    def _get_needed_headers(self, request_headers: Dict[str, Any]) -> Dict[str, Any]:
         headers = {}
         for header in request_headers:
             if re.match(r"x-api-key|x-channel-id|user-agent|^[\w-]+?-\w$", header, re.I):
@@ -237,9 +235,8 @@ class WebDriver:
 
         return headers
 
-    @staticmethod
     def _set_account_name(
-        flight_retriever: AccountFlightRetriever, response: Dict[str, Any]
+        self, flight_retriever: AccountFlightRetriever, response: Dict[str, Any]
     ) -> None:
         flight_retriever.first_name = response["customers.userInformation.firstName"]
         flight_retriever.last_name = response["customers.userInformation.lastName"]

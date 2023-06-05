@@ -41,7 +41,6 @@ def test_set_headers_correctly_sets_needed_headers(mocker: MockerFixture) -> Non
     mock_set_headers_from_request.assert_called_once()
 
 
-@pytest.mark.usefixtures("mock_get_options")
 def test_get_flights_raises_exception_on_failed_login(
     mocker: MockerFixture, mock_driver: mock.Mock, mock_flight_retriever: mock.Mock
 ) -> None:
@@ -65,7 +64,6 @@ def test_get_flights_raises_exception_on_failed_login(
     mock_set_headers_from_request.assert_not_called()
 
 
-@pytest.mark.usefixtures("mock_get_options")
 def test_get_flights_sets_account_name_when_it_is_not_set(
     mocker: MockerFixture, mock_driver: mock.Mock, mock_flight_retriever: mock.Mock
 ) -> None:
@@ -95,7 +93,6 @@ def test_get_flights_sets_account_name_when_it_is_not_set(
     assert flights == [{"tripType": "FLIGHT"}]
 
 
-@pytest.mark.usefixtures("mock_get_options")
 def test_get_flights_does_not_set_account_name_when_it_is_already_set(
     mocker: MockerFixture, mock_driver: mock.Mock, mock_flight_retriever: mock.Mock
 ) -> None:
@@ -124,7 +121,6 @@ def test_get_flights_does_not_set_account_name_when_it_is_already_set(
     assert flights == [{"tripType": "FLIGHT"}]
 
 
-@pytest.mark.usefixtures("mock_get_options")
 def test_get_flights_only_returns_flight_trip_type(
     mocker: MockerFixture, mock_driver: mock.Mock, mock_flight_retriever: mock.Mock
 ) -> None:
@@ -152,7 +148,6 @@ def test_get_flights_only_returns_flight_trip_type(
     assert len(flights) == 2
 
 
-@pytest.mark.usefixtures("mock_get_options")
 def test_get_driver_returns_a_webdriver_with_one_request(mocker: MockerFixture) -> None:
     mock_init_driver = mocker.patch.object(WebDriver, "_init_driver")
     mock_checkin_scheduler = mocker.patch("lib.checkin_scheduler.CheckInScheduler")
@@ -181,7 +176,6 @@ def test_init_driver_raises_error_when_webdriver_fails_to_initialize(
     assert mock_get_options.call_count == 3
 
 
-@pytest.mark.usefixtures("mock_get_options")
 @pytest.mark.parametrize(
     ["driver_requests", "request_num"],
     [
@@ -206,7 +200,6 @@ def test_wait_for_response_waits_continuously_for_response(
         webdriver._wait_for_response(mock_driver, request_num)
 
 
-@pytest.mark.usefixtures("mock_get_options")
 def test_wait_for_response_waits_for_correct_response(
     mocker: MockerFixture, mock_driver: mock.Mock
 ) -> None:
@@ -223,7 +216,6 @@ def test_wait_for_response_waits_for_correct_response(
     assert response == request_two.response
 
 
-@pytest.mark.usefixtures("mock_get_options")
 def test_set_headers_from_request_sets_the_correct_headers(
     mocker: MockerFixture, mock_driver: mock.Mock
 ) -> None:
@@ -267,7 +259,7 @@ def test_handle_login_error_handles_invalid_credentials() -> None:
         body=f'{{"code": {INVALID_CREDENTIALS_CODE}}}',
     )
 
-    error = WebDriver._handle_login_error(response)
+    error = WebDriver(None)._handle_login_error(response)
     assert "Reason: Invalid credentials" in str(error)
     assert "Status code: 400" in str(error)
 
@@ -280,7 +272,7 @@ def test_handle_login_error_handles_unknown_errors() -> None:
         body="{}",
     )
 
-    error = WebDriver._handle_login_error(response)
+    error = WebDriver(None)._handle_login_error(response)
     assert "Reason: Unknown" in str(error)
     assert "Status code: 429" in str(error)
 
@@ -298,7 +290,7 @@ def test_handle_login_error_handles_unknown_errors() -> None:
 def test_get_needed_headers_returns_matching_headers(
     original_headers: Dict[str, Any], expected_headers: Dict[str, Any]
 ) -> None:
-    headers = WebDriver._get_needed_headers(original_headers)
+    headers = WebDriver(None)._get_needed_headers(original_headers)
     assert headers == expected_headers
 
 

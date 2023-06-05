@@ -178,7 +178,8 @@ def test_get_search_query_returns_the_correct_query_for_one_way(test_flight: Fli
     }
 
     test_flight.local_departure_time = "12:00"
-    search_query = FareChecker._get_search_query(flight_page, test_flight)
+    fare_checker = FareChecker(FlightRetriever(Config()))
+    search_query = fare_checker._get_search_query(flight_page, test_flight)
 
     assert len(search_query) == 1
     assert search_query.get("outbound") == {
@@ -213,7 +214,8 @@ def test_get_search_query_returns_the_correct_query_for_round_trip(test_flight: 
     }
 
     test_flight.local_departure_time = "1:00"
-    search_query = FareChecker._get_search_query(flight_page, test_flight)
+    fare_checker = FareChecker(FlightRetriever(Config()))
+    search_query = fare_checker._get_search_query(flight_page, test_flight)
 
     assert len(search_query) == 2
     assert search_query.get("outbound") == {
@@ -242,8 +244,9 @@ def test_check_for_companion_raises_exception_when_a_companion_is_detected() -> 
         }
     }
 
+    fare_checker = FareChecker(FlightRetriever(Config()))
     with pytest.raises(FlightChangeError):
-        FareChecker._check_for_companion(reservation_info)
+        fare_checker._check_for_companion(reservation_info)
 
 
 @pytest.mark.parametrize(
@@ -251,8 +254,9 @@ def test_check_for_companion_raises_exception_when_a_companion_is_detected() -> 
     [{"greyBoxMessage": None}, {"greyBoxMessage": {}}, {"greyBoxMessage": {"body": ""}}],
 )
 def test_check_for_companion_passes_when_no_companion_exists(reservation: JSON) -> None:
+    fare_checker = FareChecker(FlightRetriever(Config()))
     # It will throw an exception if the test does not pass
-    FareChecker._check_for_companion(reservation)
+    fare_checker._check_for_companion(reservation)
 
 
 def test_get_matching_fare_returns_the_correct_fare() -> None:

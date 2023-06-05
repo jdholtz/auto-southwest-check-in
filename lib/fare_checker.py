@@ -107,8 +107,7 @@ class FareChecker:
 
         return response["changeFlightPage"], fare_type_bounds
 
-    @staticmethod
-    def _get_search_query(flight_page: JSON, flight: Flight) -> JSON:
+    def _get_search_query(self, flight_page: JSON, flight: Flight) -> JSON:
         """
         Generate the search query needed to get matching flights. The search query
         is different if the reservation is one-way vs. round-trip
@@ -132,8 +131,7 @@ class FareChecker:
         bounds = ["outbound", "inbound"]
         return dict(zip(bounds, search_terms))
 
-    @staticmethod
-    def _check_for_companion(reservation_info: JSON) -> None:
+    def _check_for_companion(self, reservation_info: JSON) -> None:
         grey_box_message = reservation_info["greyBoxMessage"]
         if (
             grey_box_message

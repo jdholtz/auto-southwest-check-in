@@ -84,12 +84,12 @@ def test_wait_for_check_in_refreshes_headers_ten_minutes_before_check_in(
 
 @pytest.mark.parametrize(["weeks", "expected_sleep_calls"], [(0, 0), (1, 1), (3, 2)])
 def test_safe_sleep_sleeps_in_intervals(
-    mocker: MockerFixture, weeks: int, expected_sleep_calls: int
+    mocker: MockerFixture, checkin_handler: CheckInHandler, weeks: int, expected_sleep_calls: int
 ) -> None:
     mock_sleep = mocker.patch("time.sleep")
 
     total_sleep_time = weeks * 7 * 24 * 60 * 60
-    CheckInHandler.safe_sleep(total_sleep_time)
+    checkin_handler.safe_sleep(total_sleep_time)
 
     assert mock_sleep.call_count == expected_sleep_calls
 

@@ -35,8 +35,7 @@ class Flight:
 
         return flight_time
 
-    @staticmethod
-    def _get_airport_timezone(airport_code: str) -> Any:
+    def _get_airport_timezone(self, airport_code: str) -> Any:
         project_dir = Path(__file__).parents[1]
         tz_file = project_dir / TZ_FILE_PATH
         airport_timezones = json.loads(tz_file.read_text())
@@ -44,8 +43,7 @@ class Flight:
         airport_timezone = pytz.timezone(airport_timezones[airport_code])
         return airport_timezone
 
-    @staticmethod
-    def _convert_to_utc(flight_date: str, airport_timezone: Any) -> datetime:
+    def _convert_to_utc(self, flight_date: str, airport_timezone: Any) -> datetime:
         flight_date = datetime.strptime(flight_date, "%Y-%m-%d %H:%M")
         flight_time = airport_timezone.localize(flight_date)
         utc_time = flight_time.astimezone(pytz.utc).replace(tzinfo=None)
