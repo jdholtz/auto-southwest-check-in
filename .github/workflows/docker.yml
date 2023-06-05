@@ -47,20 +47,24 @@ jobs:
         if: github.event_name == 'release'
         uses: docker/build-push-action@v4
         with:
-          context: ./
+          context: .
           push: true
           tags: |
             ${{ secrets.DOCKER_HUB_USERNAME }}/auto-southwest-check-in:${{ github.event.release.tag_name }}
             ${{ secrets.DOCKER_HUB_USERNAME }}/auto-southwest-check-in:latest
           platforms: linux/amd64,linux/arm64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       # Develop branch push, which builds :develop
       - name: Build and push :develop
         if: github.event_name == 'push'
         uses: docker/build-push-action@v4
         with:
-          context: ./
+          context: .
           push: true
           tags: |
             ${{ secrets.DOCKER_HUB_USERNAME }}/auto-southwest-check-in:develop
           platforms: linux/amd64,linux/arm64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
