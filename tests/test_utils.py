@@ -51,6 +51,4 @@ def test_make_request_correctly_gets_data(requests_mock: RequestMocker) -> None:
 def test_make_request_handles_malformed_URLs(requests_mock: RequestMocker) -> None:
     mock_post = requests_mock.get(utils.BASE_URL + "test/test2", status_code=200, text="{}")
     utils.make_request("GET", "/test//test2", {}, {})
-
-    last_request = mock_post.last_request
-    assert last_request.url == utils.BASE_URL + "test/test2"
+    assert mock_post.last_request.url == utils.BASE_URL + "test/test2"

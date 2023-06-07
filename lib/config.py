@@ -35,7 +35,7 @@ class Config:
         except (TypeError, json.decoder.JSONDecodeError) as err:
             print("Error in configuration file:")
             print(err)
-            sys.exit()
+            sys.exit(1)
 
     def _read_config(self) -> JSON:
         project_dir = Path(__file__).parents[1]
@@ -126,13 +126,13 @@ class Config:
             self.retrieval_interval *= 60 * 60
 
     def _parse_accounts(self, account_config: List[JSON]) -> None:
-        logger.debug("Adding %d accounts from configuration file", len(account_config))
+        logger.debug("Adding %d accounts from the configuration file", len(account_config))
         keys = ["username", "password"]
         accounts = self._parse_objects(account_config, keys, "account")
         self.accounts.extend(accounts)
 
     def _parse_flights(self, flight_config: List[JSON]) -> None:
-        logger.debug("Adding %d flights from configuration file", len(flight_config))
+        logger.debug("Adding %d flights from the configuration file", len(flight_config))
         keys = ["confirmationNumber", "firstName", "lastName"]
         flights = self._parse_objects(flight_config, keys, "flight")
         self.flights.extend(flights)

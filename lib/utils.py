@@ -34,7 +34,8 @@ def make_request(
         time.sleep(0.5)
 
     error = response.reason + " " + str(response.status_code)
-    logger.debug("Failed to make request: %s", error)
+    logger.debug("Failed to make request after %d attempts: %s", max_attempts, error)
+    logger.debug("Response body: %s", response.content.decode())
     raise RequestError(error)
 
 

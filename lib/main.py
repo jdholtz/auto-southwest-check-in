@@ -105,7 +105,7 @@ def set_up_check_in(arguments: List[str]) -> None:
         logger.debug("Flight added through CLI arguments")
     elif len(arguments) > 3:
         logger.error("Invalid arguments. For more information, try '--help'")
-        sys.exit()
+        sys.exit(2)
 
     logger.debug("Monitoring %d accounts and %d flights", len(config.accounts), len(config.flights))
     set_up_accounts(config)

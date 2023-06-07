@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, List, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Tuple
 
 from .checkin_scheduler import VIEW_RESERVATION_URL
 from .flight import Flight
@@ -52,7 +52,7 @@ class FareChecker:
             ):
                 return self._get_matching_fare(new_flight["fares"], fare_type)
 
-    def _get_matching_flights(self, flight: Flight) -> Union[List[JSON], str]:
+    def _get_matching_flights(self, flight: Flight) -> Tuple[List[JSON], str]:
         """
         Get all of the flights that match the current flight's departure airport,
         arrival airport, and departure date.
@@ -78,7 +78,7 @@ class FareChecker:
         response = make_request("POST", site, self.headers, query, max_attempts=7)
         return response["changeShoppingPage"]["flights"][bound_page]["cards"], fare_type
 
-    def _get_change_flight_page(self, flight: Flight) -> Union[JSON, JSON]:
+    def _get_change_flight_page(self, flight: Flight) -> Tuple[JSON, JSON]:
         # First, get the reservation information
         logger.debug("Fetching reservation information")
         info = {

@@ -146,7 +146,7 @@ class AccountFlightRetriever(FlightRetriever):
 
             logger.debug("Error logging in. %s. Exiting", err)
             self.notification_handler.failed_login(err)
-            sys.exit()
+            sys.exit(1)
 
         logger.debug("Successfully retrieved %d flights", len(flights))
         return flights
