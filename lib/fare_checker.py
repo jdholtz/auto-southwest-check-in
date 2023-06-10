@@ -32,10 +32,15 @@ class FareChecker:
 
         # The sign key will not exist if the price amount is 0
         sign = flight_price.get("sign", "")
-        price_info = f"{sign}{flight_price['amount']} {flight_price['currencyCode']}"
+        amount = int(flight_price["amount"])
+        price_info = f"{sign}{amount} {flight_price['currencyCode']}"
         logger.debug("Flight price change found for %s", price_info)
 
-        if sign == "-":
+        # The Southwest website can report a fare price difference of -1 USD. This is a
+        # false positive as no credit is actually received when the flight is changed.
+        # Refer to this discussion for more information:
+        # https://github.com/jdholtz/auto-southwest-check-in/discussions/102
+        if sign == "-" and amount > 1:
             # Lower fare!
             self.flight_retriever.notification_handler.lower_fare(flight, price_info)
 

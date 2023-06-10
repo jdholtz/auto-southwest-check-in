@@ -8,6 +8,12 @@ If there is no "Upgrading" header for that version, no post-upgrade actions need
 - This project is now licensed under the GPLv3 license instead of the MIT
 license
 
+### Improvements
+- Don't send lower fare notifications when the price difference is only -1 USD
+    - This is a false positive. Refer to
+    [#102](https://github.com/jdholtz/auto-southwest-check-in/discussions/102)
+    for more information
+
 
 ## 4.1 (2023-06-04)
 

@@ -45,10 +45,12 @@ def test_check_flight_price_sends_notification_on_lower_fares(mocker: MockerFixt
     mock_lower_fare_notification.assert_called_once()
 
 
+# -1 dollar fares are a false positive and are treated as a higher fare
+@pytest.mark.parametrize(["sign", "amount"], [("+", "10"), ("-", "1")])
 def test_check_flight_price_does_not_send_notifications_when_fares_are_higher(
-    mocker: MockerFixture,
+    mocker: MockerFixture, sign: str, amount: str
 ) -> None:
-    flight_price = {"sign": "+", "amount": "10", "currencyCode": "USD"}
+    flight_price = {"sign": sign, "amount": amount, "currencyCode": "USD"}
     mocker.patch.object(FareChecker, "_get_flight_price", return_value=flight_price)
     mock_lower_fare_notification = mocker.patch.object(NotificationHandler, "lower_fare")
 
