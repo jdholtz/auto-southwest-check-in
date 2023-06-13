@@ -144,7 +144,9 @@ def test_account_FR_monitors_the_account_continuously(mocker: MockerFixture) -> 
     # Since the monitor_account function runs in an infinite loop, throw an Exception
     # when the sleep function is called a second time to break out of the loop.
     mocker.patch.object(FlightRetriever, "_smart_sleep", side_effect=["", KeyboardInterrupt])
-    mock_get_flights = mocker.patch.object(AccountFlightRetriever, "_get_flights")
+    mock_get_flights = mocker.patch.object(
+        AccountFlightRetriever, "_get_flights", return_value=([], False)
+    )
     mock_schedule_reservations = mocker.patch.object(FlightRetriever, "_schedule_reservations")
     mock_check_flight_fares = mocker.patch.object(FlightRetriever, "_check_flight_fares")
 
@@ -158,11 +160,33 @@ def test_account_FR_monitors_the_account_continuously(mocker: MockerFixture) -> 
     assert mock_check_flight_fares.call_count == 2
 
 
+def test_account_FR_skips_scheduling_on_bad_request(mocker: MockerFixture) -> None:
+    # Since the monitor_account function runs in an infinite loop, throw an Exception
+    # when the sleep function is called a second time to break out of the loop.
+    mocker.patch.object(FlightRetriever, "_smart_sleep", side_effect=[KeyboardInterrupt])
+    mock_get_flights = mocker.patch.object(
+        AccountFlightRetriever, "_get_flights", return_value=([], True)
+    )
+    mock_schedule_reservations = mocker.patch.object(FlightRetriever, "_schedule_reservations")
+    mock_check_flight_fares = mocker.patch.object(FlightRetriever, "_check_flight_fares")
+
+    test_retriever = AccountFlightRetriever(Config(), "", "")
+
+    with pytest.raises(KeyboardInterrupt):
+        test_retriever.monitor_account()
+
+    assert mock_get_flights.call_count == 1
+    assert mock_schedule_reservations.call_count == 0
+    assert mock_check_flight_fares.call_count == 0
+
+
 def test_account_FR_checks_flights_once_if_retrieval_interval_is_zero(
     mocker: MockerFixture,
 ) -> None:
     mock_smart_sleep = mocker.patch.object(FlightRetriever, "_smart_sleep")
-    mock_get_flights = mocker.patch.object(AccountFlightRetriever, "_get_flights")
+    mock_get_flights = mocker.patch.object(
+        AccountFlightRetriever, "_get_flights", return_value=([], False)
+    )
     mock_schedule_reservations = mocker.patch.object(FlightRetriever, "_schedule_reservations")
     mock_check_flight_fares = mocker.patch.object(FlightRetriever, "_check_flight_fares")
 
@@ -181,8 +205,9 @@ def test_account_FR_checks_flights_once_if_retrieval_interval_is_zero(
 def test_get_flights_skips_retrieval_on_bad_request(mocker: MockerFixture) -> None:
     mocker.patch.object(WebDriver, "get_flights", side_effect=LoginError("", BAD_REQUESTS_CODE))
     test_retriever = AccountFlightRetriever(Config(), "", "")
-    flights = test_retriever._get_flights()
+    flights, skip_scheduling = test_retriever._get_flights()
     assert len(flights) == 0
+    assert skip_scheduling
 
 
 def test_get_flights_exits_on_login_error(mocker: MockerFixture) -> None:
@@ -201,6 +226,7 @@ def test_get_flights_returns_the_correct_flights(mocker: MockerFixture) -> None:
     mocker.patch.object(WebDriver, "get_flights", return_value=flights)
 
     test_retriever = AccountFlightRetriever(Config(), "", "")
-    new_flights = test_retriever._get_flights()
+    new_flights, skip_scheduling = test_retriever._get_flights()
 
     assert new_flights == flights
+    assert not skip_scheduling

@@ -1,7 +1,7 @@
 import sys
 import time
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 from .checkin_scheduler import CheckInScheduler
 from .config import Config
@@ -119,10 +119,11 @@ class AccountFlightRetriever(FlightRetriever):
         """
         while True:
             time_before = datetime.utcnow()
+            flights, skip_scheduling = self._get_flights()
 
-            flights = self._get_flights()
-            self._schedule_reservations(flights)
-            self._check_flight_fares()
+            if not skip_scheduling:
+                self._schedule_reservations(flights)
+                self._check_flight_fares()
 
             if self.config.retrieval_interval <= 0:
                 logger.debug("Account monitoring is disabled as retrieval interval is 0")
@@ -130,7 +131,14 @@ class AccountFlightRetriever(FlightRetriever):
 
             self._smart_sleep(time_before)
 
-    def _get_flights(self) -> List[Dict[str, Any]]:
+    def _get_flights(self) -> Tuple[List[Dict[str, Any]], bool]:
+        """
+        Returns a list of flights and a boolean indicating if flight scheduling
+        should be skipped.
+
+        Flight scheduling will be skipped if a bad request error is encountered because
+        new headers might not be valid and a list of flights could not be retrieved.
+        """
         logger.debug("Retrieving flights for account")
         webdriver = WebDriver(self.checkin_scheduler)
 
@@ -143,11 +151,11 @@ class AccountFlightRetriever(FlightRetriever):
                 logger.warning(
                     "Encountered a bad request error while logging in. Skipping flight retrieval"
                 )
-                return []
+                return [], True
 
             logger.debug("Error logging in. %s. Exiting", err)
             self.notification_handler.failed_login(err)
             sys.exit(1)
 
         logger.debug("Successfully retrieved %d flights", len(flights))
-        return flights
+        return flights, False
