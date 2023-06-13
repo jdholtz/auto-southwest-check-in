@@ -34,8 +34,12 @@ def test_flight(mocker: MockerFixture) -> Flight:
     return Flight(flight_info, "")
 
 
-def test_check_flight_price_sends_notification_on_lower_fares(mocker: MockerFixture) -> None:
-    flight_price = {"sign": "-", "amount": "10", "currencyCode": "USD"}
+# Test with a comma to make sure the fare checker handles it correctly
+@pytest.mark.parametrize("amount", ["10", "2,000"])
+def test_check_flight_price_sends_notification_on_lower_fares(
+    mocker: MockerFixture, amount: str
+) -> None:
+    flight_price = {"sign": "-", "amount": amount, "currencyCode": "USD"}
     mocker.patch.object(FareChecker, "_get_flight_price", return_value=flight_price)
     mock_lower_fare_notification = mocker.patch.object(NotificationHandler, "lower_fare")
 
