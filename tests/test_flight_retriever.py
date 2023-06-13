@@ -25,10 +25,9 @@ def test_flight_retriever_monitors_flights_continuously(mocker: MockerFixture) -
     # Since the monitor_flights function runs in an infinite loop, throw an Exception
     # when the sleep function is called a second time to break out of the loop.
     mocker.patch.object(FlightRetriever, "_smart_sleep", side_effect=["", KeyboardInterrupt])
-    mock_schedule_reservations = mocker.patch.object(FlightRetriever, "_schedule_reservations")
-    mock_remove_departed_flights = mocker.patch.object(CheckInScheduler, "remove_departed_flights")
-    mock_check_flight_fares = mocker.patch.object(FlightRetriever, "_check_flight_fares")
     mock_refresh_headers = mocker.patch.object(CheckInScheduler, "refresh_headers")
+    mock_schedule_reservations = mocker.patch.object(FlightRetriever, "_schedule_reservations")
+    mock_check_flight_fares = mocker.patch.object(FlightRetriever, "_check_flight_fares")
 
     test_retriever = FlightRetriever(Config())
     test_retriever.checkin_scheduler.flights = ["test_flight"]
@@ -36,27 +35,26 @@ def test_flight_retriever_monitors_flights_continuously(mocker: MockerFixture) -
     with pytest.raises(KeyboardInterrupt):
         test_retriever.monitor_flights([{"test": "flight"}])
 
-    mock_schedule_reservations.assert_called_once_with([{"test": "flight"}])
-    assert mock_remove_departed_flights.call_count == 2
+    assert mock_refresh_headers.call_count == 2
+    assert mock_schedule_reservations.call_count == 2
+    mock_schedule_reservations.assert_called_with([{"test": "flight"}])
     assert mock_check_flight_fares.call_count == 2
-    # Called after sleep, so it should only be called once
-    assert mock_refresh_headers.call_count == 1
 
 
 def test_flight_retriever_stops_monitoring_when_no_flights_are_scheduled(
     mocker: MockerFixture,
 ) -> None:
     mock_smart_sleep = mocker.patch.object(FlightRetriever, "_smart_sleep")
+    mock_refresh_headers = mocker.patch.object(CheckInScheduler, "refresh_headers")
     mock_schedule_reservations = mocker.patch.object(FlightRetriever, "_schedule_reservations")
-    mock_remove_departed_flights = mocker.patch.object(CheckInScheduler, "remove_departed_flights")
     mock_check_flight_fares = mocker.patch.object(FlightRetriever, "_check_flight_fares")
 
     test_retriever = FlightRetriever(Config())
     test_retriever.monitor_flights([])
 
+    mock_refresh_headers.assert_called_once()
     mock_schedule_reservations.assert_called_once()
-    mock_remove_departed_flights.assert_called_once()
-    mock_check_flight_fares.assert_called_once()
+    mock_check_flight_fares.assert_not_called()
     mock_smart_sleep.assert_not_called()
 
 
@@ -64,8 +62,8 @@ def test_flight_retriever_monitors_flights_once_if_retrieval_interval_is_zero(
     mocker: MockerFixture,
 ) -> None:
     mock_smart_sleep = mocker.patch.object(FlightRetriever, "_smart_sleep")
+    mock_refresh_headers = mocker.patch.object(CheckInScheduler, "refresh_headers")
     mock_schedule_reservations = mocker.patch.object(FlightRetriever, "_schedule_reservations")
-    mock_remove_departed_flights = mocker.patch.object(CheckInScheduler, "remove_departed_flights")
     mock_check_flight_fares = mocker.patch.object(FlightRetriever, "_check_flight_fares")
 
     config = Config()
@@ -75,20 +73,20 @@ def test_flight_retriever_monitors_flights_once_if_retrieval_interval_is_zero(
 
     test_retriever.monitor_flights([])
 
+    mock_refresh_headers.assert_called_once()
     mock_schedule_reservations.assert_called_once()
-    mock_remove_departed_flights.assert_called_once()
     mock_check_flight_fares.assert_called_once()
     mock_smart_sleep.assert_not_called()
 
 
 def test_flight_retriever_schedules_reservations_correctly(mocker: MockerFixture) -> None:
-    mock_schedule = mocker.patch.object(CheckInScheduler, "schedule")
+    mock_process_reservations = mocker.patch.object(CheckInScheduler, "process_reservations")
     flights = [{"confirmationNumber": "Test1"}, {"confirmationNumber": "Test2"}]
 
     test_retriever = FlightRetriever(Config())
     test_retriever._schedule_reservations(flights)
 
-    mock_schedule.assert_called_once_with(["Test1", "Test2"])
+    mock_process_reservations.assert_called_once_with(["Test1", "Test2"])
 
 
 def test_flight_retriever_does_not_check_fares_if_configuration_is_false(
@@ -148,7 +146,6 @@ def test_account_FR_monitors_the_account_continuously(mocker: MockerFixture) -> 
     mocker.patch.object(FlightRetriever, "_smart_sleep", side_effect=["", KeyboardInterrupt])
     mock_get_flights = mocker.patch.object(AccountFlightRetriever, "_get_flights")
     mock_schedule_reservations = mocker.patch.object(FlightRetriever, "_schedule_reservations")
-    mock_remove_departed_flights = mocker.patch.object(CheckInScheduler, "remove_departed_flights")
     mock_check_flight_fares = mocker.patch.object(FlightRetriever, "_check_flight_fares")
 
     test_retriever = AccountFlightRetriever(Config(), "", "")
@@ -158,7 +155,6 @@ def test_account_FR_monitors_the_account_continuously(mocker: MockerFixture) -> 
 
     assert mock_get_flights.call_count == 2
     assert mock_schedule_reservations.call_count == 2
-    assert mock_remove_departed_flights.call_count == 2
     assert mock_check_flight_fares.call_count == 2
 
 
@@ -168,7 +164,6 @@ def test_account_FR_checks_flights_once_if_retrieval_interval_is_zero(
     mock_smart_sleep = mocker.patch.object(FlightRetriever, "_smart_sleep")
     mock_get_flights = mocker.patch.object(AccountFlightRetriever, "_get_flights")
     mock_schedule_reservations = mocker.patch.object(FlightRetriever, "_schedule_reservations")
-    mock_remove_departed_flights = mocker.patch.object(CheckInScheduler, "remove_departed_flights")
     mock_check_flight_fares = mocker.patch.object(FlightRetriever, "_check_flight_fares")
 
     config = Config()
@@ -180,7 +175,6 @@ def test_account_FR_checks_flights_once_if_retrieval_interval_is_zero(
     mock_smart_sleep.assert_not_called()
     mock_get_flights.assert_called_once()
     mock_schedule_reservations.assert_called_once()
-    mock_remove_departed_flights.assert_called_once()
     mock_check_flight_fares.assert_called_once()
 
 

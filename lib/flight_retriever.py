@@ -35,16 +35,20 @@ class FlightRetriever:
         Check for lower fares every X hours (retrieval interval). Will exit
         when no more flights are scheduled.
         """
-        self._schedule_reservations(flights)
-
         while True:
             time_before = datetime.utcnow()
-            self.checkin_scheduler.remove_departed_flights()
-            self._check_flight_fares()
+
+            # Ensure we have valid headers
+            self.checkin_scheduler.refresh_headers()
+
+            # Schedule the reservations every time in case a flight gets changed or cancelled
+            self._schedule_reservations(flights)
 
             if len(self.checkin_scheduler.flights) <= 0:
                 logger.debug("No more flights are scheduled. Exiting...")
                 break
+
+            self._check_flight_fares()
 
             if self.config.retrieval_interval <= 0:
                 logger.debug(
@@ -53,8 +57,6 @@ class FlightRetriever:
                 break
 
             self._smart_sleep(time_before)
-            # Ensure we have valid headers before the next cycle
-            self.checkin_scheduler.refresh_headers()
 
     def _schedule_reservations(self, flights: List[Dict[str, Any]]) -> None:
         logger.debug("Scheduling reservations for %d flights", len(flights))
@@ -63,7 +65,7 @@ class FlightRetriever:
         for flight in flights:
             confirmation_numbers.append(flight["confirmationNumber"])
 
-        self.checkin_scheduler.schedule(confirmation_numbers)
+        self.checkin_scheduler.process_reservations(confirmation_numbers)
 
     def _check_flight_fares(self) -> None:
         if not self.config.check_fares:
@@ -120,7 +122,6 @@ class AccountFlightRetriever(FlightRetriever):
 
             flights = self._get_flights()
             self._schedule_reservations(flights)
-            self.checkin_scheduler.remove_departed_flights()
             self._check_flight_fares()
 
             if self.config.retrieval_interval <= 0:

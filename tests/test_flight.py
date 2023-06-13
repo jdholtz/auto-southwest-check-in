@@ -1,5 +1,6 @@
 from datetime import datetime
 from pathlib import Path
+from typing import Any, Dict
 from unittest import mock
 
 import pytest
@@ -22,8 +23,54 @@ def test_flight() -> Flight:
     }
 
     # Needs to be mocked so it isn't run only when Flight is instantiated
-    with mock.patch.object(Flight, "_get_flight_time"):
+    with mock.patch.object(Flight, "_get_flight_time", return_value=None):
         return Flight(flight_info, "test_num")
+
+
+def test_flights_with_the_same_attributes_are_equal(mocker: MockerFixture) -> None:
+    mocker.patch.object(Flight, "_get_flight_time")
+    flight_info = {
+        "departureAirport": {"name": None},
+        "arrivalAirport": {"name": None},
+        "departureTime": None,
+        "arrivalTime": None,
+    }
+    flight1 = Flight(flight_info, "")
+    flight2 = Flight(flight_info, "")
+
+    assert flight1 == flight2
+
+
+@pytest.mark.parametrize(
+    "flight_info",
+    [
+        {
+            "departureAirport": {"name": "test"},
+            "arrivalAirport": {"name": None},
+            "departureTime": None,
+            "arrivalTime": None,
+        },
+        {
+            "departureAirport": {"name": None},
+            "arrivalAirport": {"name": "test"},
+            "departureTime": None,
+            "arrivalTime": None,
+        },
+        {
+            "departureAirport": {"name": None},
+            "arrivalAirport": {"name": None},
+            "departureTime": "12:08",
+            "arrivalTime": None,
+        },
+    ],
+)
+def test_flights_with_different_attributes_are_not_equal(
+    mocker: MockerFixture, test_flight: Flight, flight_info: Dict[str, Any]
+) -> None:
+    mocker.patch.object(Flight, "_get_flight_time", return_value=flight_info["departureTime"])
+    new_flight = Flight(flight_info, "")
+
+    assert test_flight != new_flight
 
 
 def test_get_flight_time_returns_the_correct_time(

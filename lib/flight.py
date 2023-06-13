@@ -27,6 +27,15 @@ class Flight:
         self.local_departure_time = flight_info["departureTime"]
         self.local_arrival_time = flight_info["arrivalTime"]
 
+    def __eq__(self, other: Flight) -> bool:
+        # Define how two flights are equal to each other
+        return (
+            isinstance(other, Flight)
+            and self.departure_airport == other.departure_airport
+            and self.destination_airport == other.destination_airport
+            and self.departure_time == other.departure_time
+        )
+
     def _get_flight_time(self, flight: Dict[str, Any]) -> datetime:
         flight_date = f"{flight['departureDate']} {flight['departureTime']}"
         departure_airport_code = flight["departureAirport"]["code"]
