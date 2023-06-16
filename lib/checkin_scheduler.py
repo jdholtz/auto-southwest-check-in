@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from datetime import datetime
 from typing import TYPE_CHECKING, Any, Dict, List
 
 from .checkin_handler import CheckInHandler
@@ -28,54 +27,40 @@ class CheckInScheduler:
 
         self.headers = {}
         self.flights = []
+        self.checkin_handlers = []
 
-    def schedule(self, confirmation_numbers: List[str]) -> None:
-        if not self.headers:
-            # Make sure we have valid headers before scheduling
-            logger.debug("No headers set. Refreshing...")
-            self.refresh_headers()
-
-        prev_flight_len = len(self.flights)
-
+    def process_reservations(self, confirmation_numbers: List[str]) -> None:
+        """
+        Flights from all confirmation numbers are retrieved. Then, any new
+        flights are scheduled and any flights now longer found are removed.
+        """
+        flights = []
         for confirmation_number in confirmation_numbers:
-            self._schedule_flights(confirmation_number)
+            flights.extend(self._get_flights(confirmation_number))
 
-        self.notification_handler.new_flights(self.flights[prev_flight_len:])
+        logger.debug("%d total flights were found", len(flights))
+        new_flights = self._get_new_flights(flights)
+        self._schedule_flights(new_flights)
+
+        self._remove_old_flights(flights)
 
     def refresh_headers(self) -> None:
         logger.debug("Refreshing headers for current session")
         webdriver = WebDriver(self)
         webdriver.set_headers()
 
-    def remove_departed_flights(self) -> None:
-        logger.debug(
-            "Removing departed flights. Currently have %d flights scheduled", len(self.flights)
-        )
-        current_time = datetime.utcnow()
-
-        for flight in self.flights[:]:
-            if flight.departure_time < current_time:
-                self.flights.remove(flight)
-
-        logger.debug(
-            "Successfully removed departed flights. %d flights are now scheduled", len(self.flights)
-        )
-
-    def _schedule_flights(self, confirmation_number: str) -> None:
+    def _get_flights(self, confirmation_number: str) -> List[Flight]:
         reservation_info = self._get_reservation_info(confirmation_number)
         logger.debug("%d flights found under current reservation", len(reservation_info))
 
+        flights = []
         # If multiple flights are under the same confirmation number, it will schedule all checkins
         for flight_info in reservation_info:
-            flight = Flight(flight_info, confirmation_number)
+            if flight_info["departureStatus"] != "DEPARTED":
+                flight = Flight(flight_info, confirmation_number)
+                flights.append(flight)
 
-            if flight_info["departureStatus"] != "DEPARTED" and not self._flight_is_scheduled(
-                flight
-            ):
-                logger.debug("New flight found. Handling check-in")
-                self.flights.append(flight)
-                checkin_handler = CheckInHandler(self, flight)
-                checkin_handler.schedule_check_in()
+        return flights
 
     def _get_reservation_info(self, confirmation_number: str) -> List[Dict[str, Any]]:
         info = {
@@ -96,13 +81,40 @@ class CheckInScheduler:
         reservation_info = response["viewReservationViewPage"]["bounds"]
         return reservation_info
 
-    def _flight_is_scheduled(self, flight: Flight) -> bool:
-        for scheduled_flight in self.flights:
-            if (
-                flight.departure_time == scheduled_flight.departure_time
-                and flight.departure_airport == scheduled_flight.departure_airport
-                and flight.destination_airport == scheduled_flight.destination_airport
-            ):
-                return True
+    def _get_new_flights(self, flights: List[Flight]) -> List[Flight]:
+        """Retrieve a list of all flights that are not already scheduled for check-in"""
+        new_flights = []
+        for flight in flights:
+            if flight not in self.flights:
+                new_flights.append(flight)
 
-        return False
+        logger.debug("%d new flights found", len(new_flights))
+        return new_flights
+
+    def _schedule_flights(self, flights: List[Flight]) -> None:
+        logger.debug("Scheduling %d flights", len(flights))
+        for flight in flights:
+            checkin_handler = CheckInHandler(self, flight)
+            checkin_handler.schedule_check_in()
+
+            self.flights.append(flight)
+            self.checkin_handlers.append(checkin_handler)
+
+        self.notification_handler.new_flights(flights)
+
+    def _remove_old_flights(self, flights: List[Flight]) -> None:
+        """Remove all scheduled flights that are not in the current flight list"""
+        logger.debug("%d flights are currently scheduled. Removing old flights", len(self.flights))
+
+        # Copy the list because it can potentially change inside the loop
+        for flight in self.flights[:]:
+            if flight not in flights:
+                flight_idx = self.flights.index(flight)
+                self.checkin_handlers[flight_idx].stop_check_in()
+
+                self.checkin_handlers.pop(flight_idx)
+                self.flights.pop(flight_idx)
+
+        logger.debug(
+            "Successfully removed old flights. %d flights are now scheduled", len(self.flights)
+        )

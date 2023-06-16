@@ -28,6 +28,7 @@ class CheckInHandler:
     def __init__(self, checkin_scheduler: CheckInScheduler, flight: Flight) -> None:
         self.checkin_scheduler = checkin_scheduler
         self.flight = flight
+        self.process = Process(target=self._set_check_in)
 
         self.notification_handler = self.checkin_scheduler.notification_handler
         self.first_name = self.checkin_scheduler.flight_retriever.first_name
@@ -35,8 +36,11 @@ class CheckInHandler:
 
     def schedule_check_in(self) -> None:
         logger.debug("Scheduling check-in for current flight")
-        process = Process(target=self._set_check_in)
-        process.start()
+        self.process.start()
+
+    def stop_check_in(self) -> None:
+        logger.debug("Stopping check-in for current flight")
+        self.process.terminate()
 
     def _set_check_in(self) -> None:
         # Starts to check in five seconds early in case the Southwest server is ahead of your server
