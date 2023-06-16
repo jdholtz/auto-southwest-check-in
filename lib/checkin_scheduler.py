@@ -110,6 +110,11 @@ class CheckInScheduler:
         for flight in self.flights[:]:
             if flight not in flights:
                 flight_idx = self.flights.index(flight)
+                print(
+                    f"Flight from {flight.departure_airport} to {flight.destination_airport} at "
+                    f"{flight.departure_time} UTC is no longer scheduled. Stopping its check-in\n"
+                )  # Don't log as it has sensitve information
+
                 self.checkin_handlers[flight_idx].stop_check_in()
 
                 self.checkin_handlers.pop(flight_idx)

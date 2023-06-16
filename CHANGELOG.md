@@ -7,6 +7,8 @@ If there is no "Upgrading" header for that version, no post-upgrade actions need
 ### New Features
 - This project is now licensed under the GPLv3 license instead of the MIT
 license
+- Automatically handle flight changes and cancellations
+([#103](https://github.com/jdholtz/auto-southwest-check-in/pull/103))
 
 ### Improvements
 - Don't send lower fare notifications when the price difference is only -1 USD
