@@ -7,7 +7,7 @@ from lib.checkin_scheduler import CheckInScheduler
 from lib.config import Config
 from lib.fare_checker import FareChecker
 from lib.notification_handler import NotificationHandler
-from lib.reservation_monitor import BAD_REQUESTS_CODE, AccountMonitor, ReservationMonitor
+from lib.reservation_monitor import TOO_MANY_REQUESTS_CODE, AccountMonitor, ReservationMonitor
 from lib.utils import FlightChangeError, LoginError, RequestError
 from lib.webdriver import WebDriver
 
@@ -160,7 +160,7 @@ def test_account_monitor_monitors_the_account_continuously(mocker: MockerFixture
     assert mock_check_flight_fares.call_count == 2
 
 
-def test_account_monitor_skips_scheduling_on_bad_request(mocker: MockerFixture) -> None:
+def test_account_monitor_skips_scheduling_on_too_many_requests_error(mocker: MockerFixture) -> None:
     # Since the monitor function runs in an infinite loop, throw an Exception
     # when the sleep function is called a second time to break out of the loop.
     mocker.patch.object(ReservationMonitor, "_smart_sleep", side_effect=[KeyboardInterrupt])
@@ -202,9 +202,9 @@ def test_account_monitor_checks_reservations_once_if_retrieval_interval_is_zero(
     mock_check_flight_fares.assert_called_once()
 
 
-def test_get_reservations_skips_retrieval_on_bad_request(mocker: MockerFixture) -> None:
+def test_get_reservations_skips_retrieval_on_too_many_requests_error(mocker: MockerFixture) -> None:
     mocker.patch.object(
-        WebDriver, "get_reservations", side_effect=LoginError("", BAD_REQUESTS_CODE)
+        WebDriver, "get_reservations", side_effect=LoginError("", TOO_MANY_REQUESTS_CODE)
     )
     test_monitor = AccountMonitor(Config(), "", "")
     reservations, skip_scheduling = test_monitor._get_reservations()

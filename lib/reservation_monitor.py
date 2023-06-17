@@ -11,7 +11,7 @@ from .notification_handler import NotificationHandler
 from .utils import FlightChangeError, LoginError, RequestError
 from .webdriver import WebDriver
 
-BAD_REQUESTS_CODE = 429
+TOO_MANY_REQUESTS_CODE = 429
 
 logger = get_logger(__name__)
 
@@ -127,8 +127,8 @@ class AccountMonitor(ReservationMonitor):
         Returns a list of reservations and a boolean indicating if reservation
         scheduling should be skipped.
 
-        Reservation scheduling will be skipped if a bad request error is encountered because
-        new headers might not be valid and a list of reservations could not be retrieved.
+        Reservation scheduling will be skipped if a Too Many Requests error is encountered
+        because new headers might not be valid and a list of reservations could not be retrieved.
         """
         logger.debug("Retrieving reservations for account")
         webdriver = WebDriver(self.checkin_scheduler)
@@ -136,11 +136,11 @@ class AccountMonitor(ReservationMonitor):
         try:
             reservations = webdriver.get_reservations(self)
         except LoginError as err:
-            if err.status_code == BAD_REQUESTS_CODE:
-                # Don't exit when a Bad Request error happens. Instead, just skip the retrieval
-                # until the next time.
+            if err.status_code == TOO_MANY_REQUESTS_CODE:
+                # Don't exit when a Too Many Requests error happens. Instead, just skip the
+                # retrieval until the next time.
                 logger.warning(
-                    "Encountered a bad request error while logging in. Skipping reservation "
+                    "Encountered a Too Many Requests error while logging in. Skipping reservation "
                     "retrieval"
                 )
                 return [], True
