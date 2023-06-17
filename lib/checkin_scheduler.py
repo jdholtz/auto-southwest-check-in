@@ -9,7 +9,7 @@ from .utils import RequestError, make_request
 from .webdriver import WebDriver
 
 if TYPE_CHECKING:  # pragma: no cover
-    from .flight_retriever import FlightRetriever
+    from .reservation_monitor import ReservationMonitor
 
 VIEW_RESERVATION_URL = "mobile-air-booking/v1/mobile-air-booking/page/view-reservation/"
 logger = get_logger(__name__)
@@ -17,13 +17,13 @@ logger = get_logger(__name__)
 
 class CheckInScheduler:
     """
-    Handles scheduling flights based on confirmation numbers. Retrieves the
-    necessary information and schedule a checkin for each flight via the CheckinHandler.
+    Handles scheduling flights from reservations. Retrieves the necessary
+    information and schedules a check-in for each flight via the CheckinHandler.
     """
 
-    def __init__(self, flight_retriever: FlightRetriever) -> None:
-        self.flight_retriever = flight_retriever
-        self.notification_handler = self.flight_retriever.notification_handler
+    def __init__(self, reservation_monitor: ReservationMonitor) -> None:
+        self.reservation_monitor = reservation_monitor
+        self.notification_handler = reservation_monitor.notification_handler
 
         self.headers = {}
         self.flights = []
@@ -64,8 +64,8 @@ class CheckInScheduler:
 
     def _get_reservation_info(self, confirmation_number: str) -> List[Dict[str, Any]]:
         info = {
-            "first-name": self.flight_retriever.first_name,
-            "last-name": self.flight_retriever.last_name,
+            "first-name": self.reservation_monitor.first_name,
+            "last-name": self.reservation_monitor.last_name,
         }
         site = VIEW_RESERVATION_URL + confirmation_number
 

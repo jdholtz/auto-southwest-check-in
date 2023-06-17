@@ -8,7 +8,7 @@ from .log import get_logger
 from .utils import FlightChangeError, make_request
 
 if TYPE_CHECKING:  # pragma: no cover
-    from .flight_retriever import FlightRetriever
+    from .reservation_monitor import ReservationMonitor
 
 # Type alias for JSON
 JSON = Dict[str, Any]
@@ -18,9 +18,9 @@ logger = get_logger(__name__)
 
 
 class FareChecker:
-    def __init__(self, flight_retriever: FlightRetriever) -> None:
-        self.flight_retriever = flight_retriever
-        self.headers = flight_retriever.checkin_scheduler.headers
+    def __init__(self, reservation_monitor: ReservationMonitor) -> None:
+        self.reservation_monitor = reservation_monitor
+        self.headers = reservation_monitor.checkin_scheduler.headers
 
     def check_flight_price(self, flight: Flight) -> None:
         """
@@ -42,7 +42,7 @@ class FareChecker:
         # https://github.com/jdholtz/auto-southwest-check-in/discussions/102
         if sign == "-" and amount > 1:
             # Lower fare!
-            self.flight_retriever.notification_handler.lower_fare(flight, price_info)
+            self.reservation_monitor.notification_handler.lower_fare(flight, price_info)
 
     def _get_flight_price(self, flight: Flight) -> JSON:
         """Get the price difference of the flight"""
@@ -87,8 +87,8 @@ class FareChecker:
         # First, get the reservation information
         logger.debug("Fetching reservation information")
         info = {
-            "first-name": self.flight_retriever.first_name,
-            "last-name": self.flight_retriever.last_name,
+            "first-name": self.reservation_monitor.first_name,
+            "last-name": self.reservation_monitor.last_name,
         }
         site = VIEW_RESERVATION_URL + flight.confirmation_number
         response = make_request("GET", site, self.headers, info, max_attempts=7)

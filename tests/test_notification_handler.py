@@ -11,15 +11,15 @@ from lib.utils import NotificationLevel
 
 @pytest.fixture
 def notification_handler(mocker: MockerFixture) -> NotificationHandler:
-    mock_flight_retriever = mocker.patch("lib.flight_retriever.FlightRetriever")
-    return NotificationHandler(mock_flight_retriever)
+    mock_reservation_monitor = mocker.patch("lib.reservation_monitor.ReservationMonitor")
+    return NotificationHandler(mock_reservation_monitor)
 
 
 def test_get_account_name_returns_the_correct_name(
     notification_handler: NotificationHandler,
 ) -> None:
-    notification_handler.flight_retriever.first_name = "John"
-    notification_handler.flight_retriever.last_name = "Doe"
+    notification_handler.reservation_monitor.first_name = "John"
+    notification_handler.reservation_monitor.last_name = "Doe"
 
     assert notification_handler._get_account_name() == "John Doe"
 

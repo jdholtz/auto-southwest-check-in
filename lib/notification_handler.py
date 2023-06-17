@@ -9,7 +9,7 @@ from .log import get_logger
 from .utils import LoginError, NotificationLevel, RequestError
 
 if TYPE_CHECKING:  # pragma: no cover
-    from .flight_retriever import FlightRetriever
+    from .reservation_monitor import ReservationMonitor
 
 MANUAL_CHECKIN_URL = "https://mobile.southwest.com/check-in"
 MANAGE_RESERVATION_URL = "https://mobile.southwest.com/view-reservation"
@@ -19,13 +19,13 @@ logger = get_logger(__name__)
 class NotificationHandler:
     """Handles all notifications that will be sent to the user either via Apprise or the console"""
 
-    def __init__(self, flight_retriever: FlightRetriever) -> None:
-        self.flight_retriever = flight_retriever
-        self.notification_urls = self.flight_retriever.config.notification_urls
-        self.notification_level = self.flight_retriever.config.notification_level
+    def __init__(self, reservation_monitor: ReservationMonitor) -> None:
+        self.reservation_monitor = reservation_monitor
+        self.notification_urls = reservation_monitor.config.notification_urls
+        self.notification_level = reservation_monitor.config.notification_level
 
     def _get_account_name(self) -> str:
-        return f"{self.flight_retriever.first_name} {self.flight_retriever.last_name}"
+        return f"{self.reservation_monitor.first_name} {self.reservation_monitor.last_name}"
 
     def send_notification(self, body: str, level: int = None) -> None:
         print(body)  # This isn't logged as it contains sensitive information
@@ -62,14 +62,14 @@ class NotificationHandler:
         error_message = (
             f"Failed to retrieve reservation for {self._get_account_name()} "
             f"with confirmation number {confirmation_number}. Reason: {error}.\n"
-            f"Make sure the flight information is correct and try again.\n"
+            f"Make sure the reservation information is correct and try again.\n"
         )
         logger.debug("Sending failed reservation retrieval notification...")
         self.send_notification(error_message, NotificationLevel.ERROR)
 
     def failed_login(self, error: LoginError) -> None:
         error_message = (
-            f"Failed to log in to account with username {self.flight_retriever.username}. "
+            f"Failed to log in to account with username {self.reservation_monitor.username}. "
             f"{error}.\n"
         )
         logger.debug("Sending failed login notification...")
