@@ -50,6 +50,7 @@ class CheckInScheduler:
         webdriver.set_headers()
 
     def _get_flights(self, confirmation_number: str) -> List[Flight]:
+        """Get all flights booked on a single reservation"""
         reservation_info = self._get_reservation_info(confirmation_number)
         logger.debug("%d flights found under current reservation", len(reservation_info))
 
@@ -70,14 +71,14 @@ class CheckInScheduler:
         site = VIEW_RESERVATION_URL + confirmation_number
 
         try:
-            logger.debug("Retrieving reservation info from confirmation number")
+            logger.debug("Retrieving reservation information")
             response = make_request("GET", site, self.headers, info)
         except RequestError as err:
             logger.debug("Failed to retrieve reservation info. Error: %s. Exiting", err)
             self.notification_handler.failed_reservation_retrieval(err, confirmation_number)
             return []
 
-        logger.debug("Successfully retrieved reservation info")
+        logger.debug("Successfully retrieved reservation information")
         reservation_info = response["viewReservationViewPage"]["bounds"]
         return reservation_info
 
@@ -92,7 +93,7 @@ class CheckInScheduler:
         return new_flights
 
     def _schedule_flights(self, flights: List[Flight]) -> None:
-        logger.debug("Scheduling %d flights", len(flights))
+        logger.debug("Scheduling %d flights for check-in", len(flights))
         for flight in flights:
             checkin_handler = CheckInHandler(self, flight)
             checkin_handler.schedule_check_in()

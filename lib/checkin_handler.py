@@ -22,7 +22,7 @@ class CheckInHandler:
     """
     Handles checking in for a single flight.
 
-    Sleeps until the flight's checkin time and then attempts the check in.
+    Sleeps until the flight's check-in time and then attempts the check in.
     """
 
     def __init__(self, checkin_scheduler: CheckInScheduler, flight: Flight) -> None:
@@ -82,7 +82,7 @@ class CheckInHandler:
 
     def _check_in(self) -> None:
         """
-        First, make a GET request to get the needed checkin information. Then, make
+        First, make a GET request to get the needed check-in information. Then, make
         a POST request to submit the check in.
         """
         account_name = f"{self.first_name} {self.last_name}"

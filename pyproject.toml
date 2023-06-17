@@ -1,6 +1,6 @@
 [tool.black]
 line-length = 100
-target-version = ['py37']
+target-version = ["py37"]
 
 [tool.isort]
 line_length = 100
@@ -21,6 +21,6 @@ exclude_lines = [
 
 [tool.pytest.ini_options]
 filterwarnings = [
-    # Currently imported by seleniumwire. Remove once seleniumwire removes it
-    "ignore:pkg_resources is deprecated:DeprecationWarning"
+    # Currently used by Apprise. Remove once Apprise removes it for Python 3.11+
+    'ignore:Use setlocale\(\), getencoding\(\) and getlocale\(\) instead:DeprecationWarning',
 ]

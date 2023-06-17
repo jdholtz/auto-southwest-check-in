@@ -12,7 +12,7 @@ TZ_FILE_PATH = "utils/airport_timezones.json"
 
 class Flight:
     """
-    A helper class that parses necessary information from JSON received from the Southwest API.
+    A helper class that parses flight information received from the Southwest API.
 
     The flight time is automatically translated from the flight's local timezone to UTC.
     """

@@ -35,8 +35,8 @@ class WebDriver:
     Controls fetching valid headers for use with the Southwest API.
 
     This class can be instantiated in two ways:
-    1. Setting/refreshing headers before a check in to ensure the headers are valid.
-    To do this, the check-in form is filled out with invalid information (valid information
+    1. Setting/refreshing headers before a check-in to ensure the headers are valid.
+    To do this, a check-in form is filled out with invalid information (valid information
     is not necessary in this case).
 
     2. Logging into an account. In this case, the headers are refreshed and a list of scheduled
