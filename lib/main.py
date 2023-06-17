@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, List
 from lib import log
 
 if TYPE_CHECKING:  # pragma: no cover
-    from config import Config
+    from lib.config import Config
 
 __version__ = "v4.1"
 

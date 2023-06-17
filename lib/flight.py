@@ -27,7 +27,7 @@ class Flight:
         self.local_departure_time = flight_info["departureTime"]
         self.local_arrival_time = flight_info["arrivalTime"]
 
-    def __eq__(self, other: Flight) -> bool:
+    def __eq__(self, other: object) -> bool:
         # Define how two flights are equal to each other
         return (
             isinstance(other, Flight)

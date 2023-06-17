@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import re
 import time
-from typing import TYPE_CHECKING, Any, Dict
+from typing import TYPE_CHECKING, Any, Dict, List
 
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
@@ -79,7 +79,7 @@ class WebDriver:
         self._set_headers_from_request(driver)
         driver.quit()
 
-    def get_reservations(self, account_monitor: AccountMonitor) -> Dict[str, Any]:
+    def get_reservations(self, account_monitor: AccountMonitor) -> List[Dict[str, Any]]:
         """
         Logs into the account being monitored to retrieve a list of reservations. Since
         valid headers are produced, they are also grabbed and updated in the check-in scheduler.

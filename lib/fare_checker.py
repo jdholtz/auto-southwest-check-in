@@ -83,7 +83,7 @@ class FareChecker:
         response = make_request("POST", site, self.headers, query, max_attempts=7)
         return response["changeShoppingPage"]["flights"][bound_page]["cards"], fare_type
 
-    def _get_change_flight_page(self, flight: Flight) -> Tuple[JSON, JSON]:
+    def _get_change_flight_page(self, flight: Flight) -> Tuple[JSON, List[JSON]]:
         # First, get the reservation information
         logger.debug("Fetching reservation information")
         info = {
