@@ -21,6 +21,7 @@ license
 - The 'flights' key in the configuration file was renamed to 'reservations'. It is
 currently deprecated and will be removed in the next release. See the
 [configuration](CONFIGURATION.md#reservations) for more information.
+- Upgrade the dependencies to the latest versions by running `pip install -r requirements.txt`
 
 
 ## 4.1 (2023-06-04)

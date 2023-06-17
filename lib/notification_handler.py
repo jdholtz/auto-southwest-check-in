@@ -46,7 +46,7 @@ class NotificationHandler:
             return
 
         flight_schedule_message = (
-            f"Successfully scheduled the following flights to check in for "
+            "Successfully scheduled the following flights to check in for "
             f"{self._get_account_name()}:\n"
         )
         for flight in flights:
@@ -62,7 +62,7 @@ class NotificationHandler:
         error_message = (
             f"Failed to retrieve reservation for {self._get_account_name()} "
             f"with confirmation number {confirmation_number}. Reason: {error}.\n"
-            f"Make sure the reservation information is correct and try again.\n"
+            "Make sure the reservation information is correct and try again.\n"
         )
         logger.debug("Sending failed reservation retrieval notification...")
         self.send_notification(error_message, NotificationLevel.ERROR)
