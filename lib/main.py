@@ -68,13 +68,13 @@ def set_up_reservations(config: Config) -> None:
     # pylint:disable=import-outside-toplevel
     from .reservation_monitor import ReservationMonitor
 
-    for flight in config.flights:
-        reservation_monitor = ReservationMonitor(config, flight[1], flight[2])
+    for reservation in config.reservations:
+        reservation_monitor = ReservationMonitor(config, reservation[1], reservation[2])
 
         # Start each reservation monitor in a separate process to run them in parallel
         process = Process(
             target=reservation_monitor.monitor,
-            args=([{"confirmationNumber": flight[0]}],),
+            args=([{"confirmationNumber": reservation[0]}],),
         )
         process.start()
 
@@ -104,13 +104,15 @@ def set_up_check_in(arguments: List[str]) -> None:
         config.accounts.append([arguments[0], arguments[1]])
         logger.debug("Account added through CLI arguments")
     elif len(arguments) == 3:
-        config.flights.append([arguments[0], arguments[1], arguments[2]])
-        logger.debug("Flight added through CLI arguments")
+        config.reservations.append([arguments[0], arguments[1], arguments[2]])
+        logger.debug("Reservation added through CLI arguments")
     elif len(arguments) > 3:
         logger.error("Invalid arguments. For more information, try '--help'")
         sys.exit(2)
 
-    logger.debug("Monitoring %d accounts and %d flights", len(config.accounts), len(config.flights))
+    logger.debug(
+        "Monitoring %d accounts and %d reservations", len(config.accounts), len(config.reservations)
+    )
     set_up_accounts(config)
     set_up_reservations(config)
 

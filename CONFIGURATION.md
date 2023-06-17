@@ -12,7 +12,7 @@ file can be found at [config.example.json](config.example.json)
 - [Chromedriver Path](#chromedriver-path)
 - [Retrieval Interval](#retrieval-interval)
 - [Accounts](#accounts)
-- [Flights](#flights)
+- [Reservations](#reservations)
 
 ## Fare Check
 Default: false \
@@ -124,15 +124,15 @@ provide a username and password as arguments.
 }
 ```
 
-## Flights
+## Reservations
 Default: [] \
 Type: List
 
-Similar to [Accounts](#accounts), you can also add more flights to the script, allowing you check in to multiple flights in the same instance and/or not
-provide flight information as arguments.
+Similar to [Accounts](#accounts), you can also add more reservations to the script, allowing you check in to multiple reservations in the same instance
+and/or not provide reservation information as arguments.
 ```json
 {
-    "flights": [
+    "reservations": [
         {"confirmationNumber": "num1", "firstName": "John", "lastName": "Doe"},
         {"confirmationNumber": "num2", "firstName": "Jane", "lastName": "Doe"}
     ]

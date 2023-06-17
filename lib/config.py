@@ -20,7 +20,7 @@ class Config:
         self.accounts = []
         self.check_fares = False
         self.chrome_version = None
-        self.flights = []
+        self.reservations = []
         self.notification_level = NotificationLevel.INFO
         self.notification_urls = []
         self.retrieval_interval = 24 * 60 * 60
@@ -83,12 +83,12 @@ class Config:
                 raise TypeError("'chromedriver_path' must be a string")
 
         if "flights" in config:
-            flights = config["flights"]
-
-            if not isinstance(flights, list):
-                raise TypeError("'flights' must be a list")
-
-            self._parse_flights(flights)
+            logger.warning(
+                "The 'flights' key in the configuration file is deprecated. Use 'reservations' "
+                "instead. See CONFIGURATION.md#reservations"
+            )
+            if "reservations" not in config:
+                config["reservations"] = config["flights"]
 
         if "notification_level" in config:
             self.notification_level = config["notification_level"]
@@ -107,6 +107,14 @@ class Config:
                 len(self.notification_urls) if isinstance(self.notification_urls, list) else 1
             )
             logger.debug("Using %d notification services", notification_urls_len)
+
+        if "reservations" in config:
+            reservations = config["reservations"]
+
+            if not isinstance(reservations, list):
+                raise TypeError("'reservations' must be a list")
+
+            self._parse_reservations(reservations)
 
         if "retrieval_interval" in config:
             self.retrieval_interval = config["retrieval_interval"]
@@ -131,11 +139,11 @@ class Config:
         accounts = self._parse_objects(account_config, keys, "account")
         self.accounts.extend(accounts)
 
-    def _parse_flights(self, flight_config: List[JSON]) -> None:
-        logger.debug("Adding %d flights from the configuration file", len(flight_config))
+    def _parse_reservations(self, reservation_config: List[JSON]) -> None:
+        logger.debug("Adding %d reservations from the configuration file", len(reservation_config))
         keys = ["confirmationNumber", "firstName", "lastName"]
-        flights = self._parse_objects(flight_config, keys, "flight")
-        self.flights.extend(flights)
+        reservations = self._parse_objects(reservation_config, keys, "reservation")
+        self.reservations.extend(reservations)
 
     def _parse_objects(self, objs: List[JSON], keys: List[str], obj_type: str) -> List[List[str]]:
         parsed_objects = []

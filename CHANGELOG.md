@@ -17,6 +17,12 @@ license
     for more information
 
 
+### Upgrading
+- The 'flights' key in the configuration file was renamed to 'reservations'. It is
+currently deprecated and will be removed in the next release. See the
+[configuration](CONFIGURATION.md#reservations) for more information.
+
+
 ## 4.1 (2023-06-04)
 
 ### Improvements
