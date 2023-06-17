@@ -75,17 +75,17 @@ def test_set_up_accounts_starts_all_accounts_in_proceses(mocker: MockerFixture) 
     assert mock_process.return_value.start.call_count == len(config.accounts)
 
 
-def test_set_up_flights_starts_all_flights_in_proceses(mocker: MockerFixture) -> None:
+def test_set_up_reservations_starts_all_reservations_in_proceses(mocker: MockerFixture) -> None:
     config = Config()
-    config.flights = [["test1", "first1", "last1"], ["test2", "first2", "last2"]]
+    config.reservations = [["test1", "first1", "last1"], ["test2", "first2", "last2"]]
 
     mock_process = mocker.patch("lib.main.Process")
     mock_process.start = mock.Mock()
 
-    main.set_up_flights(config)
+    main.set_up_reservations(config)
 
-    assert mock_process.call_count == len(config.flights)
-    assert mock_process.return_value.start.call_count == len(config.flights)
+    assert mock_process.call_count == len(config.reservations)
+    assert mock_process.return_value.start.call_count == len(config.reservations)
 
 
 def test_set_up_check_in_sends_test_notifications_when_flag_is_passed(
@@ -98,23 +98,23 @@ def test_set_up_check_in_sends_test_notifications_when_flag_is_passed(
 
 
 @pytest.mark.parametrize(
-    ["arguments", "accounts_len", "flights_len"],
+    ["arguments", "accounts_len", "reservations_len"],
     [
         ([], 0, 0),
         (["username", "password"], 1, 0),
         (["test", "John", "Doe"], 0, 1),
     ],
 )
-def test_set_up_check_in_sets_up_account_and_flight_with_arguments(
-    mocker: MockerFixture, arguments: List[str], accounts_len: int, flights_len: int
+def test_set_up_check_in_sets_up_account_and_reservation_with_arguments(
+    mocker: MockerFixture, arguments: List[str], accounts_len: int, reservations_len: int
 ) -> None:
     mock_set_up_accounts = mocker.patch("lib.main.set_up_accounts")
-    mock_set_up_flights = mocker.patch("lib.main.set_up_flights")
+    mock_set_up_reservations = mocker.patch("lib.main.set_up_reservations")
 
     main.set_up_check_in(arguments)
 
     assert len(mock_set_up_accounts.call_args[0][0].accounts) == accounts_len
-    assert len(mock_set_up_flights.call_args[0][0].flights) == flights_len
+    assert len(mock_set_up_reservations.call_args[0][0].reservations) == reservations_len
 
 
 def test_set_up_check_in_sends_error_message_when_arguments_are_invalid(

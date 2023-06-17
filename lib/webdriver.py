@@ -16,7 +16,7 @@ from .utils import LoginError
 
 if TYPE_CHECKING:  # pragma: no cover
     from .checkin_scheduler import CheckInScheduler
-    from .flight_retriever import AccountFlightRetriever
+    from .reservation_monitor import AccountMonitor
 
 BASE_URL = "https://mobile.southwest.com"
 LOGIN_URL = BASE_URL + "/api/security/v4/security/token"
@@ -79,17 +79,16 @@ class WebDriver:
         self._set_headers_from_request(driver)
         driver.quit()
 
-    def get_flights(self, flight_retriever: AccountFlightRetriever) -> Dict[str, Any]:
+    def get_reservations(self, account_monitor: AccountMonitor) -> Dict[str, Any]:
         """
-        Logs into the flight retriever account to retrieve a list of scheduled flights.
-        Since valid headers are produced, they are also grabbed and updated in the check-in
-        scheduler. Last, if the account name is not set, it will set it based on the response
-        information.
+        Logs into the account being monitored to retrieve a list of reservations. Since
+        valid headers are produced, they are also grabbed and updated in the check-in scheduler.
+        Last, if the account name is not set, it will be set based on the response information.
         """
         driver = self._get_driver()
-        logger.debug("Logging into Southwest account to get scheduled flights and valid headers")
+        logger.debug("Logging into account to get a list of reservations and valid headers")
 
-        # Log in to retrieve the account's trips and needed headers for later requests
+        # Log in to retrieve the account's reservations and needed headers for later requests
         WebDriverWait(driver, 30).until(EC.invisibility_of_element((By.CLASS_NAME, "dimmer")))
         WebDriverWait(driver, 30).until(
             EC.element_to_be_clickable((By.CLASS_NAME, "login-button--box"))
@@ -98,12 +97,12 @@ class WebDriver:
         username_element = WebDriverWait(driver, 30).until(
             EC.presence_of_element_located((By.NAME, "userNameOrAccountNumber"))
         )
-        username_element.send_keys(flight_retriever.username)
+        username_element.send_keys(account_monitor.username)
 
         password_element = WebDriverWait(driver, 30).until(
             EC.presence_of_element_located((By.NAME, "password"))
         )
-        password_element.send_keys(flight_retriever.password)
+        password_element.send_keys(account_monitor.password)
         password_element.submit()
 
         response = self._wait_for_response(driver, 0)
@@ -116,23 +115,23 @@ class WebDriver:
 
         # If this is the first time logging in, the account name needs to be set
         # because that info is needed later
-        if flight_retriever.first_name is None:
+        if account_monitor.first_name is None:
             logger.debug("First time logging in. Setting account name")
             response_body = json.loads(response.body)
-            self._set_account_name(flight_retriever, response_body)
+            self._set_account_name(account_monitor, response_body)
             print(
-                f"Successfully logged in to {flight_retriever.first_name} "
-                f"{flight_retriever.last_name}'s account\n"
+                f"Successfully logged in to {account_monitor.first_name} "
+                f"{account_monitor.last_name}'s account\n"
             )  # Don't log as it contains sensitive information
 
         # This page is also loaded when we log in, so we might as well grab it instead of
         # requesting again later
-        flight_response = self._wait_for_response(driver, 1)
-        flights = json.loads(flight_response.body)["upcomingTripsPage"]
+        reservation_response = self._wait_for_response(driver, 1)
+        reservations = json.loads(reservation_response.body)["upcomingTripsPage"]
 
         driver.quit()
 
-        return [flight for flight in flights if flight["tripType"] == "FLIGHT"]
+        return [reservation for reservation in reservations if reservation["tripType"] == "FLIGHT"]
 
     def _get_driver(self) -> Chrome:
         logger.debug("Starting webdriver for current session")
@@ -154,8 +153,8 @@ class WebDriver:
         initializations can occasionally occur. Trying multiple times makes the initialization
         more reliable.
         """
-        chromedriver_path = self.checkin_scheduler.flight_retriever.config.chromedriver_path
-        chrome_version = self.checkin_scheduler.flight_retriever.config.chrome_version
+        chromedriver_path = self.checkin_scheduler.reservation_monitor.config.chromedriver_path
+        chrome_version = self.checkin_scheduler.reservation_monitor.config.chrome_version
 
         max_attempts = 3
         attempts = 0
@@ -208,7 +207,7 @@ class WebDriver:
         # This is a temporary workaround for later chrome versions. Currently, the latest
         # version of undetected_chromedriver adds this argument correctly, but it gets
         # detected by Southwest, so this will be here until it can bypass their bot detection.
-        chrome_version = self.checkin_scheduler.flight_retriever.config.chrome_version
+        chrome_version = self.checkin_scheduler.reservation_monitor.config.chrome_version
         if not chrome_version or chrome_version >= 109:
             options.add_argument("--headless=new")
         else:
@@ -235,8 +234,6 @@ class WebDriver:
 
         return headers
 
-    def _set_account_name(
-        self, flight_retriever: AccountFlightRetriever, response: Dict[str, Any]
-    ) -> None:
-        flight_retriever.first_name = response["customers.userInformation.firstName"]
-        flight_retriever.last_name = response["customers.userInformation.lastName"]
+    def _set_account_name(self, account_monitor: AccountMonitor, response: Dict[str, Any]) -> None:
+        account_monitor.first_name = response["customers.userInformation.firstName"]
+        account_monitor.last_name = response["customers.userInformation.lastName"]

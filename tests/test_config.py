@@ -57,10 +57,10 @@ def test_read_config_returns_empty_config_when_file_is_not_found(mocker: MockerF
         {"check_fares": "invalid"},
         {"chrome_version": "invalid"},
         {"chromedriver_path": None},
-        {"flights": "invalid"},
         {"notification_level": "invalid"},
         {"notification_urls": None},
         {"retrieval_interval": "invalid"},
+        {"reservations": "invalid"},
     ],
 )
 def test_parse_config_raises_exception_with_invalid_entries(config_content: Dict[str, Any]) -> None:
@@ -95,7 +95,7 @@ def test_parse_config_does_not_set_values_when_a_config_value_is_empty(
     mocker: MockerFixture,
 ) -> None:
     mock_parse_accounts = mocker.patch.object(config.Config, "_parse_accounts")
-    mock_parse_flights = mocker.patch.object(config.Config, "_parse_flights")
+    mock_parse_reservations = mocker.patch.object(config.Config, "_parse_reservations")
     test_config = config.Config()
     expected_config = config.Config()
 
@@ -108,7 +108,7 @@ def test_parse_config_does_not_set_values_when_a_config_value_is_empty(
     assert test_config.notification_level == expected_config.notification_level
     assert test_config.retrieval_interval == expected_config.retrieval_interval
     mock_parse_accounts.assert_not_called()
-    mock_parse_flights.assert_not_called()
+    mock_parse_reservations.assert_not_called()
 
 
 def test_parse_config_sets_retrieval_interval_to_a_minimum() -> None:
@@ -126,12 +126,23 @@ def test_parse_config_parses_accounts(mocker: MockerFixture) -> None:
     mock_parse_accounts.assert_called_once()
 
 
-def test_parse_config_parses_flights(mocker: MockerFixture) -> None:
-    mock_parse_flights = mocker.patch.object(config.Config, "_parse_flights")
+# Temporary second test while 'flights' is deprecated
+@pytest.mark.parametrize("key", ["reservations", "flights"])
+def test_parse_config_parses_reservations(mocker: MockerFixture, key: str) -> None:
+    mock_parse_reservations = mocker.patch.object(config.Config, "_parse_reservations")
     test_config = config.Config()
-    test_config._parse_config({"flights": []})
+    test_config._parse_config({key: []})
 
-    mock_parse_flights.assert_called_once()
+    mock_parse_reservations.assert_called_once()
+
+
+# Temporary test while 'flights' is deprecated
+def test_parse_config_parses_flights_if_reservations_does_not_exist(mocker: MockerFixture) -> None:
+    mock_parse_reservations = mocker.patch.object(config.Config, "_parse_reservations")
+    test_config = config.Config()
+    test_config._parse_config({"flights": ["flight"], "reservations": ["reservation"]})
+
+    mock_parse_reservations.assert_called_once_with(["reservation"])
 
 
 def test_parse_accounts_parses_objects_correctly(mocker: MockerFixture) -> None:
@@ -144,14 +155,14 @@ def test_parse_accounts_parses_objects_correctly(mocker: MockerFixture) -> None:
     assert test_config.accounts == accounts
 
 
-def test_parse_flights_parses_objects_correctly(mocker: MockerFixture) -> None:
-    flights = [["flight1"], ["flight2"]]
-    mocker.patch.object(config.Config, "_parse_objects", return_value=flights)
+def test_parse_reservations_parses_objects_correctly(mocker: MockerFixture) -> None:
+    reservations = [["reservation1"], ["reservation2"]]
+    mocker.patch.object(config.Config, "_parse_objects", return_value=reservations)
 
     test_config = config.Config()
-    test_config._parse_flights([])
+    test_config._parse_reservations([])
 
-    assert test_config.flights == flights
+    assert test_config.reservations == reservations
 
 
 @pytest.mark.parametrize("objects", [[""], [1], [True]])

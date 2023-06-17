@@ -16,10 +16,10 @@ BAD_REQUESTS_CODE = 429
 logger = get_logger(__name__)
 
 
-class FlightRetriever:
+class ReservationMonitor:
     """
-    Retrieve flights based on the information (reservation info or login credentials)
-    provided.
+    A high-level class responsible for monitoring one or more reservations for
+    check-ins, flight changes or cancellations, and lower flight fares.
     """
 
     def __init__(self, config: Config, first_name: str = None, last_name: str = None) -> None:
@@ -30,10 +30,10 @@ class FlightRetriever:
         self.notification_handler = NotificationHandler(self)
         self.checkin_scheduler = CheckInScheduler(self)
 
-    def monitor_flights(self, flights: List[Dict[str, Any]]) -> None:
+    def monitor(self, reservations: List[Dict[str, Any]]) -> None:
         """
-        Check for lower fares every X hours (retrieval interval). Will exit
-        when no more flights are scheduled.
+        Check for reservation changes and lower fares every X hours (retrieval interval).
+        Will exit when no more flights are scheduled for check-in.
         """
         while True:
             time_before = datetime.utcnow()
@@ -41,30 +41,26 @@ class FlightRetriever:
             # Ensure we have valid headers
             self.checkin_scheduler.refresh_headers()
 
-            # Schedule the reservations every time in case a flight gets changed or cancelled
-            self._schedule_reservations(flights)
+            # Schedule the reservations every time in case a flight is changed or cancelled
+            self._schedule_reservations(reservations)
 
             if len(self.checkin_scheduler.flights) <= 0:
-                logger.debug("No more flights are scheduled. Exiting...")
+                logger.debug("No more flights are scheduled for check-in. Exiting...")
                 break
 
             self._check_flight_fares()
 
             if self.config.retrieval_interval <= 0:
                 logger.debug(
-                    "Monitoring flights for lower fares is disabled as retrieval interval is 0"
+                    "Monitoring reservations for lower fares is disabled as retrieval interval is 0"
                 )
                 break
 
             self._smart_sleep(time_before)
 
-    def _schedule_reservations(self, flights: List[Dict[str, Any]]) -> None:
-        logger.debug("Scheduling reservations for %d flights", len(flights))
-        confirmation_numbers = []
-
-        for flight in flights:
-            confirmation_numbers.append(flight["confirmationNumber"])
-
+    def _schedule_reservations(self, reservations: List[Dict[str, Any]]) -> None:
+        logger.debug("Scheduling flight check-ins for %d reservations", len(reservations))
+        confirmation_numbers = [reservation["confirmationNumber"] for reservation in reservations]
         self.checkin_scheduler.process_reservations(confirmation_numbers)
 
     def _check_flight_fares(self) -> None:
@@ -99,30 +95,25 @@ class FlightRetriever:
         time.sleep(sleep_time)
 
 
-class AccountFlightRetriever(FlightRetriever):
-    """
-    Helper class used to retrieve flights in an interval when login credentials
-    are provided.
-    """
+class AccountMonitor(ReservationMonitor):
+    """Monitor an account for newly booked reservations"""
 
     def __init__(self, config: Config, username: str, password: str) -> None:
         self.username = username
         self.password = password
         super().__init__(config)
 
-    def monitor_account(self) -> None:
+    def monitor(self) -> None:
         """
-        Check for newly booked flights to check in for the account every
-        X hours (retrieval interval). Monitoring can be turned off by
-        providing a value of 0 for the 'retrieval_interval' field in the
-        configuration file.
+        Check for newly booked reservations for the account every
+        X hours (retrieval interval).
         """
         while True:
             time_before = datetime.utcnow()
-            flights, skip_scheduling = self._get_flights()
+            reservations, skip_scheduling = self._get_reservations()
 
             if not skip_scheduling:
-                self._schedule_reservations(flights)
+                self._schedule_reservations(reservations)
                 self._check_flight_fares()
 
             if self.config.retrieval_interval <= 0:
@@ -131,25 +122,26 @@ class AccountFlightRetriever(FlightRetriever):
 
             self._smart_sleep(time_before)
 
-    def _get_flights(self) -> Tuple[List[Dict[str, Any]], bool]:
+    def _get_reservations(self) -> Tuple[List[Dict[str, Any]], bool]:
         """
-        Returns a list of flights and a boolean indicating if flight scheduling
-        should be skipped.
+        Returns a list of reservations and a boolean indicating if reservation
+        scheduling should be skipped.
 
-        Flight scheduling will be skipped if a bad request error is encountered because
-        new headers might not be valid and a list of flights could not be retrieved.
+        Reservation scheduling will be skipped if a bad request error is encountered because
+        new headers might not be valid and a list of reservations could not be retrieved.
         """
-        logger.debug("Retrieving flights for account")
+        logger.debug("Retrieving reservations for account")
         webdriver = WebDriver(self.checkin_scheduler)
 
         try:
-            flights = webdriver.get_flights(self)
+            reservations = webdriver.get_reservations(self)
         except LoginError as err:
             if err.status_code == BAD_REQUESTS_CODE:
                 # Don't exit when a Bad Request error happens. Instead, just skip the retrieval
                 # until the next time.
                 logger.warning(
-                    "Encountered a bad request error while logging in. Skipping flight retrieval"
+                    "Encountered a bad request error while logging in. Skipping reservation "
+                    "retrieval"
                 )
                 return [], True
 
@@ -157,5 +149,5 @@ class AccountFlightRetriever(FlightRetriever):
             self.notification_handler.failed_login(err)
             sys.exit(1)
 
-        logger.debug("Successfully retrieved %d flights", len(flights))
-        return flights, False
+        logger.debug("Successfully retrieved %d reservations", len(reservations))
+        return reservations, False

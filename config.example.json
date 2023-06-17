@@ -4,5 +4,5 @@
     "notification_level": 1,
     "retrieval_interval": 24,
     "accounts": [],
-    "flights": []
+    "reservations": []
 }

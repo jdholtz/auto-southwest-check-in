@@ -54,62 +54,67 @@ def check_flags(arguments: List[str]) -> None:
 
 def set_up_accounts(config: Config) -> None:
     # pylint:disable=import-outside-toplevel
-    from .flight_retriever import AccountFlightRetriever
+    from .reservation_monitor import AccountMonitor
 
     for account in config.accounts:
-        flight_retriever = AccountFlightRetriever(config, account[0], account[1])
+        account_monitor = AccountMonitor(config, account[0], account[1])
 
-        # Start each account in a separate process to run them in parallel
-        process = Process(target=flight_retriever.monitor_account)
+        # Start each account monitor in a separate process to run them in parallel
+        process = Process(target=account_monitor.monitor)
         process.start()
 
 
-def set_up_flights(config: Config) -> None:
+def set_up_reservations(config: Config) -> None:
     # pylint:disable=import-outside-toplevel
-    from .flight_retriever import FlightRetriever
+    from .reservation_monitor import ReservationMonitor
 
-    for flight in config.flights:
-        flight_retriever = FlightRetriever(config, flight[1], flight[2])
+    for reservation in config.reservations:
+        reservation_monitor = ReservationMonitor(config, reservation[1], reservation[2])
 
-        # Start each flight in a separate process to run them in parallel
+        # Start each reservation monitor in a separate process to run them in parallel
         process = Process(
-            target=flight_retriever.monitor_flights,
-            args=([{"confirmationNumber": flight[0]}],),
+            target=reservation_monitor.monitor,
+            args=([{"confirmationNumber": reservation[0]}],),
         )
         process.start()
 
 
 def set_up_check_in(arguments: List[str]) -> None:
-    """Initialize a specific Flight Retriever based on the arguments passed in"""
+    """
+    Initialize reservation and account monitoring based on the configuration
+    and arguments passed in
+    """
     logger.debug("Called with %d arguments", len(arguments))
 
     # Imported here to avoid needing dependencies to retrieve the script's
     # version or usage
     # pylint:disable=import-outside-toplevel
     from .config import Config
-    from .flight_retriever import FlightRetriever
+    from .reservation_monitor import ReservationMonitor
 
     config = Config()
 
     if "--test-notifications" in arguments:
-        flight_retriever = FlightRetriever(config)
+        reservation_monitor = ReservationMonitor(config)
 
         logger.info("Sending test notifications...")
-        flight_retriever.notification_handler.send_notification("This is a test message")
+        reservation_monitor.notification_handler.send_notification("This is a test message")
         sys.exit()
     elif len(arguments) == 2:
         config.accounts.append([arguments[0], arguments[1]])
         logger.debug("Account added through CLI arguments")
     elif len(arguments) == 3:
-        config.flights.append([arguments[0], arguments[1], arguments[2]])
-        logger.debug("Flight added through CLI arguments")
+        config.reservations.append([arguments[0], arguments[1], arguments[2]])
+        logger.debug("Reservation added through CLI arguments")
     elif len(arguments) > 3:
         logger.error("Invalid arguments. For more information, try '--help'")
         sys.exit(2)
 
-    logger.debug("Monitoring %d accounts and %d flights", len(config.accounts), len(config.flights))
+    logger.debug(
+        "Monitoring %d accounts and %d reservations", len(config.accounts), len(config.reservations)
+    )
     set_up_accounts(config)
-    set_up_flights(config)
+    set_up_reservations(config)
 
 
 def main(arguments: List[str]) -> None:

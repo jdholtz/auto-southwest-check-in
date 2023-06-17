@@ -30,9 +30,9 @@ class CheckInHandler:
         self.flight = flight
         self.process = Process(target=self._set_check_in)
 
-        self.notification_handler = self.checkin_scheduler.notification_handler
-        self.first_name = self.checkin_scheduler.flight_retriever.first_name
-        self.last_name = self.checkin_scheduler.flight_retriever.last_name
+        self.notification_handler = checkin_scheduler.notification_handler
+        self.first_name = checkin_scheduler.reservation_monitor.first_name
+        self.last_name = checkin_scheduler.reservation_monitor.last_name
 
     def schedule_check_in(self) -> None:
         logger.debug("Scheduling check-in for current flight")

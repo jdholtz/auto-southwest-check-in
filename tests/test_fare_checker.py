@@ -6,8 +6,8 @@ from pytest_mock import MockerFixture
 from lib.config import Config
 from lib.fare_checker import BOOKING_URL, FareChecker
 from lib.flight import Flight
-from lib.flight_retriever import FlightRetriever
 from lib.notification_handler import NotificationHandler
+from lib.reservation_monitor import ReservationMonitor
 from lib.utils import FlightChangeError
 
 # This needs to be accessed to be tested
@@ -43,7 +43,7 @@ def test_check_flight_price_sends_notification_on_lower_fares(
     mocker.patch.object(FareChecker, "_get_flight_price", return_value=flight_price)
     mock_lower_fare_notification = mocker.patch.object(NotificationHandler, "lower_fare")
 
-    fare_checker = FareChecker(FlightRetriever(Config()))
+    fare_checker = FareChecker(ReservationMonitor(Config()))
     fare_checker.check_flight_price("test_flight")
 
     mock_lower_fare_notification.assert_called_once()
@@ -58,7 +58,7 @@ def test_check_flight_price_does_not_send_notifications_when_fares_are_higher(
     mocker.patch.object(FareChecker, "_get_flight_price", return_value=flight_price)
     mock_lower_fare_notification = mocker.patch.object(NotificationHandler, "lower_fare")
 
-    fare_checker = FareChecker(FlightRetriever(Config()))
+    fare_checker = FareChecker(ReservationMonitor(Config()))
     fare_checker.check_flight_price("test_flight")
 
     mock_lower_fare_notification.assert_not_called()
@@ -78,7 +78,7 @@ def test_get_flight_price_gets_flight_price_matching_current_flight(
 
     test_flight.local_departure_time = "11:30"
     test_flight.local_arrival_time = "13:30"
-    fare_checker = FareChecker(FlightRetriever(Config()))
+    fare_checker = FareChecker(ReservationMonitor(Config()))
     price = fare_checker._get_flight_price(test_flight)
 
     assert price == "price"
@@ -94,7 +94,7 @@ def test_get_flight_price_returns_nothing_when_no_matching_flights_appear(
     mocker.patch.object(FareChecker, "_get_matching_flights", return_value=(flights, "test_fare"))
 
     test_flight.local_departure_time = "12:00"
-    fare_checker = FareChecker(FlightRetriever(Config()))
+    fare_checker = FareChecker(ReservationMonitor(Config()))
     price = fare_checker._get_flight_price(test_flight)
 
     assert price is None
@@ -120,7 +120,7 @@ def test_get_matching_flights_retrieves_correct_bound_page(
     response = {"changeShoppingPage": {"flights": {f"{bound}Page": {"cards": "test_cards"}}}}
     mocker.patch("lib.fare_checker.make_request", return_value=response)
 
-    fare_checker = FareChecker(FlightRetriever(Config()))
+    fare_checker = FareChecker(ReservationMonitor(Config()))
     matching_flights, fare_type = fare_checker._get_matching_flights(None)
 
     assert matching_flights == "test_cards"
@@ -142,7 +142,7 @@ def test_get_change_flight_page_retrieves_change_flight_page(
     )
     mock_check_for_companion = mocker.patch.object(FareChecker, "_check_for_companion")
 
-    fare_checker = FareChecker(FlightRetriever(Config()))
+    fare_checker = FareChecker(ReservationMonitor(Config()))
     change_flight_page, fare_type_bounds = fare_checker._get_change_flight_page(test_flight)
 
     mock_check_for_companion.assert_called_once()
@@ -166,7 +166,7 @@ def test_get_change_flight_page_raises_exception_when_flight_cannot_be_changed(
     }
     mocker.patch("lib.fare_checker.make_request", return_value=reservation_info)
 
-    fare_checker = FareChecker(FlightRetriever(Config()))
+    fare_checker = FareChecker(ReservationMonitor(Config()))
     with pytest.raises(FlightChangeError):
         fare_checker._get_change_flight_page(test_flight)
 
@@ -184,7 +184,7 @@ def test_get_search_query_returns_the_correct_query_for_one_way(test_flight: Fli
     }
 
     test_flight.local_departure_time = "12:00"
-    fare_checker = FareChecker(FlightRetriever(Config()))
+    fare_checker = FareChecker(ReservationMonitor(Config()))
     search_query = fare_checker._get_search_query(flight_page, test_flight)
 
     assert len(search_query) == 1
@@ -220,7 +220,7 @@ def test_get_search_query_returns_the_correct_query_for_round_trip(test_flight: 
     }
 
     test_flight.local_departure_time = "1:00"
-    fare_checker = FareChecker(FlightRetriever(Config()))
+    fare_checker = FareChecker(ReservationMonitor(Config()))
     search_query = fare_checker._get_search_query(flight_page, test_flight)
 
     assert len(search_query) == 2
@@ -250,7 +250,7 @@ def test_check_for_companion_raises_exception_when_a_companion_is_detected() -> 
         }
     }
 
-    fare_checker = FareChecker(FlightRetriever(Config()))
+    fare_checker = FareChecker(ReservationMonitor(Config()))
     with pytest.raises(FlightChangeError):
         fare_checker._check_for_companion(reservation_info)
 
@@ -260,7 +260,7 @@ def test_check_for_companion_raises_exception_when_a_companion_is_detected() -> 
     [{"greyBoxMessage": None}, {"greyBoxMessage": {}}, {"greyBoxMessage": {"body": ""}}],
 )
 def test_check_for_companion_passes_when_no_companion_exists(reservation: JSON) -> None:
-    fare_checker = FareChecker(FlightRetriever(Config()))
+    fare_checker = FareChecker(ReservationMonitor(Config()))
     # It will throw an exception if the test does not pass
     fare_checker._check_for_companion(reservation)
 
@@ -270,7 +270,7 @@ def test_get_matching_fare_returns_the_correct_fare() -> None:
         {"_meta": {"fareProductId": "wrong_fare"}, "priceDifference": "fake_price"},
         {"_meta": {"fareProductId": "right_fare"}, "priceDifference": "price"},
     ]
-    fare_checker = FareChecker(FlightRetriever(Config()))
+    fare_checker = FareChecker(ReservationMonitor(Config()))
     fare_price = fare_checker._get_matching_fare(fares, "right_fare")
     assert fare_price == "price"
 
@@ -279,19 +279,19 @@ def test_get_matching_fare_returns_the_correct_fare() -> None:
 def test_get_matching_fare_returns_default_price_when_price_is_not_available(
     fares: List[JSON],
 ) -> None:
-    fare_checker = FareChecker(FlightRetriever(Config()))
+    fare_checker = FareChecker(ReservationMonitor(Config()))
     fare_price = fare_checker._get_matching_fare(fares, "right_fare")
     assert fare_price == {"amount": 0, "currencyCode": "USD"}
 
 
 def test_get_matching_fare_raises_exception_when_fare_does_not_exist() -> None:
     fares = [{"_meta": {"fareProductId": "wrong_fare"}}]
-    fare_checker = FareChecker(FlightRetriever(Config()))
+    fare_checker = FareChecker(ReservationMonitor(Config()))
     with pytest.raises(KeyError):
         fare_checker._get_matching_fare(fares, "right_fare")
 
 
 def test_unavailable_fare_returns_default_price() -> None:
-    fare_checker = FareChecker(FlightRetriever(Config()))
+    fare_checker = FareChecker(ReservationMonitor(Config()))
     fare_price = fare_checker._unavailable_fare("fare")
     assert fare_price == {"amount": 0, "currencyCode": "USD"}
