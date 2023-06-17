@@ -280,7 +280,7 @@ def test_handle_login_error_handles_unknown_errors() -> None:
 @pytest.mark.parametrize(
     ["original_headers", "expected_headers"],
     [
-        ({"unneccesary": "header"}, {}),
+        ({"unnecessary": "header"}, {}),
         ({"X-API-Key": "API Key"}, {"X-API-Key": "API Key"}),
         ({"X-Channel-ID": "ID"}, {"X-Channel-ID": "ID"}),
         ({"User-Agent": "Chrome"}, {"User-Agent": "Chrome"}),

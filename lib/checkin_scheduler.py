@@ -114,7 +114,7 @@ class CheckInScheduler:
                 print(
                     f"Flight from {flight.departure_airport} to {flight.destination_airport} at "
                     f"{flight.departure_time} UTC is no longer scheduled. Stopping its check-in\n"
-                )  # Don't log as it has sensitve information
+                )  # Don't log as it has sensitive information
 
                 self.checkin_handlers[flight_idx].stop_check_in()
 

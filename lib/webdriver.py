@@ -169,7 +169,7 @@ class WebDriver:
                 return driver
             except Exception as err:
                 logger.debug(
-                    "An exception occured when initializing the webdriver: Name: %s. Error: %s",
+                    "An exception occurred when initializing the webdriver: Name: %s. Error: %s",
                     type(err).__name__,
                     err,
                 )

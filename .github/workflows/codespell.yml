@@ -1,0 +1,29 @@
+name: Check for typos
+
+on:
+  push:
+    branches:
+      - master
+      - develop
+    paths:
+      - "**.json"
+      - "**.py"
+      - "**.md"
+      - "**.yml"
+      - "pyproject.toml"
+  pull_request:
+    paths:
+      - "**.json"
+      - "**.py"
+      - "**.md"
+      - "**.yml"
+      - "pyproject.toml"
+
+jobs:
+  codespell:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: codespell
+        uses: codespell-project/actions-codespell@v2

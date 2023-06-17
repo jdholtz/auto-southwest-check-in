@@ -90,7 +90,7 @@ class CheckInHandler:
         print(
             f"Checking in to flight from '{self.flight.departure_airport}' to "
             f"'{self.flight.destination_airport}' for {account_name}\n"
-        )  # Don't log as it has sensitve information
+        )  # Don't log as it has sensitive information
 
         headers = self.checkin_scheduler.headers
         info = {

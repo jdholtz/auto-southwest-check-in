@@ -2,6 +2,9 @@
 line-length = 100
 target-version = ["py37"]
 
+[tool.codespell]
+skip = 'venv,./utils/airport_timezones.json'
+
 [tool.isort]
 line_length = 100
 
