@@ -5,7 +5,7 @@ import pytest
 from pytest_mock import MockerFixture
 
 from lib.checkin_handler import CheckInHandler
-from lib.checkin_scheduler import CheckInScheduler
+from lib.checkin_scheduler import FLIGHT_IN_PAST_CODE, CheckInScheduler
 from lib.config import Config
 from lib.flight import Flight
 from lib.notification_handler import NotificationHandler
@@ -95,18 +95,62 @@ def test_get_reservation_info_returns_reservation_info(mocker: MockerFixture) ->
     assert reservation_info == [{"test": "reservation"}]
 
 
-def test_get_reservation_info_sends_error_notification_when_reservation_retrieval_fails(
+# A reservation has flights in the past and this is the first time attempting to
+# schedule it
+def test_get_reservation_info_sends_error_notification_when_reservation_not_found(
     mocker: MockerFixture,
 ) -> None:
-    mocker.patch("lib.checkin_scheduler.make_request", side_effect=RequestError())
+    mocker.patch(
+        "lib.checkin_scheduler.make_request",
+        side_effect=RequestError("", {"code": FLIGHT_IN_PAST_CODE}),
+    )
     mock_failed_reservation_retrieval = mocker.patch.object(
         NotificationHandler, "failed_reservation_retrieval"
     )
 
     checkin_scheduler = CheckInScheduler(ReservationMonitor(Config()))
+    checkin_scheduler.flights = []
     reservation_info = checkin_scheduler._get_reservation_info("flight1")
 
     mock_failed_reservation_retrieval.assert_called_once()
+    assert reservation_info == []
+
+
+# A reservation is already scheduled but fails for a retrieval resulting in another error than
+# all flights being old
+def test_get_reservation_info_sends_error_when_reservation_retrieval_fails_and_flights_scheduled(
+    mocker: MockerFixture, test_flights: List[Flight]
+) -> None:
+    mocker.patch("lib.checkin_scheduler.make_request", side_effect=RequestError("", {}))
+    mock_failed_reservation_retrieval = mocker.patch.object(
+        NotificationHandler, "failed_reservation_retrieval"
+    )
+
+    checkin_scheduler = CheckInScheduler(ReservationMonitor(Config()))
+    checkin_scheduler.flights = test_flights
+    reservation_info = checkin_scheduler._get_reservation_info("flight1")
+
+    mock_failed_reservation_retrieval.assert_called_once()
+    assert reservation_info == []
+
+
+# A reservation is already scheduled and the flights are in the past
+def test_get_reservation_info_does_not_send_error_notification_when_reservation_is_old(
+    mocker: MockerFixture, test_flights: List[Flight]
+) -> None:
+    mocker.patch(
+        "lib.checkin_scheduler.make_request",
+        side_effect=RequestError("", {"code": FLIGHT_IN_PAST_CODE}),
+    )
+    mock_failed_reservation_retrieval = mocker.patch.object(
+        NotificationHandler, "failed_reservation_retrieval"
+    )
+
+    checkin_scheduler = CheckInScheduler(ReservationMonitor(Config()))
+    checkin_scheduler.flights = test_flights
+    reservation_info = checkin_scheduler._get_reservation_info("flight1")
+
+    mock_failed_reservation_retrieval.assert_not_called()
     assert reservation_info == []
 
 

@@ -9,7 +9,7 @@ def test_make_request_raises_exception_on_failure(
     requests_mock: RequestMocker, mocker: MockerFixture
 ) -> None:
     mock_sleep = mocker.patch("time.sleep")
-    requests_mock.post(utils.BASE_URL + "test", status_code=400, reason="error")
+    requests_mock.post(utils.BASE_URL + "test", status_code=400, reason="error", json={})
 
     with pytest.raises(utils.RequestError):
         utils.make_request("POST", "test", {}, {}, max_attempts=5)

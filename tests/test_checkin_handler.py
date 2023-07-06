@@ -107,7 +107,7 @@ def test_safe_sleep_sleeps_in_intervals(
 def test_check_in_sends_error_notification_when_check_in_fails(
     mocker: MockerFixture, checkin_handler: CheckInHandler
 ) -> None:
-    mocker.patch("lib.checkin_handler.make_request", side_effect=RequestError())
+    mocker.patch("lib.checkin_handler.make_request", side_effect=RequestError("", {}))
     mock_notification_handler = mocker.patch("lib.notification_handler.NotificationHandler")
 
     checkin_handler.notification_handler = mock_notification_handler

@@ -5,13 +5,16 @@ from typing import Any, Dict
 
 import requests
 
+# Type alias for JSON
+JSON = Dict[str, Any]
+
 BASE_URL = "https://mobile.southwest.com/api/"
 logger = logging.getLogger(__name__)
 
 
 def make_request(
-    method: str, site: str, headers: Dict[str, Any], info: Dict[str, str], max_attempts=20
-) -> Dict[str, Any]:
+    method: str, site: str, headers: JSON, info: Dict[str, str], max_attempts=20
+) -> JSON:
     # Ensure the URL is not malformed
     site = site.replace("//", "/").lstrip("/")
 
@@ -33,15 +36,19 @@ def make_request(
         attempts += 1
         time.sleep(0.5)
 
-    error = response.reason + " " + str(response.status_code)
-    logger.debug("Failed to make request after %d attempts: %s", max_attempts, error)
-    logger.debug("Response body: %s", response.content.decode())
-    raise RequestError(error)
+    error_msg = response.reason + " " + str(response.status_code)
+    logger.debug("Failed to make request after %d attempts: %s", max_attempts, error_msg)
+
+    response_body = response.json()
+    logger.debug("Response body: %s", response_body)
+    raise RequestError(error_msg, response_body)
 
 
 # Make a custom exception when a request fails
 class RequestError(Exception):
-    pass
+    def __init__(self, message: str, response_body: JSON) -> None:
+        super().__init__(message)
+        self.southwest_code = response_body.get("code")
 
 
 # Make a custom exception when a login fails

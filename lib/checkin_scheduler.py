@@ -14,6 +14,8 @@ if TYPE_CHECKING:  # pragma: no cover
 VIEW_RESERVATION_URL = "mobile-air-booking/v1/mobile-air-booking/page/view-reservation/"
 logger = get_logger(__name__)
 
+FLIGHT_IN_PAST_CODE = 400520413
+
 
 class CheckInScheduler:
     """
@@ -74,8 +76,14 @@ class CheckInScheduler:
             logger.debug("Retrieving reservation information")
             response = make_request("GET", site, self.headers, info)
         except RequestError as err:
-            logger.debug("Failed to retrieve reservation info. Error: %s. Exiting", err)
-            self.notification_handler.failed_reservation_retrieval(err, confirmation_number)
+            # Don't send a notification if flights have already been scheduled and all flights
+            # from this reservation are old. This is how old flights are removed.
+            if len(self.flights) == 0 or err.southwest_code != FLIGHT_IN_PAST_CODE:
+                logger.debug("Failed to retrieve reservation info. Error: %s. Exiting", err)
+                self.notification_handler.failed_reservation_retrieval(err, confirmation_number)
+            else:
+                logger.debug("Flights on the reservation have already departed")
+
             return []
 
         logger.debug("Successfully retrieved reservation information")
