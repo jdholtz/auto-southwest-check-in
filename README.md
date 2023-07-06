@@ -86,10 +86,16 @@ To download a specific version, append `:vX.X` to the end of the image name. You
 
 To run the image, you can use a command such as:
 ```shell
-docker run -d jdholtz/auto-southwest-check-in ARGS
+docker run -d jdholtz/auto-southwest-check-in CONFIRMATION_NUMBER FIRST_NAME LAST_NAME
 ```
-See above for the arguments that can be passed in. You can optionally attach a configuration file to the container
-by adding the `--volume /path/to/config.json:/app/config.json` flag before the image name.
+or
+```shell
+docker run -d jdholtz/auto-southwest-check-in USERNAME PASSWORD
+```
+Additional arguments for the script can be passed in after the image name.
+
+You can optionally attach a configuration file to the container by adding the
+`--volume /full-path/to/config.json:/app/config.json` flag before the image name.
 
 **Note**: The recommended restart policy for the container is `on-failed` or `no`
 

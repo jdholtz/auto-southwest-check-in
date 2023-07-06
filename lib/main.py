@@ -15,10 +15,10 @@ __version__ = "v4.1"
 
 __doc__ = """
 Schedule a check-in:
-    python3 southwest.py CONFIRMATION_NUMBER FIRST_NAME LAST_NAME
+    python3 southwest.py [options] CONFIRMATION_NUMBER FIRST_NAME LAST_NAME
 
 Log into your account:
-    python3 southwest.py USERNAME PASSWORD
+    python3 southwest.py [options] USERNAME PASSWORD
 
 Options:
     --test-notifications Test the notification URLs configuration and exit
