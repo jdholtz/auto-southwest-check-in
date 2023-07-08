@@ -1,3 +1,4 @@
+import json
 from typing import List
 from unittest import mock
 
@@ -102,7 +103,7 @@ def test_get_reservation_info_sends_error_notification_when_reservation_not_foun
 ) -> None:
     mocker.patch(
         "lib.checkin_scheduler.make_request",
-        side_effect=RequestError("", {"code": FLIGHT_IN_PAST_CODE}),
+        side_effect=RequestError("", json.dumps({"code": FLIGHT_IN_PAST_CODE})),
     )
     mock_failed_reservation_retrieval = mocker.patch.object(
         NotificationHandler, "failed_reservation_retrieval"
@@ -121,7 +122,7 @@ def test_get_reservation_info_sends_error_notification_when_reservation_not_foun
 def test_get_reservation_info_sends_error_when_reservation_retrieval_fails_and_flights_scheduled(
     mocker: MockerFixture, test_flights: List[Flight]
 ) -> None:
-    mocker.patch("lib.checkin_scheduler.make_request", side_effect=RequestError("", {}))
+    mocker.patch("lib.checkin_scheduler.make_request", side_effect=RequestError("", ""))
     mock_failed_reservation_retrieval = mocker.patch.object(
         NotificationHandler, "failed_reservation_retrieval"
     )
@@ -140,7 +141,7 @@ def test_get_reservation_info_does_not_send_error_notification_when_reservation_
 ) -> None:
     mocker.patch(
         "lib.checkin_scheduler.make_request",
-        side_effect=RequestError("", {"code": FLIGHT_IN_PAST_CODE}),
+        side_effect=RequestError("", json.dumps({"code": FLIGHT_IN_PAST_CODE})),
     )
     mock_failed_reservation_retrieval = mocker.patch.object(
         NotificationHandler, "failed_reservation_retrieval"

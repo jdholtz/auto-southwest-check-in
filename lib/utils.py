@@ -1,3 +1,4 @@
+import json
 import logging
 import time
 from enum import IntEnum
@@ -39,16 +40,22 @@ def make_request(
     error_msg = response.reason + " " + str(response.status_code)
     logger.debug("Failed to make request after %d attempts: %s", max_attempts, error_msg)
 
-    response_body = response.json()
+    response_body = response.content.decode()
     logger.debug("Response body: %s", response_body)
     raise RequestError(error_msg, response_body)
 
 
 # Make a custom exception when a request fails
 class RequestError(Exception):
-    def __init__(self, message: str, response_body: JSON) -> None:
+    def __init__(self, message: str, response_body: str) -> None:
         super().__init__(message)
-        self.southwest_code = response_body.get("code")
+
+        try:
+            response_json = json.loads(response_body)
+        except json.decoder.JSONDecodeError:
+            response_json = {}
+
+        self.southwest_code = response_json.get("code")
 
 
 # Make a custom exception when a login fails
