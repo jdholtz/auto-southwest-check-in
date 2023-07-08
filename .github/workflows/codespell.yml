@@ -11,6 +11,7 @@ on:
       - "**.md"
       - "**.yml"
       - "pyproject.toml"
+      - "setup.cfg"
   pull_request:
     paths:
       - "**.json"
@@ -18,6 +19,7 @@ on:
       - "**.md"
       - "**.yml"
       - "pyproject.toml"
+      - "setup.cfg"
 
 jobs:
   codespell:

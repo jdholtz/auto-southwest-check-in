@@ -7,7 +7,6 @@ repos:
     rev: v2.2.5
     hooks:
       - id: codespell
-        files: ^.*\.(json|py|md|yml)$
         additional_dependencies:
           - tomli
   - repo: https://github.com/pycqa/flake8
