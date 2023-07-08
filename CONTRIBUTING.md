@@ -29,14 +29,17 @@ It is highly recommended for you to use [pre-commit][1] to ensure you are follow
 [Flake8][2] is used to lint the Python code. When validating your code against flake8, use your best judgement to determine whether to fix
 the issue or disable the warning.
 
-### Formatting
-[Black][3] is used to format all the Python code to a consistent style. Additionally, [isort][4] is used to provide a consistent ordering to imports.
+[Codespell][3] is used to reduce typos in comments, strings, and documentation.
 
-It is also highly recommended to use an [EditorConfig][5] plugin for your code editor to maintain a consistent coding style for all project files.
+### Formatting
+[Black][4] is used to format all the Python code to a consistent style. Additionally, [isort][5] is used to provide a consistent ordering to imports.
+
+It is also highly recommended to use an [EditorConfig][6] plugin for your code editor to maintain a consistent coding style for all project files.
 
 [0]: https://docs.pytest.org
 [1]: https://pre-commit.com
 [2]: https://flake8.pycqa.org/en/latest
-[3]: https://black.readthedocs.io/en/stable
-[4]: https://pycqa.github.io/isort/
-[5]: https://editorconfig.org/
+[3]: https://github.com/codespell-project/codespell
+[4]: https://black.readthedocs.io/en/stable
+[5]: https://pycqa.github.io/isort/
+[6]: https://editorconfig.org/
