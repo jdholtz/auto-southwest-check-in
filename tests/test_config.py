@@ -4,7 +4,7 @@ from typing import Any, Dict, List
 import pytest
 from pytest_mock import MockerFixture
 
-from lib import config
+from lib.config import Config
 
 # This needs to be accessed to be tested
 # pylint: disable=protected-access
@@ -21,21 +21,21 @@ def mock_open(mocker: MockerFixture) -> None:
 def test_config_sets_chromedriver_path_from_environment_variable(mocker: MockerFixture) -> None:
     mocker.patch("os.getenv", return_value="/test/path")
 
-    test_config = config.Config()
+    test_config = Config()
     assert test_config.chromedriver_path == "/test/path"
 
 
 def test_config_exits_on_error_in_config_file(mocker: MockerFixture) -> None:
-    mocker.patch.object(config.Config, "_parse_config", side_effect=TypeError())
+    mocker.patch.object(Config, "_parse_config", side_effect=TypeError())
 
     with pytest.raises(SystemExit):
-        config.Config()
+        Config()
 
 
 def test_read_config_reads_the_config_file_correctly(mocker: MockerFixture) -> None:
     mocker.patch("json.loads", return_value={"test": "data"})
 
-    test_config = config.Config()
+    test_config = Config()
     config_content = test_config._read_config()
 
     assert config_content == {"test": "data"}
@@ -44,7 +44,7 @@ def test_read_config_reads_the_config_file_correctly(mocker: MockerFixture) -> N
 def test_read_config_returns_empty_config_when_file_is_not_found(mocker: MockerFixture) -> None:
     mocker.patch.object(Path, "read_text", side_effect=FileNotFoundError())
 
-    test_config = config.Config()
+    test_config = Config()
     config_content = test_config._read_config()
 
     assert config_content == {}
@@ -64,14 +64,14 @@ def test_read_config_returns_empty_config_when_file_is_not_found(mocker: MockerF
     ],
 )
 def test_parse_config_raises_exception_with_invalid_entries(config_content: Dict[str, Any]) -> None:
-    test_config = config.Config()
+    test_config = Config()
 
     with pytest.raises(TypeError):
         test_config._parse_config(config_content)
 
 
 def test_parse_config_sets_the_correct_config_values() -> None:
-    test_config = config.Config()
+    test_config = Config()
     test_config._parse_config(
         {
             "check_fares": True,
@@ -94,10 +94,10 @@ def test_parse_config_sets_the_correct_config_values() -> None:
 def test_parse_config_does_not_set_values_when_a_config_value_is_empty(
     mocker: MockerFixture,
 ) -> None:
-    mock_parse_accounts = mocker.patch.object(config.Config, "_parse_accounts")
-    mock_parse_reservations = mocker.patch.object(config.Config, "_parse_reservations")
-    test_config = config.Config()
-    expected_config = config.Config()
+    mock_parse_accounts = mocker.patch.object(Config, "_parse_accounts")
+    mock_parse_reservations = mocker.patch.object(Config, "_parse_reservations")
+    test_config = Config()
+    expected_config = Config()
 
     test_config._parse_config({})
 
@@ -112,15 +112,15 @@ def test_parse_config_does_not_set_values_when_a_config_value_is_empty(
 
 
 def test_parse_config_sets_retrieval_interval_to_a_minimum() -> None:
-    test_config = config.Config()
+    test_config = Config()
     test_config._parse_config({"retrieval_interval": -1})
 
     assert test_config.retrieval_interval == 1 * 60 * 60
 
 
 def test_parse_config_parses_accounts(mocker: MockerFixture) -> None:
-    mock_parse_accounts = mocker.patch.object(config.Config, "_parse_accounts")
-    test_config = config.Config()
+    mock_parse_accounts = mocker.patch.object(Config, "_parse_accounts")
+    test_config = Config()
     test_config._parse_config({"accounts": []})
 
     mock_parse_accounts.assert_called_once()
@@ -129,8 +129,8 @@ def test_parse_config_parses_accounts(mocker: MockerFixture) -> None:
 # Temporary second test while 'flights' is deprecated
 @pytest.mark.parametrize("key", ["reservations", "flights"])
 def test_parse_config_parses_reservations(mocker: MockerFixture, key: str) -> None:
-    mock_parse_reservations = mocker.patch.object(config.Config, "_parse_reservations")
-    test_config = config.Config()
+    mock_parse_reservations = mocker.patch.object(Config, "_parse_reservations")
+    test_config = Config()
     test_config._parse_config({key: []})
 
     mock_parse_reservations.assert_called_once()
@@ -138,8 +138,8 @@ def test_parse_config_parses_reservations(mocker: MockerFixture, key: str) -> No
 
 # Temporary test while 'flights' is deprecated
 def test_parse_config_parses_flights_if_reservations_does_not_exist(mocker: MockerFixture) -> None:
-    mock_parse_reservations = mocker.patch.object(config.Config, "_parse_reservations")
-    test_config = config.Config()
+    mock_parse_reservations = mocker.patch.object(Config, "_parse_reservations")
+    test_config = Config()
     test_config._parse_config({"flights": ["flight"], "reservations": ["reservation"]})
 
     mock_parse_reservations.assert_called_once_with(["reservation"])
@@ -147,9 +147,9 @@ def test_parse_config_parses_flights_if_reservations_does_not_exist(mocker: Mock
 
 def test_parse_accounts_parses_objects_correctly(mocker: MockerFixture) -> None:
     accounts = [["account1"], ["account2"]]
-    mocker.patch.object(config.Config, "_parse_objects", return_value=accounts)
+    mocker.patch.object(Config, "_parse_objects", return_value=accounts)
 
-    test_config = config.Config()
+    test_config = Config()
     test_config._parse_accounts([])
 
     assert test_config.accounts == accounts
@@ -157,9 +157,9 @@ def test_parse_accounts_parses_objects_correctly(mocker: MockerFixture) -> None:
 
 def test_parse_reservations_parses_objects_correctly(mocker: MockerFixture) -> None:
     reservations = [["reservation1"], ["reservation2"]]
-    mocker.patch.object(config.Config, "_parse_objects", return_value=reservations)
+    mocker.patch.object(Config, "_parse_objects", return_value=reservations)
 
-    test_config = config.Config()
+    test_config = Config()
     test_config._parse_reservations([])
 
     assert test_config.reservations == reservations
@@ -167,15 +167,15 @@ def test_parse_reservations_parses_objects_correctly(mocker: MockerFixture) -> N
 
 @pytest.mark.parametrize("objects", [[""], [1], [True]])
 def test_parse_objects_raises_exception_with_invalid_types(objects: List[Any]) -> None:
-    test_config = config.Config()
+    test_config = Config()
 
     with pytest.raises(TypeError):
         test_config._parse_objects(objects, [], "")
 
 
 def test_parse_objects_parses_every_object(mocker: MockerFixture) -> None:
-    mock_parse_object = mocker.patch.object(config.Config, "_parse_object")
-    test_config = config.Config()
+    mock_parse_object = mocker.patch.object(Config, "_parse_object")
+    test_config = Config()
     test_config._parse_objects([{}, {}], [], "")
 
     assert mock_parse_object.call_count == 2
@@ -185,20 +185,20 @@ def test_parse_objects_parses_every_object(mocker: MockerFixture) -> None:
 def test_parse_object_raises_excpetion_when_key_is_not_in_object(
     object_config: Dict[str, Any]
 ) -> None:
-    test_config = config.Config()
+    test_config = Config()
     with pytest.raises(TypeError):
         test_config._parse_object(object_config, ["key"], "")
 
 
 def test_parse_object_raises_exception_when_value_of_key_is_not_a_string() -> None:
-    test_config = config.Config()
+    test_config = Config()
     with pytest.raises(TypeError):
         test_config._parse_object({"key": 1}, ["key"], "")
 
 
 def test_parse_object_parses_an_object_correctly() -> None:
     obj = {"key1": "value1", "key2": "value2"}
-    test_config = config.Config()
+    test_config = Config()
     obj_info = test_config._parse_object(obj, list(obj.keys()), "")
 
     assert obj_info == list(obj.values())

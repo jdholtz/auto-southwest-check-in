@@ -9,7 +9,7 @@ from .flight import Flight
 from .log import get_logger
 from .utils import RequestError, make_request
 
-if TYPE_CHECKING:  # pragma: no cover
+if TYPE_CHECKING:
     from .checkin_scheduler import CheckInScheduler
 
 CHECKIN_URL = "mobile-air-operations/v1/mobile-air-operations/page/check-in/"

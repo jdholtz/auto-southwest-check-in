@@ -7,7 +7,7 @@ from .flight import Flight
 from .log import get_logger
 from .utils import FlightChangeError, make_request
 
-if TYPE_CHECKING:  # pragma: no cover
+if TYPE_CHECKING:
     from .reservation_monitor import ReservationMonitor
 
 # Type alias for JSON

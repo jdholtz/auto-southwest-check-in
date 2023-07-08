@@ -8,7 +8,7 @@ from .log import get_logger
 from .utils import RequestError, make_request
 from .webdriver import WebDriver
 
-if TYPE_CHECKING:  # pragma: no cover
+if TYPE_CHECKING:
     from .reservation_monitor import ReservationMonitor
 
 VIEW_RESERVATION_URL = "mobile-air-booking/v1/mobile-air-booking/page/view-reservation/"

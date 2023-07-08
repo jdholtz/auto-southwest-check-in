@@ -8,7 +8,7 @@ from .flight import Flight
 from .log import get_logger
 from .utils import LoginError, NotificationLevel, RequestError
 
-if TYPE_CHECKING:  # pragma: no cover
+if TYPE_CHECKING:
     from .reservation_monitor import ReservationMonitor
 
 MANUAL_CHECKIN_URL = "https://mobile.southwest.com/check-in"

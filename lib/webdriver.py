@@ -14,7 +14,7 @@ from seleniumwire.undetected_chromedriver import Chrome, ChromeOptions
 from .log import get_logger
 from .utils import LoginError
 
-if TYPE_CHECKING:  # pragma: no cover
+if TYPE_CHECKING:
     from .checkin_scheduler import CheckInScheduler
     from .reservation_monitor import AccountMonitor
 

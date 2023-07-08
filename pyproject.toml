@@ -20,6 +20,8 @@ exclude_lines = [
 
     # This is not feasible to test as it requires some really wonky module loading.
     'if __name__ == "__main__":',
+
+    'if TYPE_CHECKING:',
 ]
 
 [tool.pytest.ini_options]
