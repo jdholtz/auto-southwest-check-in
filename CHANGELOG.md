@@ -2,7 +2,7 @@
 When upgrading to a new version, make sure to follow the directions under the "Upgrading" header of the corresponding version.
 If there is no "Upgrading" header for that version, no post-upgrade actions need to be performed.
 
-## Upcoming
+## 4.2 (2023-07-08)
 
 ### New Features
 - This project is now licensed under the GPLv3 license instead of the MIT

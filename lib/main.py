@@ -11,7 +11,7 @@ from lib import log
 if TYPE_CHECKING:  # pragma: no cover
     from lib.config import Config
 
-__version__ = "v4.1"
+__version__ = "v4.2"
 
 __doc__ = """
 Schedule a check-in:
