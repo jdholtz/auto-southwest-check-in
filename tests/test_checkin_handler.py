@@ -1,3 +1,4 @@
+import signal
 from datetime import datetime
 from unittest import mock
 
@@ -15,7 +16,6 @@ from lib.utils import RequestError
 def checkin_handler(mocker: MockerFixture) -> CheckInHandler:
     test_flight = mocker.patch("lib.checkin_handler.Flight")
 
-    mocker.patch("lib.checkin_handler.Process")
     mock_checkin_scheduler = mocker.patch("lib.checkin_scheduler.CheckInScheduler")
     return CheckInHandler(mock_checkin_scheduler, test_flight)
 
@@ -23,23 +23,25 @@ def checkin_handler(mocker: MockerFixture) -> CheckInHandler:
 def test_schedule_check_in_starts_a_process(
     mocker: MockerFixture, checkin_handler: CheckInHandler
 ) -> None:
-    mock_process = checkin_handler.process
+    mock_process = mocker.patch("lib.checkin_handler.Process")
     mock_process.start = mock.Mock()
 
     checkin_handler.schedule_check_in()
 
-    mock_process.start.assert_called_once()
+    mock_process.return_value.start.assert_called_once()
+    assert checkin_handler.pid is not None
 
 
-def test_stop_check_in_stops_a_process(
+def test_stop_check_in_stops_a_process_by_killing_its_pid(
     mocker: MockerFixture, checkin_handler: CheckInHandler
 ) -> None:
-    mock_process = checkin_handler.process
-    mock_process.terminate = mock.Mock()
+    mock_os_kill = mocker.patch("os.kill")
+    mock_os_waitpid = mocker.patch("os.waitpid")
 
     checkin_handler.stop_check_in()
 
-    mock_process.terminate.assert_called_once()
+    mock_os_kill.assert_called_once_with(checkin_handler.pid, signal.SIGTERM)
+    mock_os_waitpid.assert_called_once_with(checkin_handler.pid, 0)
 
 
 def test_set_check_in_correctly_sets_up_check_in_process(

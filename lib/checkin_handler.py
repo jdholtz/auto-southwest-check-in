@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+import signal
 import time
 from datetime import datetime, timedelta
 from multiprocessing import Process
@@ -28,7 +30,7 @@ class CheckInHandler:
     def __init__(self, checkin_scheduler: CheckInScheduler, flight: Flight) -> None:
         self.checkin_scheduler = checkin_scheduler
         self.flight = flight
-        self.process = Process(target=self._set_check_in)
+        self.pid = None
 
         self.notification_handler = checkin_scheduler.notification_handler
         self.first_name = checkin_scheduler.reservation_monitor.first_name
@@ -36,11 +38,24 @@ class CheckInHandler:
 
     def schedule_check_in(self) -> None:
         logger.debug("Scheduling check-in for current flight")
-        self.process.start()
+        process = Process(target=self._set_check_in)
+        process.start()
+        self.pid = process.pid
 
     def stop_check_in(self) -> None:
+        """
+        Terminate the check-in process by killing its process ID. The process can't
+        be directly terminated with process.terminate() as the process object cannot
+        be pickled (necessary when using multiprocessing's 'spawn' start method).
+        """
         logger.debug("Stopping check-in for current flight")
-        self.process.terminate()
+        logger.debug(f"Killing process with PID {self.pid}")
+        os.kill(self.pid, signal.SIGTERM)
+
+        # Wait so zombie (defunct) processes are not created
+        logger.debug(f"Waiting for process with PID {self.pid} to be terminated")
+        os.waitpid(self.pid, 0)
+        logger.debug(f"Process with PID {self.pid} successfully terminated")
 
     def _set_check_in(self) -> None:
         # Starts to check in five seconds early in case the Southwest server is ahead of your server
