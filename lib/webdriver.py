@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import time
 from typing import TYPE_CHECKING, Any, Dict, List
@@ -77,7 +78,7 @@ class WebDriver:
 
         self._wait_for_response(driver, 0)
         self._set_headers_from_request(driver)
-        driver.quit()
+        self._quit_browser(driver)
 
     def get_reservations(self, account_monitor: AccountMonitor) -> List[Dict[str, Any]]:
         """
@@ -107,7 +108,7 @@ class WebDriver:
 
         response = self._wait_for_response(driver, 0)
         if response.status_code != 200:
-            driver.quit()
+            self._quit_browser(driver)
             error = self._handle_login_error(response)
             raise error
 
@@ -129,7 +130,7 @@ class WebDriver:
         reservation_response = self._wait_for_response(driver, 1)
         reservations = json.loads(reservation_response.body)["upcomingTripsPage"]
 
-        driver.quit()
+        self._quit_browser(driver)
 
         return [reservation for reservation in reservations if reservation["tripType"] == "FLIGHT"]
 
@@ -237,3 +238,8 @@ class WebDriver:
     def _set_account_name(self, account_monitor: AccountMonitor, response: Dict[str, Any]) -> None:
         account_monitor.first_name = response["customers.userInformation.firstName"]
         account_monitor.last_name = response["customers.userInformation.lastName"]
+
+    def _quit_browser(self, driver: Chrome) -> None:
+        driver.quit()
+        os.waitpid(driver.browser_pid, 0)
+        os.waitpid(driver.service.process.pid, 0)

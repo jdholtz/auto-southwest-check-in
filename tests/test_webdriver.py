@@ -34,11 +34,14 @@ def test_set_headers_correctly_sets_needed_headers(mocker: MockerFixture) -> Non
     mocker.patch("lib.webdriver.WebDriverWait")
     mock_wait_for_response = mocker.patch.object(WebDriver, "_wait_for_response")
     mock_set_headers_from_request = mocker.patch.object(WebDriver, "_set_headers_from_request")
+    mock_quit_browser = mocker.patch.object(WebDriver, "_quit_browser")
 
     mock_checkin_scheduler = mocker.patch("lib.checkin_scheduler.CheckInScheduler")
     WebDriver(mock_checkin_scheduler).set_headers()
+
     mock_wait_for_response.assert_called_once()
     mock_set_headers_from_request.assert_called_once()
+    mock_quit_browser.assert_called_once()
 
 
 def test_get_reservations_raises_exception_on_failed_login(
@@ -54,6 +57,7 @@ def test_get_reservations_raises_exception_on_failed_login(
         WebDriver, "_wait_for_response", return_value=request_one.response
     )
     mock_set_headers_from_request = mocker.patch.object(WebDriver, "_set_headers_from_request")
+    mock_quit_browser = mocker.patch.object(WebDriver, "_quit_browser")
 
     mock_driver.requests = [request_one]
 
@@ -62,6 +66,7 @@ def test_get_reservations_raises_exception_on_failed_login(
 
     mock_wait_for_response.assert_called_once()
     mock_set_headers_from_request.assert_not_called()
+    mock_quit_browser.assert_called_once_with(mock_driver)
 
 
 def test_get_reservations_sets_account_name_when_it_is_not_set(
@@ -82,6 +87,7 @@ def test_get_reservations_sets_account_name_when_it_is_not_set(
     mocker.patch.object(
         WebDriver, "_wait_for_response", side_effect=[request_one.response, request_two.response]
     )
+    mock_quit_browser = mocker.patch.object(WebDriver, "_quit_browser")
 
     mock_driver.requests = [request_one, request_two]
 
@@ -90,6 +96,7 @@ def test_get_reservations_sets_account_name_when_it_is_not_set(
 
     mock_set_headers_from_request.assert_called_once_with(mock_driver)
     mock_set_account_name.assert_called_once_with(mock_reservation_monitor, {"name": "John Doe"})
+    mock_quit_browser.assert_called_once_with(mock_driver)
     assert flights == [{"tripType": "FLIGHT"}]
 
 
@@ -110,6 +117,7 @@ def test_get_reservations_does_not_set_account_name_when_it_is_already_set(
     mocker.patch.object(
         WebDriver, "_wait_for_response", side_effect=[request_one.response, request_two.response]
     )
+    mock_quit_browser = mocker.patch.object(WebDriver, "_quit_browser")
 
     mock_driver.requests = [request_one, request_two]
 
@@ -118,6 +126,7 @@ def test_get_reservations_does_not_set_account_name_when_it_is_already_set(
 
     mock_set_headers_from_request.assert_called_once_with(mock_driver)
     mock_set_account_name.assert_not_called()
+    mock_quit_browser.assert_called_once_with(mock_driver)
     assert flights == [{"tripType": "FLIGHT"}]
 
 
@@ -140,12 +149,14 @@ def test_get_reservations_only_returns_flight_reservations(
     mocker.patch.object(
         WebDriver, "_wait_for_response", side_effect=[request_one.response, request_two.response]
     )
+    mock_quit_browser = mocker.patch.object(WebDriver, "_quit_browser")
 
     mock_driver.requests = [request_one, request_two]
 
     mock_reservation_monitor.first_name = "John"
     flights = WebDriver(None).get_reservations(mock_reservation_monitor)
     assert len(flights) == 2
+    mock_quit_browser.assert_called_once_with(mock_driver)
 
 
 def test_get_driver_returns_a_webdriver_with_one_request(mocker: MockerFixture) -> None:
@@ -308,3 +319,20 @@ def test_set_account_name_sets_the_correct_values_for_the_name(
 
     assert mock_reservation_monitor.first_name == "John"
     assert mock_reservation_monitor.last_name == "Doe"
+
+
+def test_quit_browser_quits_driver_successfully(
+    mocker: MockerFixture, mock_driver: mock.Mock
+) -> None:
+    mock_checkin_scheduler = mocker.patch("lib.checkin_scheduler.CheckInScheduler")
+    mock_os_waitpid = mocker.patch("os.waitpid")
+
+    webdriver = WebDriver(mock_checkin_scheduler)
+    webdriver._quit_browser(mock_driver)
+
+    expected_calls = [
+        mock.call(mock_driver.browser_pid, 0),
+        mock.call(mock_driver.service.process.pid, 0),
+    ]
+    mock_driver.quit.assert_called_once()
+    mock_os_waitpid.assert_has_calls(expected_calls)
