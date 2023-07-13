@@ -336,3 +336,16 @@ def test_quit_browser_quits_driver_successfully(
     ]
     mock_driver.quit.assert_called_once()
     mock_os_waitpid.assert_has_calls(expected_calls)
+
+
+def test_quit_browser_handles_child_process_error(
+    mocker: MockerFixture, mock_driver: mock.Mock
+) -> None:
+    mock_checkin_scheduler = mocker.patch("lib.checkin_scheduler.CheckInScheduler")
+    mock_os_waitpid = mocker.patch("os.waitpid", side_effect=ChildProcessError)
+
+    webdriver = WebDriver(mock_checkin_scheduler)
+    webdriver._quit_browser(mock_driver)
+
+    mock_driver.quit.assert_called_once()
+    mock_os_waitpid.assert_called_once_with(mock_driver.browser_pid, 0)

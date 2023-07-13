@@ -54,7 +54,12 @@ class CheckInHandler:
 
         # Wait so zombie (defunct) processes are not created
         logger.debug(f"Waiting for process with PID {self.pid} to be terminated")
-        os.waitpid(self.pid, 0)
+        try:
+            os.waitpid(self.pid, 0)
+        except ChildProcessError:
+            # Processes are cleaned up without needing waitpid on Windows
+            pass
+
         logger.debug(f"Process with PID {self.pid} successfully terminated")
 
     def _set_check_in(self) -> None:

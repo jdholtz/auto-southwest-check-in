@@ -241,5 +241,11 @@ class WebDriver:
 
     def _quit_browser(self, driver: Chrome) -> None:
         driver.quit()
-        os.waitpid(driver.browser_pid, 0)
-        os.waitpid(driver.service.process.pid, 0)
+
+        try:
+            # Wait so zombie (defunct) processes are not created
+            os.waitpid(driver.browser_pid, 0)
+            os.waitpid(driver.service.process.pid, 0)
+        except ChildProcessError:
+            # Processes are cleaned up without needing waitpid on Windows
+            pass

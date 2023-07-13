@@ -44,6 +44,18 @@ def test_stop_check_in_stops_a_process_by_killing_its_pid(
     mock_os_waitpid.assert_called_once_with(checkin_handler.pid, 0)
 
 
+def test_stop_check_in_handles_child_process_error(
+    mocker: MockerFixture, checkin_handler: CheckInHandler
+) -> None:
+    mock_os_kill = mocker.patch("os.kill")
+    mock_os_waitpid = mocker.patch("os.waitpid", side_effect=ChildProcessError)
+
+    checkin_handler.stop_check_in()
+
+    mock_os_kill.assert_called_once_with(checkin_handler.pid, signal.SIGTERM)
+    mock_os_waitpid.assert_called_once_with(checkin_handler.pid, 0)
+
+
 def test_set_check_in_correctly_sets_up_check_in_process(
     mocker: MockerFixture, checkin_handler: CheckInHandler
 ) -> None:
