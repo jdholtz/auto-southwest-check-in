@@ -5,6 +5,8 @@ If there is no "Upgrading" header for that version, no post-upgrade actions need
 ## Upcoming
 
 ### Bug Fixes
+- Fix flight scheduling on Windows and macOS systems
+([#120](https://github.com/jdholtz/auto-southwest-check-in/pull/120))
 - Fix a potential JSON decode error on failed requests
 
 
