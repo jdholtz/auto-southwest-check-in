@@ -281,7 +281,7 @@ def test_get_matching_fare_returns_default_price_when_price_is_not_available(
 ) -> None:
     fare_checker = FareChecker(ReservationMonitor(Config()))
     fare_price = fare_checker._get_matching_fare(fares, "right_fare")
-    assert fare_price == {"amount": 0, "currencyCode": "USD"}
+    assert fare_price == {"amount": "0", "currencyCode": "USD"}
 
 
 def test_get_matching_fare_raises_exception_when_fare_does_not_exist() -> None:
@@ -294,4 +294,4 @@ def test_get_matching_fare_raises_exception_when_fare_does_not_exist() -> None:
 def test_unavailable_fare_returns_default_price() -> None:
     fare_checker = FareChecker(ReservationMonitor(Config()))
     fare_price = fare_checker._unavailable_fare("fare")
-    assert fare_price == {"amount": 0, "currencyCode": "USD"}
+    assert fare_price == {"amount": "0", "currencyCode": "USD"}

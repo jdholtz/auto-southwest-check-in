@@ -164,4 +164,4 @@ class FareChecker:
         not being sold anymore). Therefore, report back a 0 USD difference.
         """
         logger.debug("Fare %s is not available. Setting price difference to 0 USD", fare_type)
-        return {"amount": 0, "currencyCode": "USD"}
+        return {"amount": "0", "currencyCode": "USD"}
