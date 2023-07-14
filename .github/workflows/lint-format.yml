@@ -8,11 +8,13 @@ on:
     paths:
       - "**.py"
       - "pyproject.toml"
+      - "setup.cfg"
       - ".github/workflows/lint-format.yml"
   pull_request:
     paths:
       - "**.py"
       - "pyproject.toml"
+      - "setup.cfg"
       - ".github/workflows/lint-format.yml"
 
 jobs:

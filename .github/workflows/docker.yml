@@ -12,7 +12,7 @@ on:
     # .dockerignore (except the Docker files)
     paths-ignore:
       - ".editorconfig"
-      - ".github"
+      - ".github/**"
       - "!.github/workflows/docker.yml" # Still run on changes to this file
       - ".gitignore"
       - ".pre-commit-config.yaml"
@@ -21,7 +21,7 @@ on:
       - "LICENSE"
       - "pyproject.toml"
       - "setup.cfg"
-      - "tests"
+      - "tests/**"
 
 jobs:
   build-and-push-images:
