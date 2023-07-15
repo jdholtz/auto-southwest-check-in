@@ -27,7 +27,7 @@ class NotificationHandler:
     def _get_account_name(self) -> str:
         return f"{self.reservation_monitor.first_name} {self.reservation_monitor.last_name}"
 
-    def send_notification(self, body: str, level: int = None) -> None:
+    def send_notification(self, body: str, level: NotificationLevel = None) -> None:
         print(body)  # This isn't logged as it contains sensitive information
 
         # Check the level to see if we still want to send it. If level is none, it means

@@ -32,4 +32,4 @@ body:
   - type: textarea
     attributes:
       label: Additional context
-      description: Add any other context about the problem here such as logs, Google Chrome version, etc.
+      description: Add any other context about the problem here such as logs, Google Chrome version, Python version, etc.

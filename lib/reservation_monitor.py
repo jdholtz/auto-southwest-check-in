@@ -51,9 +51,7 @@ class ReservationMonitor:
             self._check_flight_fares()
 
             if self.config.retrieval_interval <= 0:
-                logger.debug(
-                    "Monitoring reservations for lower fares is disabled as retrieval interval is 0"
-                )
+                logger.debug("Reservation monitoring is disabled as retrieval interval is 0")
                 break
 
             self._smart_sleep(time_before)
