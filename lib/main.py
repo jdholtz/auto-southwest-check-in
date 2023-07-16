@@ -52,6 +52,40 @@ def check_flags(arguments: List[str]) -> None:
         sys.exit()
 
 
+def get_notification_urls(config: GlobalConfig) -> List[str]:
+    """
+    Get all notification URLS in the global config, each account, and each
+    reservation. Removes duplicates so notifications are not sent twice to
+    the same source.
+    """
+    notification_urls = config.notification_urls
+
+    for account in config.accounts:
+        notification_urls.extend(account.notification_urls)
+
+    for reservation in config.reservations:
+        notification_urls.extend(reservation.notification_urls)
+
+    # Remove duplicates
+    notification_urls = list(set(notification_urls))
+    return notification_urls
+
+
+def test_notifications(config: GlobalConfig) -> None:
+    notification_urls = get_notification_urls(config)
+
+    # pylint:disable=import-outside-toplevel
+    from .config import ReservationConfig
+    from .reservation_monitor import ReservationMonitor
+
+    new_config = ReservationConfig()
+    new_config.notification_urls = notification_urls
+    reservation_monitor = ReservationMonitor(new_config)
+
+    logger.info("Sending test notifications to %d sources", len(notification_urls))
+    reservation_monitor.notification_handler.send_notification("This is a test message")
+
+
 def set_up_accounts(config: GlobalConfig) -> None:
     # pylint:disable=import-outside-toplevel
     from .reservation_monitor import AccountMonitor
@@ -87,16 +121,12 @@ def set_up_check_in(arguments: List[str]) -> None:
     # version or usage
     # pylint:disable=import-outside-toplevel
     from .config import GlobalConfig
-    from .reservation_monitor import ReservationMonitor
 
     config = GlobalConfig()
     config.initialize()
 
     if "--test-notifications" in arguments:
-        reservation_monitor = ReservationMonitor(config)
-
-        logger.info("Sending test notifications...")
-        reservation_monitor.notification_handler.send_notification("This is a test message")
+        test_notifications(config)
         sys.exit()
     elif len(arguments) == 2:
         account = {"username": arguments[0], "password": arguments[1]}

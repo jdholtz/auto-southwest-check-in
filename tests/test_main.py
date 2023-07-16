@@ -62,6 +62,28 @@ def test_check_flags_does_not_exit_when_flags_are_not_matched(
     mock_exit.assert_not_called()
 
 
+def test_get_notification_urls_gets_all_urls(mocker: MockerFixture) -> None:
+    config = GlobalConfig()
+    config.accounts = [AccountConfig()]
+    config.reservations = [ReservationConfig()]
+    config.notification_urls = ["url1"]
+    config.accounts[0].notification_urls = ["url1", "url2"]
+    config.reservations[0].notification_urls = ["url1", "url3"]
+
+    notification_urls = main.get_notification_urls(config)
+
+    # Sort because order is not important
+    assert sorted(notification_urls) == ["url1", "url2", "url3"]
+
+
+def test_test_notifications_sends_to_every_url_in_config(mocker: MockerFixture) -> None:
+    mock_send_notification = mocker.patch.object(NotificationHandler, "send_notification")
+
+    config = GlobalConfig()
+    main.test_notifications(config)
+    mock_send_notification.assert_called_once()
+
+
 def test_set_up_accounts_starts_all_accounts_in_proceses(mocker: MockerFixture) -> None:
     config = GlobalConfig()
     config.accounts = [AccountConfig(), AccountConfig()]
@@ -88,13 +110,11 @@ def test_set_up_reservations_starts_all_reservations_in_proceses(mocker: MockerF
     assert mock_process.return_value.start.call_count == len(config.reservations)
 
 
-def test_set_up_check_in_sends_test_notifications_when_flag_is_passed(
-    mocker: MockerFixture,
-) -> None:
-    mock_send_notification = mocker.patch.object(NotificationHandler, "send_notification")
+def test_set_up_check_in_sends_test_notifications_when_flag_passed(mocker: MockerFixture) -> None:
+    mock_test_notifications = mocker.patch("lib.main.test_notifications")
     with pytest.raises(SystemExit):
         main.set_up_check_in(["--test-notifications"])
-    mock_send_notification.assert_called_once()
+    mock_test_notifications.assert_called_once()
 
 
 @pytest.mark.parametrize(
