@@ -1,204 +1,301 @@
+import json
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Union
 
 import pytest
 from pytest_mock import MockerFixture
 
-from lib.config import Config
+from lib.config import AccountConfig, Config, ConfigError, GlobalConfig, ReservationConfig
+from lib.utils import NotificationLevel
+
+JSON = Dict[str, Any]
 
 # This needs to be accessed to be tested
 # pylint: disable=protected-access
 
 
-# Make sure we don't actually read the config file. The
-# mocks can still be overridden in each test
-@pytest.fixture(autouse=True)
-def mock_open(mocker: MockerFixture) -> None:
-    mocker.patch.object(Path, "read_text")
-    mocker.patch("json.loads")
+class TestConfig:
+    def test_init_sets_chromedriver_path_from_environment_variable(
+        self, mocker: MockerFixture
+    ) -> None:
+        mocker.patch("os.getenv", return_value="/test/path")
 
+        test_config = Config()
+        assert test_config.chromedriver_path == "/test/path"
 
-def test_config_sets_chromedriver_path_from_environment_variable(mocker: MockerFixture) -> None:
-    mocker.patch("os.getenv", return_value="/test/path")
+    def test_create_merges_and_parses_config(self, mocker: MockerFixture) -> None:
+        mock_merge_globals = mocker.patch.object(Config, "_merge_globals")
+        mock_parse_config = mocker.patch.object(Config, "_parse_config")
 
-    test_config = Config()
-    assert test_config.chromedriver_path == "/test/path"
+        global_config = GlobalConfig()
+        test_config = Config()
+        test_config.create({"test": "config"}, global_config)
 
+        mock_merge_globals.assert_called_once_with(global_config)
+        mock_parse_config.assert_called_once_with({"test": "config"})
 
-def test_config_exits_on_error_in_config_file(mocker: MockerFixture) -> None:
-    mocker.patch.object(Config, "_parse_config", side_effect=TypeError())
+    def test_merge_globals_merges_all_config_options(self) -> None:
+        global_config = GlobalConfig()
+        test_config = Config()
 
-    with pytest.raises(SystemExit):
-        Config()
+        global_config._parse_config(
+            {
+                "check_fares": True,
+                "chrome_version": 100,
+                "chromedriver_path": "test/path",
+                "notification_level": 1,
+                "notification_urls": "url1",
+                "retrieval_interval": 20,
+            }
+        )
 
+        test_config._parse_config(
+            {
+                "check_fares": False,
+                "chrome_version": 200,
+                "chromedriver_path": "test/path2",
+                "notification_level": 2,
+                "notification_urls": ["url2"],
+                "retrieval_interval": 10,
+            }
+        )
 
-def test_read_config_reads_the_config_file_correctly(mocker: MockerFixture) -> None:
-    mocker.patch("json.loads", return_value={"test": "data"})
+        test_config._merge_globals(global_config)
 
-    test_config = Config()
-    config_content = test_config._read_config()
+        assert test_config.check_fares == global_config.check_fares
+        assert test_config.chrome_version == global_config.chrome_version
+        assert test_config.chromedriver_path == global_config.chromedriver_path
+        assert test_config.notification_level == global_config.notification_level
+        assert test_config.notification_urls == ["url2", "url1"]
+        assert test_config.retrieval_interval == global_config.retrieval_interval
 
-    assert config_content == {"test": "data"}
-
-
-def test_read_config_returns_empty_config_when_file_is_not_found(mocker: MockerFixture) -> None:
-    mocker.patch.object(Path, "read_text", side_effect=FileNotFoundError())
-
-    test_config = Config()
-    config_content = test_config._read_config()
-
-    assert config_content == {}
-
-
-@pytest.mark.parametrize(
-    "config_content",
-    [
-        {"accounts": "invalid"},
-        {"check_fares": "invalid"},
-        {"chrome_version": "invalid"},
-        {"chromedriver_path": None},
-        {"notification_level": "invalid"},
-        {"notification_urls": None},
-        {"retrieval_interval": "invalid"},
-        {"reservations": "invalid"},
-    ],
-)
-def test_parse_config_raises_exception_with_invalid_entries(config_content: Dict[str, Any]) -> None:
-    test_config = Config()
-
-    with pytest.raises(TypeError):
-        test_config._parse_config(config_content)
-
-
-def test_parse_config_sets_the_correct_config_values() -> None:
-    test_config = Config()
-    test_config._parse_config(
-        {
-            "check_fares": True,
-            "chrome_version": 10,
-            "chromedriver_path": "/test/path",
-            "notification_level": 20,
-            "notification_urls": "test_url",
-            "retrieval_interval": 30,
-        }
+    @pytest.mark.parametrize(
+        "config_content",
+        [
+            {"check_fares": "invalid"},
+            {"notification_level": "invalid"},
+            {"notification_level": 3},
+            {"notification_urls": None},
+            {"retrieval_interval": "invalid"},
+        ],
     )
+    def test_parse_config_raises_exception_with_invalid_entries(self, config_content: JSON) -> None:
+        test_config = Config()
 
-    assert test_config.check_fares is True
-    assert test_config.chrome_version == 10
-    assert test_config.chromedriver_path == "/test/path"
-    assert test_config.notification_level == 20
-    assert test_config.notification_urls == "test_url"
-    assert test_config.retrieval_interval == 30 * 60 * 60
+        with pytest.raises(ConfigError):
+            test_config._parse_config(config_content)
 
+    def test_parse_config_sets_the_correct_config_values(self) -> None:
+        test_config = Config()
+        test_config._parse_config(
+            {
+                "check_fares": True,
+                "notification_level": 2,
+                "notification_urls": "test_url",
+                "retrieval_interval": 30,
+            }
+        )
 
-def test_parse_config_does_not_set_values_when_a_config_value_is_empty(
-    mocker: MockerFixture,
-) -> None:
-    mock_parse_accounts = mocker.patch.object(Config, "_parse_accounts")
-    mock_parse_reservations = mocker.patch.object(Config, "_parse_reservations")
-    test_config = Config()
-    expected_config = Config()
+        assert test_config.check_fares is True
+        assert test_config.notification_level == NotificationLevel.ERROR
+        assert test_config.notification_urls == ["test_url"]
+        assert test_config.retrieval_interval == 30 * 60 * 60
 
-    test_config._parse_config({})
+    def test_parse_config_does_not_set_values_when_a_config_value_is_empty(
+        self, mocker: MockerFixture
+    ) -> None:
+        test_config = Config()
+        expected_config = Config()
 
-    assert test_config.check_fares == expected_config.check_fares
-    assert test_config.chrome_version == expected_config.chrome_version
-    assert test_config.chromedriver_path == expected_config.chromedriver_path
-    assert test_config.notification_urls == expected_config.notification_urls
-    assert test_config.notification_level == expected_config.notification_level
-    assert test_config.retrieval_interval == expected_config.retrieval_interval
-    mock_parse_accounts.assert_not_called()
-    mock_parse_reservations.assert_not_called()
+        test_config._parse_config({})
 
+        assert test_config.check_fares == expected_config.check_fares
+        assert test_config.notification_urls == expected_config.notification_urls
+        assert test_config.notification_level == expected_config.notification_level
+        assert test_config.retrieval_interval == expected_config.retrieval_interval
 
-def test_parse_config_sets_retrieval_interval_to_a_minimum() -> None:
-    test_config = Config()
-    test_config._parse_config({"retrieval_interval": -1})
+    @pytest.mark.parametrize(
+        ["notification_urls", "expected_urls"],
+        [(["test_url"], ["test_url"]), ("test_url", ["test_url"]), ("", [])],
+    )
+    def test_parse_config_sets_the_correct_notification_urls(
+        self, notification_urls: Union[List[str], str], expected_urls: [List[str]]
+    ) -> None:
+        test_config = Config()
+        test_config._parse_config({"notification_urls": notification_urls})
+        assert test_config.notification_urls == expected_urls
 
-    assert test_config.retrieval_interval == 1 * 60 * 60
+    def test_parse_config_sets_retrieval_interval_to_a_minimum(self) -> None:
+        test_config = Config()
+        test_config._parse_config({"retrieval_interval": -1})
 
-
-def test_parse_config_parses_accounts(mocker: MockerFixture) -> None:
-    mock_parse_accounts = mocker.patch.object(Config, "_parse_accounts")
-    test_config = Config()
-    test_config._parse_config({"accounts": []})
-
-    mock_parse_accounts.assert_called_once()
-
-
-# Temporary second test while 'flights' is deprecated
-@pytest.mark.parametrize("key", ["reservations", "flights"])
-def test_parse_config_parses_reservations(mocker: MockerFixture, key: str) -> None:
-    mock_parse_reservations = mocker.patch.object(Config, "_parse_reservations")
-    test_config = Config()
-    test_config._parse_config({key: []})
-
-    mock_parse_reservations.assert_called_once()
-
-
-# Temporary test while 'flights' is deprecated
-def test_parse_config_parses_flights_if_reservations_does_not_exist(mocker: MockerFixture) -> None:
-    mock_parse_reservations = mocker.patch.object(Config, "_parse_reservations")
-    test_config = Config()
-    test_config._parse_config({"flights": ["flight"], "reservations": ["reservation"]})
-
-    mock_parse_reservations.assert_called_once_with(["reservation"])
+        assert test_config.retrieval_interval == 0
 
 
-def test_parse_accounts_parses_objects_correctly(mocker: MockerFixture) -> None:
-    accounts = [["account1"], ["account2"]]
-    mocker.patch.object(Config, "_parse_objects", return_value=accounts)
+class TestGlobalConfig:
+    def test_initialize_reads_and_parses_config(self, mocker: MockerFixture) -> None:
+        mock_read_config = mocker.patch.object(GlobalConfig, "_read_config")
+        mock_parse_config = mocker.patch.object(GlobalConfig, "_parse_config")
 
-    test_config = Config()
-    test_config._parse_accounts([])
+        config = GlobalConfig()
+        config.initialize()
 
-    assert test_config.accounts == accounts
+        mock_read_config.assert_called_once()
+        mock_parse_config.assert_called_once()
+
+    @pytest.mark.parametrize(
+        "exception", [ConfigError(), json.decoder.JSONDecodeError(None, "", 0)]
+    )
+    def test_config_exits_on_error_in_config_file(
+        self, mocker: MockerFixture, exception: Exception
+    ) -> None:
+        mocker.patch.object(GlobalConfig, "_read_config", side_effect=exception)
+
+        config = GlobalConfig()
+        with pytest.raises(SystemExit):
+            config.initialize()
+
+    def test_create_account_config_creates_all_configs(self, mocker: MockerFixture) -> None:
+        mock_config_create = mocker.patch.object(AccountConfig, "create")
+        test_config = GlobalConfig()
+        test_config.create_account_config([{"account": "one"}, {"account": "two"}])
+        assert mock_config_create.call_count == 2
+
+    def test_create_reservation_config_creates_all_configs(self, mocker: MockerFixture) -> None:
+        mock_config_create = mocker.patch.object(ReservationConfig, "create")
+        test_config = GlobalConfig()
+        test_config.create_reservation_config([{"reservation": "one"}, {"reservation": "two"}])
+        assert mock_config_create.call_count == 2
+
+    def test_read_config_reads_the_config_file_correctly(self, mocker: MockerFixture) -> None:
+        mocker.patch.object(Path, "read_text")
+        mocker.patch("json.loads", return_value={"test": "data"})
+
+        test_config = GlobalConfig()
+        config_content = test_config._read_config()
+
+        assert config_content == {"test": "data"}
+
+    def test_read_config_returns_empty_config_when_file_not_found(
+        self, mocker: MockerFixture
+    ) -> None:
+        mocker.patch.object(Path, "read_text", side_effect=FileNotFoundError())
+
+        test_config = GlobalConfig()
+        config_content = test_config._read_config()
+
+        assert config_content == {}
+
+    def test_read_config_raises_exception_when_config_not_dict(self, mocker: MockerFixture) -> None:
+        mocker.patch.object(Path, "read_text")
+        mocker.patch("json.loads", return_value="test")
+
+        test_config = GlobalConfig()
+        with pytest.raises(ConfigError):
+            test_config._read_config()
+
+    @pytest.mark.parametrize(
+        "config_content",
+        [
+            {"chrome_version": "invalid"},
+            {"chromedriver_path": 0},
+            {"accounts": "invalid"},
+            {"reservations": "invalid"},
+        ],
+    )
+    def test_parse_config_raises_exception_with_invalid_entries(self, config_content: JSON) -> None:
+        test_config = GlobalConfig()
+
+        with pytest.raises(ConfigError):
+            test_config._parse_config(config_content)
+
+    def test_parse_config_sets_the_correct_config_values(self, mocker: MockerFixture) -> None:
+        mock_account_config = mocker.patch.object(GlobalConfig, "create_account_config")
+        mock_reservation_config = mocker.patch.object(GlobalConfig, "create_reservation_config")
+
+        test_config = GlobalConfig()
+        test_config._parse_config(
+            {
+                "check_fares": True,
+                "chrome_version": 100,
+                "chromedriver_path": "test/path",
+                "accounts": [],
+                "reservations": [],
+            }
+        )
+
+        assert test_config.check_fares is True  # Make sure it calls super._parse_config
+        assert test_config.chrome_version == 100
+        assert test_config.chromedriver_path == "test/path"
+        mock_account_config.assert_called_once_with([])
+        mock_reservation_config.assert_called_once_with([])
+
+    def test_parse_config_does_not_set_values_when_a_config_value_is_empty(
+        self, mocker: MockerFixture
+    ) -> None:
+        test_config = GlobalConfig()
+        expected_config = GlobalConfig()
+
+        test_config._parse_config({})
+
+        assert test_config.chrome_version == expected_config.chrome_version
+        assert test_config.chromedriver_path == expected_config.chromedriver_path
+        assert test_config.accounts == expected_config.accounts
+        assert test_config.reservations == expected_config.reservations
 
 
-def test_parse_reservations_parses_objects_correctly(mocker: MockerFixture) -> None:
-    reservations = [["reservation1"], ["reservation2"]]
-    mocker.patch.object(Config, "_parse_objects", return_value=reservations)
+class TestAccountConfig:
+    @pytest.mark.parametrize(
+        "config_content",
+        [
+            {"username": "user"},
+            {"password": "pass"},
+            {"username": 0, "password": "pass"},
+            {"username": "user", "password": 0},
+        ],
+    )
+    def test_parse_config_raises_exception_on_invalid_entries(self, config_content: JSON) -> None:
+        test_config = AccountConfig()
+        with pytest.raises(ConfigError):
+            test_config._parse_config(config_content)
 
-    test_config = Config()
-    test_config._parse_reservations([])
+    def test_parse_config_sets_the_correct_config_values(self) -> None:
+        test_config = AccountConfig()
+        test_config._parse_config({"username": "user", "password": "pass", "check_fares": True})
 
-    assert test_config.reservations == reservations
-
-
-@pytest.mark.parametrize("objects", [[""], [1], [True]])
-def test_parse_objects_raises_exception_with_invalid_types(objects: List[Any]) -> None:
-    test_config = Config()
-
-    with pytest.raises(TypeError):
-        test_config._parse_objects(objects, [], "")
-
-
-def test_parse_objects_parses_every_object(mocker: MockerFixture) -> None:
-    mock_parse_object = mocker.patch.object(Config, "_parse_object")
-    test_config = Config()
-    test_config._parse_objects([{}, {}], [], "")
-
-    assert mock_parse_object.call_count == 2
+        assert test_config.check_fares is True  # Make sure it calls super._parse_config
+        assert test_config.username == "user"
+        assert test_config.password == "pass"
 
 
-@pytest.mark.parametrize("object_config", [{}, {"key": None}])
-def test_parse_object_raises_excpetion_when_key_is_not_in_object(
-    object_config: Dict[str, Any]
-) -> None:
-    test_config = Config()
-    with pytest.raises(TypeError):
-        test_config._parse_object(object_config, ["key"], "")
+class TestReservationConfig:
+    @pytest.mark.parametrize(
+        "config_content",
+        [
+            {"firstName": "first", "lastName": "last"},
+            {"confirmationNumber": "num", "lastName": "last"},
+            {"confirmationNumber": "num", "firstName": "first"},
+            {"confirmationNumber": 0, "firstName": "first", "lastName": "last"},
+            {"confirmationNumber": "num", "firstName": 0, "lastName": "last"},
+            {"confirmationNumber": "num", "firstName": "first", "lastName": 0},
+        ],
+    )
+    def test_parse_config_raises_exception_on_invalid_entries(self, config_content: JSON) -> None:
+        test_config = ReservationConfig()
+        with pytest.raises(ConfigError):
+            test_config._parse_config(config_content)
 
+    def test_parse_config_sets_the_correct_config_values(self) -> None:
+        test_config = ReservationConfig()
+        reservation_config = {
+            "confirmationNumber": "num",
+            "firstName": "first",
+            "lastName": "last",
+            "check_fares": True,
+        }
+        test_config._parse_config(reservation_config)
 
-def test_parse_object_raises_exception_when_value_of_key_is_not_a_string() -> None:
-    test_config = Config()
-    with pytest.raises(TypeError):
-        test_config._parse_object({"key": 1}, ["key"], "")
-
-
-def test_parse_object_parses_an_object_correctly() -> None:
-    obj = {"key1": "value1", "key2": "value2"}
-    test_config = Config()
-    obj_info = test_config._parse_object(obj, list(obj.keys()), "")
-
-    assert obj_info == list(obj.values())
+        assert test_config.check_fares is True  # Make sure it calls super._parse_config
+        assert test_config.confirmation_number == "num"
+        assert test_config.first_name == "first"
+        assert test_config.last_name == "last"

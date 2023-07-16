@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, List
 from lib import log
 
 if TYPE_CHECKING:
-    from lib.config import Config
+    from lib.config import GlobalConfig
 
 __version__ = "v4.3"
 
@@ -52,30 +52,27 @@ def check_flags(arguments: List[str]) -> None:
         sys.exit()
 
 
-def set_up_accounts(config: Config) -> None:
+def set_up_accounts(config: GlobalConfig) -> None:
     # pylint:disable=import-outside-toplevel
     from .reservation_monitor import AccountMonitor
 
     for account in config.accounts:
-        account_monitor = AccountMonitor(config, account[0], account[1])
+        account_monitor = AccountMonitor(account)
 
         # Start each account monitor in a separate process to run them in parallel
         process = Process(target=account_monitor.monitor)
         process.start()
 
 
-def set_up_reservations(config: Config) -> None:
+def set_up_reservations(config: GlobalConfig) -> None:
     # pylint:disable=import-outside-toplevel
     from .reservation_monitor import ReservationMonitor
 
     for reservation in config.reservations:
-        reservation_monitor = ReservationMonitor(config, reservation[1], reservation[2])
+        reservation_monitor = ReservationMonitor(reservation)
 
         # Start each reservation monitor in a separate process to run them in parallel
-        process = Process(
-            target=reservation_monitor.monitor,
-            args=([{"confirmationNumber": reservation[0]}],),
-        )
+        process = Process(target=reservation_monitor.monitor)
         process.start()
 
 
@@ -89,10 +86,11 @@ def set_up_check_in(arguments: List[str]) -> None:
     # Imported here to avoid needing dependencies to retrieve the script's
     # version or usage
     # pylint:disable=import-outside-toplevel
-    from .config import Config
+    from .config import GlobalConfig
     from .reservation_monitor import ReservationMonitor
 
-    config = Config()
+    config = GlobalConfig()
+    config.initialize()
 
     if "--test-notifications" in arguments:
         reservation_monitor = ReservationMonitor(config)
@@ -101,10 +99,16 @@ def set_up_check_in(arguments: List[str]) -> None:
         reservation_monitor.notification_handler.send_notification("This is a test message")
         sys.exit()
     elif len(arguments) == 2:
-        config.accounts.append([arguments[0], arguments[1]])
+        account = {"username": arguments[0], "password": arguments[1]}
+        config.create_account_config([account])
         logger.debug("Account added through CLI arguments")
     elif len(arguments) == 3:
-        config.reservations.append([arguments[0], arguments[1], arguments[2]])
+        reservation = {
+            "confirmationNumber": arguments[0],
+            "firstName": arguments[1],
+            "lastName": arguments[2],
+        }
+        config.create_reservation_config([reservation])
         logger.debug("Reservation added through CLI arguments")
     elif len(arguments) > 3:
         logger.error("Invalid arguments. For more information, try '--help'")

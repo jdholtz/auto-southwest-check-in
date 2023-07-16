@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Tuple
 
 from .checkin_scheduler import CheckInScheduler
-from .config import Config
+from .config import AccountConfig, Config
 from .fare_checker import FareChecker
 from .log import get_logger
 from .notification_handler import NotificationHandler
@@ -22,19 +22,21 @@ class ReservationMonitor:
     check-ins, flight changes or cancellations, and lower flight fares.
     """
 
-    def __init__(self, config: Config, first_name: str = None, last_name: str = None) -> None:
-        self.first_name = first_name
-        self.last_name = last_name
+    def __init__(self, config: Config) -> None:
+        self.first_name = config.first_name
+        self.last_name = config.last_name
 
         self.config = config
         self.notification_handler = NotificationHandler(self)
         self.checkin_scheduler = CheckInScheduler(self)
 
-    def monitor(self, reservations: List[Dict[str, Any]]) -> None:
+    def monitor(self) -> None:
         """
         Check for reservation changes and lower fares every X hours (retrieval interval).
         Will exit when no more flights are scheduled for check-in.
         """
+        reservation = {"confirmationNumber": self.config.confirmation_number}
+
         while True:
             time_before = datetime.utcnow()
 
@@ -42,7 +44,7 @@ class ReservationMonitor:
             self.checkin_scheduler.refresh_headers()
 
             # Schedule the reservations every time in case a flight is changed or cancelled
-            self._schedule_reservations(reservations)
+            self._schedule_reservations([reservation])
 
             if len(self.checkin_scheduler.flights) <= 0:
                 logger.debug("No more flights are scheduled for check-in. Exiting...")
@@ -96,15 +98,14 @@ class ReservationMonitor:
 class AccountMonitor(ReservationMonitor):
     """Monitor an account for newly booked reservations"""
 
-    def __init__(self, config: Config, username: str, password: str) -> None:
-        self.username = username
-        self.password = password
+    def __init__(self, config: AccountConfig) -> None:
         super().__init__(config)
+        self.username = config.username
+        self.password = config.password
 
     def monitor(self) -> None:
         """
-        Check for newly booked reservations for the account every
-        X hours (retrieval interval).
+        Check for newly booked reservations for the account every X hours (retrieval interval).
         """
         while True:
             time_before = datetime.utcnow()
