@@ -36,6 +36,11 @@ class Config:
         self._parse_config(config_json)
 
     def _merge_globals(self, global_config: "GlobalConfig") -> None:
+        """
+        Each account and reservation config inherits the global
+        configuration first. If specific options are set for an account
+        or reservation, those will override the global configuration.
+        """
         self.check_fares = global_config.check_fares
         self.chrome_version = global_config.chrome_version
         self.chromedriver_path = global_config.chromedriver_path
@@ -44,6 +49,10 @@ class Config:
         self.retrieval_interval = global_config.retrieval_interval
 
     def _parse_config(self, config: JSON) -> None:
+        """
+        Ensures every configuration option is valid. Raises a ConfigError when
+        invalid values are found.
+        """
         if "check_fares" in config:
             self.check_fares = config["check_fares"]
             logger.debug("Setting check fares to %s", self.check_fares)
@@ -66,6 +75,7 @@ class Config:
             if not isinstance(notification_urls, (list, str)):
                 raise ConfigError("'notification_urls' must be a list or string")
 
+            # Make sure that empty strings don't get added to the list
             if isinstance(notification_urls, str) and len(notification_urls) > 0:
                 notification_urls = [notification_urls]
 
