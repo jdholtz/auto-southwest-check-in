@@ -2,6 +2,9 @@
 This guide contains all the information you need to configure Auto-Southwest Check-In to your needs. A default/example configuration
 file can be found at [config.example.json](config.example.json)
 
+Auto-Southwest Check-In supports both global configuration and account/reservation-specific configuration. See
+[Accounts and Reservations](#accounts-and-reservations) for more information.
+
 ## Table of Contents
 - [Fare Check](#fare-check)
 - [Notifications](#notifications)
@@ -11,8 +14,9 @@ file can be found at [config.example.json](config.example.json)
 - [Chrome Version](#chrome-version)
 - [Chromedriver Path](#chromedriver-path)
 - [Retrieval Interval](#retrieval-interval)
-- [Accounts](#accounts)
-- [Reservations](#reservations)
+- [Accounts and Reservations](#accounts-and-reservations)
+    * [Accounts](#accounts)
+    * [Reservations](#reservations)
 
 ## Fare Check
 Default: false \
@@ -109,7 +113,12 @@ disable account/fare monitoring, set this option to `0` (The account/fares will 
 }
 ```
 
-## Accounts
+## Accounts and Reservations
+You can also add more [accounts](#accounts) and [reservations](#reservations) to the script through the configuration file.
+Additionally, you can optionally specify [configuration options](#account-and-reservation-specific-configuration) for each
+account and reservation.
+
+### Accounts
 Default: [] \
 Type: List
 
@@ -124,11 +133,11 @@ provide a username and password as arguments.
 }
 ```
 
-## Reservations
+### Reservations
 Default: [] \
 Type: List
 
-Similar to [Accounts](#accounts), you can also add more reservations to the script, allowing you check in to multiple reservations in the same instance
+You can also add more reservations to the script, allowing you check in to multiple reservations in the same instance
 and/or not provide reservation information as arguments.
 ```json
 {
@@ -138,6 +147,54 @@ and/or not provide reservation information as arguments.
     ]
 }
 ```
+
+
+### Account and Reservation-specific configuration
+Setting specific configuration values for an account or reservation allows you to fully customize how you want them to be
+monitored by the script. Here is a list of configuration values that can be applied to an individual account or reservation:
+- [Fare Check](#fare-check)
+- [Notification URLS](#notification-urls)
+- [Notification Level](#notification-level)
+- [Retrieval Interval](#retrieval-interval)
+
+Not all options have to be specified for each account or reservation. If an option is not specified, the top-level value is used
+(or the default value if no top-level value is specified either). Any accounts or reservations specified through the command line
+will use all of the top-level values.
+
+An important note about notification URLs: An account or reservation with specific notification URLs will send notifications to those
+URLs as well as URLs specified globally.
+
+#### Examples
+Here are a few examples of how the configuration options can be specified:
+
+In this example, `user1`'s account will not check for lower flight fares. However, `user2`'s account will as the top-level value for
+`check_fares` is `true`.
+```json
+{
+    "check_fares": true,
+    "accounts": [
+        {"username": "user1", "password": "pass1", "check_fares": false},
+        {"username": "user2", "password": "pass2"}
+    ]
+}
+```
+
+In this example, the script will send notifications attached to this reservation to both `top-level.url` and `my-special.url`.
+```json
+{
+    "notification_urls": "https://top-level.url",
+    "reservations": [
+        {
+            "confirmationNumber": "num1",
+            "firstName": "John",
+            "lastName": "Doe",
+            "notification_urls": "https://my-special.url"
+        }
+    ]
+}
+```
+
+
 
 [0]: https://github.com/caronc/apprise
 [1]: https://github.com/caronc/apprise#supported-notifications

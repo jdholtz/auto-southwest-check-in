@@ -106,9 +106,6 @@ To use the default configuration file, copy `config.example.json` to `config.jso
 
 For information on how to set up the configuration, see [Configuration.md](CONFIGURATION.md)
 
-**Note**: If you are using Docker, make sure to rebuild the container after editing the configuration
-file for your changes to be applied.
-
 ## Troubleshooting
 To troubleshoot a problem, run the script with the `--verbose` flag. This will display debug messages so you can
 get a better overview of the problem.

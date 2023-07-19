@@ -5,9 +5,19 @@ If there is no "Upgrading" header for that version, no post-upgrade actions need
 
 ### Upcoming
 
+### New Features
+- Account and reservation-specific configurations are now supported. See
+[Accounts and Reservations](CONFIGURATION.md#accounts-and-reservations) for more
+information
+([#124](https://github.com/jdholtz/auto-southwest-check-in/pull/124))
+
 ### Bug Fixes
 - Fix incorrect price parsing when fares are not available for a flight
 ([#122](https://github.com/jdholtz/auto-southwest-check-in/issues/122))
+
+### Upgrading
+- The 'flights' key in the configuration file was renamed to 'reservations'. See the
+[reservation configuration](CONFIGURATION.md#reservations) for more information.
 
 
 ## 4.3 (2023-07-13)
