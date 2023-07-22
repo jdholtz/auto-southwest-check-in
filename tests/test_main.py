@@ -1,5 +1,4 @@
 import logging
-import multiprocessing
 from typing import List
 
 import pytest
@@ -8,6 +7,7 @@ from pytest_mock import MockerFixture
 from lib import main
 from lib.config import AccountConfig, GlobalConfig, ReservationConfig
 from lib.notification_handler import NotificationHandler
+from lib.reservation_monitor import AccountMonitor, ReservationMonitor
 
 
 # We don't actually want the config to read the file for these tests
@@ -84,22 +84,22 @@ def test_test_notifications_sends_to_every_url_in_config(mocker: MockerFixture) 
     mock_send_notification.assert_called_once()
 
 
-def test_set_up_accounts_starts_all_accounts_in_proceses(mocker: MockerFixture) -> None:
+def test_set_up_accounts_starts_all_accounts(mocker: MockerFixture) -> None:
     config = GlobalConfig()
     config.accounts = [AccountConfig(), AccountConfig()]
 
-    mock_process_start = mocker.patch.object(multiprocessing.Process, "start")
+    mock_account_start = mocker.patch.object(AccountMonitor, "start")
     main.set_up_accounts(config)
-    assert mock_process_start.call_count == len(config.accounts)
+    assert mock_account_start.call_count == len(config.accounts)
 
 
-def test_set_up_reservations_starts_all_reservations_in_proceses(mocker: MockerFixture) -> None:
+def test_set_up_reservations_starts_all_reservations(mocker: MockerFixture) -> None:
     config = GlobalConfig()
     config.reservations = [ReservationConfig(), ReservationConfig()]
 
-    mock_process_start = mocker.patch.object(multiprocessing.Process, "start")
+    mock_reservation_start = mocker.patch.object(ReservationMonitor, "start")
     main.set_up_reservations(config)
-    assert mock_process_start.call_count == len(config.reservations)
+    assert mock_reservation_start.call_count == len(config.reservations)
 
 
 def test_set_up_check_in_sends_test_notifications_when_flag_passed(mocker: MockerFixture) -> None:

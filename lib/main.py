@@ -92,10 +92,7 @@ def set_up_accounts(config: GlobalConfig) -> None:
 
     for account in config.accounts:
         account_monitor = AccountMonitor(account)
-
-        # Start each account monitor in a separate process to run them in parallel
-        process = multiprocessing.Process(target=account_monitor.monitor)
-        process.start()
+        account_monitor.start()
 
 
 def set_up_reservations(config: GlobalConfig) -> None:
@@ -104,10 +101,7 @@ def set_up_reservations(config: GlobalConfig) -> None:
 
     for reservation in config.reservations:
         reservation_monitor = ReservationMonitor(reservation)
-
-        # Start each reservation monitor in a separate process to run them in parallel
-        process = multiprocessing.Process(target=reservation_monitor.monitor)
-        process.start()
+        reservation_monitor.start()
 
 
 def set_up_check_in(arguments: List[str]) -> None:

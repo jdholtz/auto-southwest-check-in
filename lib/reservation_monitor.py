@@ -31,6 +31,11 @@ class ReservationMonitor:
         self.notification_handler = NotificationHandler(self)
         self.checkin_scheduler = CheckInScheduler(self)
 
+    def start(self) -> None:
+        """Start each reservation monitor in a separate process to run them in parallel"""
+        process = multiprocessing.Process(target=self.monitor)
+        process.start()
+
     def monitor(self) -> None:
         try:
             self._monitor()
