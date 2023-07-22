@@ -69,6 +69,13 @@ def test_set_check_in_correctly_sets_up_check_in_process(
     mock_check_in.assert_called_once()
 
 
+def test_set_check_in_passes_on_keyboard_interrupt(
+    mocker: MockerFixture, checkin_handler: CheckInHandler
+) -> None:
+    mocker.patch.object(CheckInHandler, "_wait_for_check_in", side_effect=KeyboardInterrupt)
+    checkin_handler._set_check_in()
+
+
 def test_wait_for_check_in_exits_immediately_if_checkin_time_has_passed(
     mocker: MockerFixture, checkin_handler: CheckInHandler
 ) -> None:

@@ -7,9 +7,4 @@ from lib.main import main
 
 if __name__ == "__main__":
     arguments = sys.argv[1:]
-
-    try:
-        main(arguments)
-    except KeyboardInterrupt:
-        print("\nCtrl+C pressed. Stopping all checkins")
-        sys.exit()
+    main(arguments)

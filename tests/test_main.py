@@ -1,6 +1,6 @@
 import logging
+import multiprocessing
 from typing import List
-from unittest import mock
 
 import pytest
 from pytest_mock import MockerFixture
@@ -88,26 +88,18 @@ def test_set_up_accounts_starts_all_accounts_in_proceses(mocker: MockerFixture) 
     config = GlobalConfig()
     config.accounts = [AccountConfig(), AccountConfig()]
 
-    mock_process = mocker.patch("lib.main.Process")
-    mock_process.start = mock.Mock()
-
+    mock_process_start = mocker.patch.object(multiprocessing.Process, "start")
     main.set_up_accounts(config)
-
-    assert mock_process.call_count == len(config.accounts)
-    assert mock_process.return_value.start.call_count == len(config.accounts)
+    assert mock_process_start.call_count == len(config.accounts)
 
 
 def test_set_up_reservations_starts_all_reservations_in_proceses(mocker: MockerFixture) -> None:
     config = GlobalConfig()
     config.reservations = [ReservationConfig(), ReservationConfig()]
 
-    mock_process = mocker.patch("lib.main.Process")
-    mock_process.start = mock.Mock()
-
+    mock_process_start = mocker.patch.object(multiprocessing.Process, "start")
     main.set_up_reservations(config)
-
-    assert mock_process.call_count == len(config.reservations)
-    assert mock_process.return_value.start.call_count == len(config.reservations)
+    assert mock_process_start.call_count == len(config.reservations)
 
 
 def test_set_up_check_in_sends_test_notifications_when_flag_passed(mocker: MockerFixture) -> None:
@@ -128,6 +120,10 @@ def test_set_up_check_in_sends_test_notifications_when_flag_passed(mocker: Mocke
 def test_set_up_check_in_sets_up_account_and_reservation_with_arguments(
     mocker: MockerFixture, arguments: List[str], accounts_len: int, reservations_len: int
 ) -> None:
+    mock_process = mocker.patch("multiprocessing.Process")
+    mock_processes = [mock_process] * (accounts_len + reservations_len)
+    mocker.patch("multiprocessing.active_children", return_value=mock_processes)
+
     mock_set_up_accounts = mocker.patch("lib.main.set_up_accounts")
     mock_set_up_reservations = mocker.patch("lib.main.set_up_reservations")
 
@@ -135,6 +131,7 @@ def test_set_up_check_in_sets_up_account_and_reservation_with_arguments(
 
     assert len(mock_set_up_accounts.call_args[0][0].accounts) == accounts_len
     assert len(mock_set_up_reservations.call_args[0][0].reservations) == reservations_len
+    assert mock_process.join.call_count == len(mock_processes)
 
 
 def test_set_up_check_in_sends_error_message_when_arguments_are_invalid(
@@ -163,3 +160,12 @@ def test_main_sets_up_the_script(mocker: MockerFixture) -> None:
 
     # Ensure the '--verbose' and '-v' flags are removed
     mock_set_up_check_in.assert_called_once_with(arguments[:2])
+
+
+def test_main_exits_on_keyboard_interrupt(mocker: MockerFixture) -> None:
+    mocker.patch("lib.main.check_flags")
+    mocker.patch("lib.log.init_main_logging")
+    mocker.patch("lib.main.set_up_check_in", side_effect=KeyboardInterrupt)
+
+    with pytest.raises(SystemExit):
+        main.main([])

@@ -65,8 +65,13 @@ class CheckInHandler:
     def _set_check_in(self) -> None:
         # Starts to check in five seconds early in case the Southwest server is ahead of your server
         checkin_time = self.flight.departure_time - timedelta(days=1, seconds=5)
-        self._wait_for_check_in(checkin_time)
-        self._check_in()
+
+        try:
+            self._wait_for_check_in(checkin_time)
+            self._check_in()
+        except KeyboardInterrupt:
+            # This is handled in the Reservation Monitor attached to this Checkin Handler
+            pass
 
     def _wait_for_check_in(self, checkin_time: datetime) -> None:
         current_time = datetime.utcnow()

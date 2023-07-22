@@ -3,6 +3,7 @@ from datetime import datetime
 import pytest
 from pytest_mock import MockerFixture
 
+from lib.checkin_handler import CheckInHandler
 from lib.checkin_scheduler import CheckInScheduler
 from lib.config import AccountConfig, ReservationConfig
 from lib.fare_checker import FareChecker
@@ -13,6 +14,23 @@ from lib.webdriver import WebDriver
 
 # This needs to be accessed to be tested
 # pylint: disable=protected-access
+
+
+def test_reservation_monitor_monitors(mocker: MockerFixture) -> None:
+    mock_monitor = mocker.patch.object(ReservationMonitor, "_monitor")
+
+    test_monitor = ReservationMonitor(ReservationConfig())
+    test_monitor.monitor()
+    mock_monitor.assert_called_once()
+
+
+def test_reservation_monitor_handles_keyboard_interrupt(mocker: MockerFixture) -> None:
+    mocker.patch.object(ReservationMonitor, "_monitor", side_effect=KeyboardInterrupt)
+    mock_stop_monitoring = mocker.patch.object(ReservationMonitor, "_stop_monitoring")
+
+    test_monitor = ReservationMonitor(ReservationConfig())
+    test_monitor.monitor()
+    mock_stop_monitoring.assert_called_once()
 
 
 def test_reservation_monitor_monitors_reservations_continuously(mocker: MockerFixture) -> None:
@@ -29,7 +47,7 @@ def test_reservation_monitor_monitors_reservations_continuously(mocker: MockerFi
     test_monitor.checkin_scheduler.flights = ["test_flight"]
 
     with pytest.raises(KeyboardInterrupt):
-        test_monitor.monitor()
+        test_monitor._monitor()
 
     assert mock_refresh_headers.call_count == 2
     assert mock_schedule_reservations.call_count == 2
@@ -48,7 +66,7 @@ def test_reservation_monitor_stops_monitoring_when_no_flights_are_scheduled(
     mock_check_flight_fares = mocker.patch.object(ReservationMonitor, "_check_flight_fares")
 
     test_monitor = ReservationMonitor(ReservationConfig())
-    test_monitor.monitor()
+    test_monitor._monitor()
 
     mock_refresh_headers.assert_called_once()
     mock_schedule_reservations.assert_called_once()
@@ -69,7 +87,7 @@ def test_reservation_monitor_monitors_reservations_once_if_retrieval_interval_is
     test_monitor = ReservationMonitor(config)
     test_monitor.checkin_scheduler.flights = ["test_flight"]
 
-    test_monitor.monitor()
+    test_monitor._monitor()
 
     mock_refresh_headers.assert_called_once()
     mock_schedule_reservations.assert_called_once()
@@ -138,6 +156,40 @@ def test_reservation_monitor_smart_sleep_sleeps_for_correct_time(mocker: MockerF
     mock_sleep.assert_called_once_with(12 * 60 * 60)
 
 
+def test_reservation_monitor_wait_to_stop_waits_for_correct_time(mocker: MockerFixture) -> None:
+    mock_process = mocker.patch("multiprocessing.Process")
+    mock_process.name = "Process-10"
+
+    mocker.patch("multiprocessing.current_process", return_value=mock_process)
+    mock_sleep = mocker.patch("time.sleep")
+
+    test_monitor = ReservationMonitor(ReservationConfig())
+    test_monitor._wait_to_stop()
+
+    mock_sleep.assert_called_once_with(1)
+
+
+def test_reservation_monitor_stop_checkins_stops_all_checkins(mocker: MockerFixture) -> None:
+    mock_checkin_handler = mocker.patch.object(CheckInHandler, "stop_check_in")
+
+    test_monitor = ReservationMonitor(ReservationConfig())
+    test_monitor.checkin_scheduler.checkin_handlers = [mock_checkin_handler] * 2
+    test_monitor._stop_checkins()
+
+    assert mock_checkin_handler.stop_check_in.call_count == 2
+
+
+def test_reservation_monitor_stop_monitoring_stops_checkins(mocker: MockerFixture) -> None:
+    mock_wait_to_stop = mocker.patch.object(ReservationMonitor, "_wait_to_stop")
+    mock_stop_checkins = mocker.patch.object(ReservationMonitor, "_stop_checkins")
+
+    test_monitor = ReservationMonitor(ReservationConfig())
+    test_monitor._stop_monitoring()
+
+    mock_wait_to_stop.assert_called_once()
+    mock_stop_checkins.assert_called_once()
+
+
 def test_account_monitor_monitors_the_account_continuously(mocker: MockerFixture) -> None:
     # Since the monitor function runs in an infinite loop, throw an Exception
     # when the sleep function is called a second time to break out of the loop.
@@ -151,7 +203,7 @@ def test_account_monitor_monitors_the_account_continuously(mocker: MockerFixture
     test_monitor = AccountMonitor(AccountConfig())
 
     with pytest.raises(KeyboardInterrupt):
-        test_monitor.monitor()
+        test_monitor._monitor()
 
     assert mock_get_reservations.call_count == 2
     assert mock_schedule_reservations.call_count == 2
@@ -171,7 +223,7 @@ def test_account_monitor_skips_scheduling_on_too_many_requests_error(mocker: Moc
     test_monitor = AccountMonitor(AccountConfig())
 
     with pytest.raises(KeyboardInterrupt):
-        test_monitor.monitor()
+        test_monitor._monitor()
 
     assert mock_get_reservations.call_count == 1
     assert mock_schedule_reservations.call_count == 0
@@ -192,7 +244,7 @@ def test_account_monitor_checks_reservations_once_if_retrieval_interval_is_zero(
     config.retrieval_interval = 0
     test_monitor = AccountMonitor(config)
 
-    test_monitor.monitor()
+    test_monitor._monitor()
 
     mock_smart_sleep.assert_not_called()
     mock_get_reservations.assert_called_once()
@@ -230,3 +282,14 @@ def test_get_reservations_returns_the_correct_reservations(mocker: MockerFixture
 
     assert new_reservations == reservations
     assert not skip_scheduling
+
+
+def test_account_monitor_stop_monitoring_stops_checkins(mocker: MockerFixture) -> None:
+    mock_wait_to_stop = mocker.patch.object(ReservationMonitor, "_wait_to_stop")
+    mock_stop_checkins = mocker.patch.object(ReservationMonitor, "_stop_checkins")
+
+    test_monitor = AccountMonitor(AccountConfig())
+    test_monitor._stop_monitoring()
+
+    mock_wait_to_stop.assert_called_once()
+    mock_stop_checkins.assert_called_once()

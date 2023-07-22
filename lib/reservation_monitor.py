@@ -1,3 +1,4 @@
+import multiprocessing
 import sys
 import time
 from datetime import datetime
@@ -31,6 +32,12 @@ class ReservationMonitor:
         self.checkin_scheduler = CheckInScheduler(self)
 
     def monitor(self) -> None:
+        try:
+            self._monitor()
+        except KeyboardInterrupt:
+            self._stop_monitoring()
+
+    def _monitor(self) -> None:
         """
         Check for reservation changes and lower fares every X hours (retrieval interval).
         Will exit when no more flights are scheduled for check-in.
@@ -94,6 +101,38 @@ class ReservationMonitor:
         logger.debug("Sleeping for %d seconds", sleep_time)
         time.sleep(sleep_time)
 
+    def _wait_to_stop(self) -> None:
+        """
+        In order to print ordered information when Ctrl-C is pressed, each monitor
+        will wait for a different amount of time (based on the process name).
+        """
+        # Get the process number that is part of its name (e.g. 'Process-1' -> '1')
+        process_name = multiprocessing.current_process().name
+        process_num = process_name.partition("-")[2]
+
+        sleep_time = int(process_num) * 0.1
+        time.sleep(sleep_time)
+
+    def _stop_checkins(self) -> None:
+        """
+        Stops all check-ins for a monitor. This is called when Ctrl-C is pressed. The
+        flight information is not logged because it contains sensitive information.
+        """
+        for checkin in self.checkin_scheduler.checkin_handlers:
+            print(
+                f"Cancelling check-in from '{checkin.flight.departure_airport}' to "
+                f"'{checkin.flight.destination_airport}' for {self.first_name} {self.last_name}"
+            )
+            checkin.stop_check_in()
+
+    def _stop_monitoring(self) -> None:
+        self._wait_to_stop()
+        print(
+            f"\nStopping monitoring for reservation with confirmation number "
+            f"{self.config.confirmation_number} and name {self.first_name} {self.last_name}"
+        )
+        self._stop_checkins()
+
 
 class AccountMonitor(ReservationMonitor):
     """Monitor an account for newly booked reservations"""
@@ -103,7 +142,7 @@ class AccountMonitor(ReservationMonitor):
         self.username = config.username
         self.password = config.password
 
-    def monitor(self) -> None:
+    def _monitor(self) -> None:
         """
         Check for newly booked reservations for the account every X hours (retrieval interval).
         """
@@ -150,3 +189,8 @@ class AccountMonitor(ReservationMonitor):
 
         logger.debug("Successfully retrieved %d reservations", len(reservations))
         return reservations, False
+
+    def _stop_monitoring(self) -> None:
+        self._wait_to_stop()
+        print(f"\nStopping monitoring for account with username {self.username}")
+        self._stop_checkins()

@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+import multiprocessing
 import sys
-from multiprocessing import Process
 from typing import TYPE_CHECKING, List
 
 from lib import log
@@ -94,7 +94,7 @@ def set_up_accounts(config: GlobalConfig) -> None:
         account_monitor = AccountMonitor(account)
 
         # Start each account monitor in a separate process to run them in parallel
-        process = Process(target=account_monitor.monitor)
+        process = multiprocessing.Process(target=account_monitor.monitor)
         process.start()
 
 
@@ -106,7 +106,7 @@ def set_up_reservations(config: GlobalConfig) -> None:
         reservation_monitor = ReservationMonitor(reservation)
 
         # Start each reservation monitor in a separate process to run them in parallel
-        process = Process(target=reservation_monitor.monitor)
+        process = multiprocessing.Process(target=reservation_monitor.monitor)
         process.start()
 
 
@@ -150,6 +150,11 @@ def set_up_check_in(arguments: List[str]) -> None:
     set_up_accounts(config)
     set_up_reservations(config)
 
+    # Keep the main process alive until all processes are done so it can handle
+    # keyboard interrupts
+    for process in multiprocessing.active_children():
+        process.join()
+
 
 def main(arguments: List[str]) -> None:
     flags_to_remove = ["-v", "--verbose"]
@@ -159,4 +164,9 @@ def main(arguments: List[str]) -> None:
 
     # Remove flags now that they are not needed (and will mess up parsing)
     arguments = [x for x in arguments if x not in flags_to_remove]
-    set_up_check_in(arguments)
+
+    try:
+        set_up_check_in(arguments)
+    except KeyboardInterrupt:
+        logger.info("\nCtrl+C pressed. Stopping all check-ins")
+        sys.exit(130)
