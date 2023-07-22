@@ -72,6 +72,9 @@ python3 southwest.py --help
 **Note**: The script will check the entire party in under the same reservation, so there is no need
 to create more than one instance of the script per reservation.
 
+**Note 2**: If you have a companion on your reservation and you want them to be checked in too, you will
+need to set up their reservation or account separately in the configuration file.
+
 If you want the latest features of the script, you can use the `develop` branch (documented changes
 can be viewed in the Changelog). However, keep in mind that changes to this branch do not ensure reliability.
 

@@ -10,8 +10,13 @@ If there is no "Upgrading" header for that version, no post-upgrade actions need
 [Accounts and Reservations](CONFIGURATION.md#accounts-and-reservations) for more
 information
 ([#124](https://github.com/jdholtz/auto-southwest-check-in/pull/124))
-- Pressing Ctrl-C now gives you information on a cancelled check-ins instead of
+- Pressing Ctrl-C now gives you information on cancelled check-ins instead of
 displaying a Traceback
+
+### Improvements
+- Add a note about checking in a companion in the README. See
+[#126](https://github.com/jdholtz/auto-southwest-check-in/discussions/126) for more
+information
 
 ### Bug Fixes
 - Fix incorrect price parsing when fares are not available for a flight
