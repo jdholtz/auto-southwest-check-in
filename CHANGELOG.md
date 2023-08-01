@@ -12,6 +12,9 @@ information
 ([#124](https://github.com/jdholtz/auto-southwest-check-in/pull/124))
 - Pressing Ctrl-C now gives you information on cancelled check-ins instead of
 displaying a Traceback
+- An [FAQ](README.md#faq) section was added to the Readme. This is a place where
+commonly asked questions are answered. If you think additional questions should be added
+to this section, feel free to submit a Discussion or Pull Request with your proposal.
 
 ### Improvements
 - Add a note about checking in a companion in the README. See

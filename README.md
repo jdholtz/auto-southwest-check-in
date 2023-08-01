@@ -18,6 +18,7 @@ information beforehand.
 - [Configuration](#configuration)
 - [Troubleshooting](#troubleshooting)
 - [Contributing](#contributing)
+- [FAQ](#faq)
 
 ## Installation
 
@@ -69,12 +70,6 @@ For the full usage of the script, run:
 python3 southwest.py --help
 ```
 
-**Note**: The script will check the entire party in under the same reservation, so there is no need
-to create more than one instance of the script per reservation.
-
-**Note 2**: If you have a companion on your reservation and you want them to be checked in too, you will
-need to set up their reservation or account separately in the configuration file.
-
 If you want the latest features of the script, you can use the `develop` branch (documented changes
 can be viewed in the Changelog). However, keep in mind that changes to this branch do not ensure reliability.
 
@@ -117,10 +112,33 @@ If you run into any issues, please file it via [GitHub Issues][6]. Please attach
 `logs/auto-southwest-check-in.log`) to the issue. The logs should not have any personal information but check to make
 sure before attaching it.
 
-If you have any questions or discussion topics, start a [GitHub Discussion][7].
+For any common questions or issues, visit the [FAQ](#faq). If you have any additional questions or discussion topics,
+you can start a [GitHub Discussion][7].
 
 ## Contributing
 Contributions are always welcome. Please read [Contributing.md](CONTRIBUTING.md) if you are considering making contributions.
+
+## FAQ
+Below, a list of answers to frequently asked questions about Auto-Southwest Check-In can be found. If you believe any more
+questions should be added to this list, please submit a [Discussion][7] or [Pull Request][8] so the addition can be made.
+
+### Do I Need to Set up a Different Instance of the Script for Each Passenger on My Reservation?
+This script will check the entire party in under the same reservation, so there is no need to create more than one instance
+of the script per reservation.
+
+However, this is not the case if you have a companion attached to your reservation. See the next question for information on
+checking in a companion.
+
+### Will This Script Also Check in the Companion Attached to My Reservation?
+Unfortunately, this is not possible due to how Southwest's companion system works. To ensure your companion is also checked in,
+you can set up their reservation or account separately in the configuration file.
+
+### While Attempting to Run This Script, I Get a [SSL: CERTIFICATE_VERIFY_FAILED] Error. How Can I Fix It?
+If you are on MacOS, this most likely occurred because your Python installation does not have any root certificates. To install
+these certificates, follow the directions found at [this Stack Overflow question][9].
+
+Credit to [@greennayr](https://github.com/greennayr) for the answer to this question.
+
 
 [0]: https://www.python.org/downloads/
 [1]: https://pip.pypa.io/en/stable/installation/
@@ -130,3 +148,5 @@ Contributions are always welcome. Please read [Contributing.md](CONTRIBUTING.md)
 [5]: https://hub.docker.com/repository/docker/jdholtz/auto-southwest-check-in
 [6]: https://github.com/jdholtz/auto-southwest-check-in/issues/new/choose
 [7]: https://github.com/jdholtz/auto-southwest-check-in/discussions/new/choose
+[8]: https://github.com/jdholtz/auto-southwest-check-in/pulls
+[9]: https://stackoverflow.com/questions/42098126/mac-osx-python-ssl-sslerror-ssl-certificate-verify-failed-certificate-verify
