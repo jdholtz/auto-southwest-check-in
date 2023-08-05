@@ -3,7 +3,7 @@ When upgrading to a new version, make sure to follow the directions under the "U
 If there is no "Upgrading" header for that version, no post-upgrade actions need to be performed.
 
 
-### Upcoming
+## 5.0 (2023-08-04)
 
 ### New Features
 - Account and reservation-specific configurations are now supported. See

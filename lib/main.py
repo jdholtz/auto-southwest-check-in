@@ -11,7 +11,7 @@ from lib import log
 if TYPE_CHECKING:
     from lib.config import GlobalConfig
 
-__version__ = "v4.3"
+__version__ = "v5.0"
 
 __doc__ = """
 Schedule a check-in:
