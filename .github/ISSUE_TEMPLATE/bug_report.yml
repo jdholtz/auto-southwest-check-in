@@ -6,7 +6,7 @@ body:
     attributes:
       value: |
         Thank you for taking the time to report a bug!
-  - type: textarea
+  - type: input
     attributes:
       label: Version
       description: Output of `python southwest.py --version`
@@ -41,4 +41,4 @@ body:
   - type: textarea
     attributes:
       label: Additional context
-      description: Add any other context about the problem here such as logs, Google Chrome version, Python version, etc.
+      description: Add any other context about the problem here such as your Google Chrome version, Python version, etc.

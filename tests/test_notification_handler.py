@@ -15,15 +15,6 @@ def notification_handler(mocker: MockerFixture) -> NotificationHandler:
     return NotificationHandler(mock_reservation_monitor)
 
 
-def test_get_account_name_returns_the_correct_name(
-    notification_handler: NotificationHandler,
-) -> None:
-    notification_handler.reservation_monitor.first_name = "John"
-    notification_handler.reservation_monitor.last_name = "Doe"
-
-    assert notification_handler._get_account_name() == "John Doe"
-
-
 def test_send_nofication_does_not_send_notifications_if_level_is_too_low(
     mocker: MockerFixture, notification_handler: NotificationHandler
 ) -> None:
@@ -120,3 +111,12 @@ def test_lower_fare_sends_lower_fare_notification(
 
     notification_handler.lower_fare(mock_flight, "")
     assert mock_send_notification.call_args[0][1] == NotificationLevel.INFO
+
+
+def test_get_account_name_returns_the_correct_name(
+    notification_handler: NotificationHandler,
+) -> None:
+    notification_handler.reservation_monitor.first_name = "John"
+    notification_handler.reservation_monitor.last_name = "Doe"
+
+    assert notification_handler._get_account_name() == "John Doe"

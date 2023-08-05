@@ -24,9 +24,6 @@ class NotificationHandler:
         self.notification_urls = reservation_monitor.config.notification_urls
         self.notification_level = reservation_monitor.config.notification_level
 
-    def _get_account_name(self) -> str:
-        return f"{self.reservation_monitor.first_name} {self.reservation_monitor.last_name}"
-
     def send_notification(self, body: str, level: NotificationLevel = None) -> None:
         print(body)  # This isn't logged as it contains sensitive information
 
@@ -108,3 +105,6 @@ class NotificationHandler:
         )
         logger.debug("Sending lower fare notification...")
         self.send_notification(message, NotificationLevel.INFO)
+
+    def _get_account_name(self) -> str:
+        return f"{self.reservation_monitor.first_name} {self.reservation_monitor.last_name}"

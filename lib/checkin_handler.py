@@ -85,7 +85,7 @@ class CheckInHandler:
         # Only try to refresh the headers if the check-in is more than ten minutes away
         if sleep_time > 0:
             logger.debug("Sleeping until ten minutes before check-in...")
-            self.safe_sleep(sleep_time)
+            self._safe_sleep(sleep_time)
             self.checkin_scheduler.refresh_headers()
 
         current_time = datetime.utcnow()
@@ -93,7 +93,7 @@ class CheckInHandler:
         logger.debug("Sleeping until check-in: %d seconds...", sleep_time)
         time.sleep(sleep_time)
 
-    def safe_sleep(self, total_sleep_time: int) -> None:
+    def _safe_sleep(self, total_sleep_time: int) -> None:
         """
         If the total sleep time is too long, an overflow error could occur.
         Therefore, the script will continuously sleep in two week periods

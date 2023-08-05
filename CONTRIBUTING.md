@@ -13,6 +13,7 @@ Pull Request (This can be done after submitting the PR or separately by me).
 - [Coding Conventions](#coding-conventions)
     * [Linting](#linting)
     * [Formatting](#formatting)
+    * [Class Method Organization](#class-method-organization)
 
 ## Testing
 This project uses [pytest][0] to unit test the application. When adding/modifying the code, you may need to add a new test or modify an existing test.
@@ -35,6 +36,15 @@ the issue or disable the warning.
 [Black][4] is used to format all the Python code to a consistent style. Additionally, [isort][5] is used to provide a consistent ordering to imports.
 
 It is also highly recommended to use an [EditorConfig][6] plugin for your code editor to maintain a consistent coding style for all project files.
+
+### Class Method Organization
+To help with readability, Auto-Southwest Check-In should follow a specific ordering of class methods:
+1. Magic methods (such as \_\_init\_\_)
+2. Public methods
+3. Private methods (prefixed with an underscore)
+
+From there, methods are ordered from top to bottom in the order they are used. Unit tests should be in the same order as the methods they are testing.
+
 
 [0]: https://docs.pytest.org
 [1]: https://pre-commit.com

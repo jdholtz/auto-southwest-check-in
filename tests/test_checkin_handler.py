@@ -120,7 +120,7 @@ def test_safe_sleep_sleeps_in_intervals(
     mock_sleep = mocker.patch("time.sleep")
 
     total_sleep_time = weeks * 7 * 24 * 60 * 60
-    checkin_handler.safe_sleep(total_sleep_time)
+    checkin_handler._safe_sleep(total_sleep_time)
 
     assert mock_sleep.call_count == expected_sleep_calls
 
