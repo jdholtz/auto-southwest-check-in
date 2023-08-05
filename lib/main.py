@@ -109,6 +109,7 @@ def set_up_check_in(arguments: List[str]) -> None:
     Initialize reservation and account monitoring based on the configuration
     and arguments passed in
     """
+    logger.debug(f"Auto-Southwest Check-In {__version__}")
     logger.debug("Called with %d arguments", len(arguments))
 
     # Imported here to avoid needing dependencies to retrieve the script's

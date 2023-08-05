@@ -8,6 +8,12 @@ body:
         Thank you for taking the time to report a bug!
   - type: textarea
     attributes:
+      label: Version
+      description: Output of `python southwest.py --version`
+    validations:
+      required: true
+  - type: textarea
+    attributes:
       label: Description
       description: Please give a clear and concise description of the bug
     validations:
@@ -27,8 +33,11 @@ body:
       description: A clear and concise description of what you expected to happen.
   - type: textarea
     attributes:
-      label: Version
-      description: Output of `python southwest.py --version`
+      label: Relevant logs and program output
+      description: |
+        Please paste relevant output or logs here. Additionally, the log file can be attached to this issue (found at `logs/auto-southwest-check-in.log`)
+      placeholder: This will be automatically formatted into code, so no need for backticks.
+      render: sh
   - type: textarea
     attributes:
       label: Additional context
