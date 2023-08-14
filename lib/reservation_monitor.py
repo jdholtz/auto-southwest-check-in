@@ -1,5 +1,4 @@
 import multiprocessing
-import random
 import sys
 import time
 from datetime import datetime
@@ -53,9 +52,6 @@ class ReservationMonitor:
         while True:
             time_before = datetime.utcnow()
 
-            # Prevent each thread from running at the same time as another thread.
-            self._randomly_sleep()
-
             # Ensure we have valid headers
             self.checkin_scheduler.refresh_headers()
 
@@ -98,14 +94,6 @@ class ReservationMonitor:
                 logger.debug("%s. Skipping fare check", err)
             except Exception as err:
                 logger.exception("Unexpected error during fare check: %s", repr(err))
-
-    def _randomly_sleep(self) -> None:
-        """
-        Sleep for a random amount of time so that each thread isn't operating at the same time.
-        """
-        sleep_time = random.randint(1, 240)
-        logger.debug("Sleeping for %d seconds", sleep_time)
-        time.sleep(sleep_time)
 
     def _smart_sleep(self, previous_time: datetime) -> None:
         """
@@ -165,9 +153,6 @@ class AccountMonitor(ReservationMonitor):
         """
         while True:
             time_before = datetime.utcnow()
-
-            # Prevent each thread from running at the same time as another thread.
-            self._randomly_sleep()
 
             reservations, skip_scheduling = self._get_reservations()
 

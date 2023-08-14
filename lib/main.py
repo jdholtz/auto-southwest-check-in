@@ -93,6 +93,7 @@ def set_up_accounts(config: GlobalConfig) -> None:
     for account in config.accounts:
         account_monitor = AccountMonitor(account)
         account_monitor.start()
+        self._sleep("accounts")
 
 
 def set_up_reservations(config: GlobalConfig) -> None:
@@ -102,6 +103,12 @@ def set_up_reservations(config: GlobalConfig) -> None:
     for reservation in config.reservations:
         reservation_monitor = ReservationMonitor(reservation)
         reservation_monitor.start()
+        self._sleep("reservations")
+
+def _sleep(name: String) -> None:
+    sleep_time = random.randint(300, 600)
+    logger.debug("Sleeping between %s for %d seconds", name, sleep_time)
+    time.sleep(sleep_time)
 
 
 def set_up_check_in(arguments: List[str]) -> None:
