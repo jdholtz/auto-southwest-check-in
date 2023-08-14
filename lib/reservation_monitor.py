@@ -153,7 +153,6 @@ class AccountMonitor(ReservationMonitor):
         """
         while True:
             time_before = datetime.utcnow()
-
             reservations, skip_scheduling = self._get_reservations()
 
             if not skip_scheduling:
