@@ -31,18 +31,18 @@ class ReservationMonitor:
         self.notification_handler = NotificationHandler(self)
         self.checkin_scheduler = CheckInScheduler(self)
 
-    def start(self) -> None:
+    def start(self, lock) -> None:
         """Start each reservation monitor in a separate process to run them in parallel"""
-        process = multiprocessing.Process(target=self.monitor)
+        process = multiprocessing.Process(target=self.monitor, args=(lock,))
         process.start()
 
-    def monitor(self) -> None:
+    def monitor(self, lock) -> None:
         try:
-            self._monitor()
+            self._monitor(lock)
         except KeyboardInterrupt:
             self._stop_monitoring()
 
-    def _monitor(self) -> None:
+    def _monitor(self, lock) -> None:
         """
         Check for reservation changes and lower fares every X hours (retrieval interval).
         Will exit when no more flights are scheduled for check-in.
@@ -51,23 +51,25 @@ class ReservationMonitor:
 
         while True:
             time_before = datetime.utcnow()
+            logger.debug("Acquiring lock...")
+            with lock:
+                logger.debug("Lock acquired")
+                # Ensure we have valid headers
+                self.checkin_scheduler.refresh_headers()
 
-            # Ensure we have valid headers
-            self.checkin_scheduler.refresh_headers()
+                # Schedule the reservations every time in case a flight is changed or cancelled
+                self._schedule_reservations([reservation])
 
-            # Schedule the reservations every time in case a flight is changed or cancelled
-            self._schedule_reservations([reservation])
+                if len(self.checkin_scheduler.flights) <= 0:
+                    logger.debug("No more flights are scheduled for check-in. Exiting...")
+                    break
 
-            if len(self.checkin_scheduler.flights) <= 0:
-                logger.debug("No more flights are scheduled for check-in. Exiting...")
-                break
+                self._check_flight_fares()
 
-            self._check_flight_fares()
-
-            if self.config.retrieval_interval <= 0:
-                logger.debug("Reservation monitoring is disabled as retrieval interval is 0")
-                break
-
+                if self.config.retrieval_interval <= 0:
+                    logger.debug("Reservation monitoring is disabled as retrieval interval is 0")
+                    break
+            logger.debug("Lock released.")
             self._smart_sleep(time_before)
 
     def _schedule_reservations(self, reservations: List[Dict[str, Any]]) -> None:
@@ -147,22 +149,26 @@ class AccountMonitor(ReservationMonitor):
         self.username = config.username
         self.password = config.password
 
-    def _monitor(self) -> None:
+    def _monitor(self, lock) -> None:
         """
         Check for newly booked reservations for the account every X hours (retrieval interval).
         """
         while True:
             time_before = datetime.utcnow()
-            reservations, skip_scheduling = self._get_reservations()
+            logger.debug("Acquiring lock...")
+            with lock:
+                logger.debug("Lock acquired.")
+                reservations, skip_scheduling = self._get_reservations()
 
-            if not skip_scheduling:
-                self._schedule_reservations(reservations)
-                self._check_flight_fares()
+                if not skip_scheduling:
+                    self._schedule_reservations(reservations)
+                    self._check_flight_fares()
 
-            if self.config.retrieval_interval <= 0:
-                logger.debug("Account monitoring is disabled as retrieval interval is 0")
-                break
+                if self.config.retrieval_interval <= 0:
+                    logger.debug("Account monitoring is disabled as retrieval interval is 0")
+                    break
 
+            logger.debug("Lock released.")
             self._smart_sleep(time_before)
 
     def _get_reservations(self) -> Tuple[List[Dict[str, Any]], bool]:

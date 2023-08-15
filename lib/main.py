@@ -86,30 +86,22 @@ def test_notifications(config: GlobalConfig) -> None:
     reservation_monitor.notification_handler.send_notification("This is a test message")
 
 
-def set_up_accounts(config: GlobalConfig) -> None:
+def set_up_accounts(config: GlobalConfig, lock) -> None:
     # pylint:disable=import-outside-toplevel
     from .reservation_monitor import AccountMonitor
 
     for account in config.accounts:
         account_monitor = AccountMonitor(account)
-        account_monitor.start()
-        self._sleep("accounts")
+        account_monitor.start(lock)
 
 
-def set_up_reservations(config: GlobalConfig) -> None:
+def set_up_reservations(config: GlobalConfig, lock) -> None:
     # pylint:disable=import-outside-toplevel
     from .reservation_monitor import ReservationMonitor
 
     for reservation in config.reservations:
         reservation_monitor = ReservationMonitor(reservation)
-        reservation_monitor.start()
-        self._sleep("reservations")
-
-
-def _sleep(name: String) -> None:
-    sleep_time = random.randint(300, 600)
-    logger.debug("Sleeping between %s for %d seconds", name, sleep_time)
-    time.sleep(sleep_time)
+        reservation_monitor.start(lock)
 
 
 def set_up_check_in(arguments: List[str]) -> None:
@@ -150,8 +142,9 @@ def set_up_check_in(arguments: List[str]) -> None:
     logger.debug(
         "Monitoring %d accounts and %d reservations", len(config.accounts), len(config.reservations)
     )
-    set_up_accounts(config)
-    set_up_reservations(config)
+    lock = multiprocessing.Lock()
+    set_up_accounts(config, lock)
+    set_up_reservations(config, lock)
 
     # Keep the main process alive until all processes are done so it can handle
     # keyboard interrupts
