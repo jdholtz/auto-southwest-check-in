@@ -105,6 +105,7 @@ def set_up_reservations(config: GlobalConfig) -> None:
         reservation_monitor.start()
         self._sleep("reservations")
 
+
 def _sleep(name: String) -> None:
     sleep_time = random.randint(300, 600)
     logger.debug("Sleeping between %s for %d seconds", name, sleep_time)
