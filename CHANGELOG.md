@@ -2,6 +2,13 @@
 When upgrading to a new version, make sure to follow the directions under the "Upgrading" header of the corresponding version.
 If there is no "Upgrading" header for that version, no post-upgrade actions need to be performed.
 
+## Upcoming
+### Bug Fixes
+- Fix issues when checking flights for multiple accounts/reservations at the same time (such as 'Text file busy')
+([#138](https://github.com/jdholtz/auto-southwest-check-in/pull/138) by
+[@StevenMassaro](https://github.com/StevenMassaro))
+    - Since these checks are now run sequentially, it may take longer on the initial startup to get
+    notifications for all your check-ins. This does not affect the check-in process at all
 
 ## 5.0 (2023-08-04)
 

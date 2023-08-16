@@ -61,7 +61,7 @@ class ReservationMonitor:
             with self.lock:
                 logger.debug("Lock acquired")
 
-                # Ensure we have valid headers
+                # Ensure there are valid headers
                 self.checkin_scheduler.refresh_headers()
 
                 # Schedule the reservations every time in case a flight is changed or cancelled

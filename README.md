@@ -122,22 +122,31 @@ Contributions are always welcome. Please read [Contributing.md](CONTRIBUTING.md)
 Below, a list of answers to frequently asked questions about Auto-Southwest Check-In can be found. If you believe any more
 questions should be added to this list, please submit a [Discussion][7] or [Pull Request][8] so the addition can be made.
 
-### Do I Need to Set up a Different Instance of the Script for Each Passenger on My Reservation?
+<details>
+<summary>Do I Need to Set up a Different Instance of the Script for Each Passenger on My Reservation?</summary>
+
 This script will check the entire party in under the same reservation, so there is no need to create more than one instance
 of the script per reservation.
 
 However, this is not the case if you have a companion attached to your reservation. See the next question for information on
 checking in a companion.
+</details>
 
-### Will This Script Also Check in the Companion Attached to My Reservation?
+<details>
+<summary>Will This Script Also Check in the Companion Attached to My Reservation?</summary>
+
 Unfortunately, this is not possible due to how Southwest's companion system works. To ensure your companion is also checked in,
 you can set up their reservation or account separately in the configuration file.
+</details>
 
-### While Attempting to Run This Script, I Get a [SSL: CERTIFICATE_VERIFY_FAILED] Error. How Can I Fix It?
-If you are on MacOS, this most likely occurred because your Python installation does not have any root certificates. To install
-these certificates, follow the directions found at [this Stack Overflow question][9].
+<details>
+<summary>While Attempting to Run This Script, I Get a [SSL: CERTIFICATE_VERIFY_FAILED] Error. How Can I Fix It?</summary>
+
+If you are on MacOS, this error most likely occurred because your Python installation does not have any root certificates. To
+install these certificates, follow the directions found at [this Stack Overflow question][9].
 
 Credit to [@greennayr](https://github.com/greennayr) for the answer to this question.
+</details>
 
 
 [0]: https://www.python.org/downloads/
