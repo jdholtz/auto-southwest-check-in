@@ -28,4 +28,7 @@ exclude_lines = [
 filterwarnings = [
     # Currently used by Apprise. Remove once Apprise removes it for Python 3.11+
     'ignore:Use setlocale\(\), getencoding\(\) and getlocale\(\) instead:DeprecationWarning',
+
+    # Currently used by Selenium Wire. Remove once Selenium Wire removes it
+    'ignore:pkg_resources is deprecated as an API:DeprecationWarning'
 ]

@@ -86,21 +86,21 @@ def test_notifications(config: GlobalConfig) -> None:
     reservation_monitor.notification_handler.send_notification("This is a test message")
 
 
-def set_up_accounts(config: GlobalConfig) -> None:
+def set_up_accounts(config: GlobalConfig, lock: multiprocessing.Lock) -> None:
     # pylint:disable=import-outside-toplevel
     from .reservation_monitor import AccountMonitor
 
     for account in config.accounts:
-        account_monitor = AccountMonitor(account)
+        account_monitor = AccountMonitor(account, lock)
         account_monitor.start()
 
 
-def set_up_reservations(config: GlobalConfig) -> None:
+def set_up_reservations(config: GlobalConfig, lock: multiprocessing.Lock) -> None:
     # pylint:disable=import-outside-toplevel
     from .reservation_monitor import ReservationMonitor
 
     for reservation in config.reservations:
-        reservation_monitor = ReservationMonitor(reservation)
+        reservation_monitor = ReservationMonitor(reservation, lock)
         reservation_monitor.start()
 
 
@@ -109,7 +109,7 @@ def set_up_check_in(arguments: List[str]) -> None:
     Initialize reservation and account monitoring based on the configuration
     and arguments passed in
     """
-    logger.debug(f"Auto-Southwest Check-In {__version__}")
+    logger.debug("Auto-Southwest Check-In %s", __version__)
     logger.debug("Called with %d arguments", len(arguments))
 
     # Imported here to avoid needing dependencies to retrieve the script's
@@ -142,8 +142,9 @@ def set_up_check_in(arguments: List[str]) -> None:
     logger.debug(
         "Monitoring %d accounts and %d reservations", len(config.accounts), len(config.reservations)
     )
-    set_up_accounts(config)
-    set_up_reservations(config)
+    lock = multiprocessing.Lock()
+    set_up_accounts(config, lock)
+    set_up_reservations(config, lock)
 
     # Keep the main process alive until all processes are done so it can handle
     # keyboard interrupts
