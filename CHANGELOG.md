@@ -3,6 +3,9 @@ When upgrading to a new version, make sure to follow the directions under the "U
 If there is no "Upgrading" header for that version, no post-upgrade actions need to be performed.
 
 ## Upcoming
+### Improvements
+- Ctrl-C is now handled better on Windows systems
+
 ### Bug Fixes
 - Fix issues when checking flights for multiple accounts/reservations at the same time (such as 'Text file busy')
 ([#138](https://github.com/jdholtz/auto-southwest-check-in/pull/138) by
