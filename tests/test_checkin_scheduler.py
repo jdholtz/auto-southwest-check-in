@@ -1,4 +1,5 @@
 import json
+from datetime import datetime, timedelta
 from typing import List
 from unittest import mock
 
@@ -57,17 +58,17 @@ def test_refresh_headers_sets_new_headers(mocker: MockerFixture) -> None:
     mock_webdriver_set_headers.assert_called_once()
 
 
-def test_get_flights_retrieves_all_flights_under_reservation(
-    mocker: MockerFixture,
-) -> None:
+def test_get_flights_retrieves_all_flights_under_reservation(mocker: MockerFixture) -> None:
     reservation_info = [{"departureStatus": "WAITING"}, {"departureStatus": "WAITING"}]
     mocker.patch.object(CheckInScheduler, "_get_reservation_info", return_value=reservation_info)
+    mock_set_same_day_flight = mocker.patch.object(CheckInScheduler, "_set_same_day_flight")
 
     mocker.patch("lib.checkin_scheduler.Flight")
     checkin_scheduler = CheckInScheduler(ReservationMonitor(ReservationConfig()))
     flights = checkin_scheduler._get_flights("flight1")
 
     assert len(flights) == 2
+    assert mock_set_same_day_flight.call_count == len(flights)
 
 
 def test_get_flights_does_not_retrieve_departed_flights(mocker: MockerFixture) -> None:
@@ -149,11 +150,22 @@ def test_get_reservation_info_does_not_send_error_notification_when_reservation_
     assert reservation_info == []
 
 
-def test_get_new_flights_gets_flights_not_already_scheduled(
-    mocker: MockerFixture, test_flights: List[Flight]
+@pytest.mark.parametrize(["hour_diff", "same_day"], [(23, True), (24, True), (25, False)])
+def test_set_same_day_flight_sets_flight_as_same_day_correctly(
+    hour_diff: int, same_day: bool, test_flights: List[Flight]
 ) -> None:
-    flight1 = test_flights[0]
-    flight2 = test_flights[1]
+    prev_flight, new_flight = test_flights
+    prev_flight.departure_time = datetime.utcnow()
+    new_flight.departure_time = prev_flight.departure_time + timedelta(hours=hour_diff)
+
+    checkin_scheduler = CheckInScheduler(ReservationMonitor(ReservationConfig()))
+    checkin_scheduler._set_same_day_flight(new_flight, [prev_flight])
+
+    assert new_flight.is_same_day == same_day
+
+
+def test_get_new_flights_gets_flights_not_already_scheduled(test_flights: List[Flight]) -> None:
+    flight1, flight2 = test_flights
     # Change the airport so it is seen as a new flight
     flight2.departure_airport = "LAX"
 

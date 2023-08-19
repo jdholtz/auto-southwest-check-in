@@ -5,7 +5,7 @@ import signal
 import time
 from datetime import datetime, timedelta
 from multiprocessing import Process
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict
 
 from .flight import Flight
 from .log import get_logger
@@ -14,8 +14,14 @@ from .utils import RequestError, make_request
 if TYPE_CHECKING:
     from .checkin_scheduler import CheckInScheduler
 
+# Type alias for JSON
+JSON = Dict[str, Any]
+
 CHECKIN_URL = "mobile-air-operations/v1/mobile-air-operations/page/check-in/"
 MANUAL_CHECKIN_URL = "https://mobile.southwest.com/check-in"
+
+# Should only be relevant for same day flights
+MAX_CHECK_IN_ATTEMPTS = 10
 
 logger = get_logger(__name__)
 
@@ -130,16 +136,47 @@ class CheckInHandler:
             response = make_request("GET", site, headers, info)
 
             info = response["checkInViewReservationPage"]["_links"]["checkIn"]
-            site = f"mobile-air-operations{info['href']}"
-
-            logger.debug("Making POST request to check in")
-            reservation = make_request("POST", site, headers, info["body"])
+            reservation = self._submit_check_in(info)
         except RequestError as err:
             logger.debug("Failed to check in. Error: %s. Exiting", err)
             self.notification_handler.failed_checkin(err, self.flight)
             return
 
-        logger.debug("Successfully checked in!")
         self.notification_handler.successful_checkin(
             reservation["checkInConfirmationPage"], self.flight
         )
+
+    def _submit_check_in(self, checkin_info: JSON) -> JSON:
+        """
+        Keeps attempting to check in until all flights are checked in. This should
+        succeed after one attempt for non-same-day flights, but is necessary for
+        same-day flights.
+
+        Since the check-in is started early, the submission will go through for the
+        previous flight, but the flight attached to this handler will not have been
+        checked in yet. Therefore, this function keeps attempting to check in until
+        both flights have checked in.
+        """
+        logger.debug("Submitting check-in with a POST request")
+        expected_flights = 2 if self.flight.is_same_day else 1
+        headers = self.checkin_scheduler.headers
+        site = f"mobile-air-operations{checkin_info['href']}"
+
+        attempts = 0
+        while attempts < MAX_CHECK_IN_ATTEMPTS:
+            reservation = make_request("POST", site, headers, checkin_info["body"])
+            flights = reservation["checkInConfirmationPage"]["flights"]
+            if len(flights) >= expected_flights:
+                # Only keep the last flight as that is the one that was just checked in
+                logger.debug("Successfully checked in after %d attempts", attempts + 1)
+                reservation["checkInConfirmationPage"]["flights"] = [flights[-1]]
+                return reservation
+
+            logger.debug(
+                "Same-day flight has not been checked in yet. Waiting 1 second and trying again"
+            )
+            attempts += 1
+            time.sleep(1)
+
+        logger.debug("Same-day flight failed to check in after %d attempts", MAX_CHECK_IN_ATTEMPTS)
+        raise RequestError("Too many attempts during check-in", "")

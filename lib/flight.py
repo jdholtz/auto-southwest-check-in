@@ -22,6 +22,7 @@ class Flight:
         self.departure_airport = flight_info["departureAirport"]["name"]
         self.destination_airport = flight_info["arrivalAirport"]["name"]
         self.departure_time = self._get_flight_time(flight_info)
+        self.is_same_day = False
 
         # Needed for the fare checker
         self.local_departure_time = flight_info["departureTime"]

@@ -5,161 +5,203 @@ from unittest import mock
 import pytest
 from pytest_mock import MockerFixture
 
-from lib.checkin_handler import CheckInHandler
+from lib.checkin_handler import MAX_CHECK_IN_ATTEMPTS, CheckInHandler
 from lib.utils import RequestError
 
 # This needs to be accessed to be tested
 # pylint: disable=protected-access
 
 
-@pytest.fixture
-def checkin_handler(mocker: MockerFixture) -> CheckInHandler:
-    test_flight = mocker.patch("lib.checkin_handler.Flight")
+class TestCheckInHandler:
+    """Contains common tests between the CheckInHandler and the SameDayCheckInHandler"""
 
-    mock_checkin_scheduler = mocker.patch("lib.checkin_scheduler.CheckInScheduler")
-    return CheckInHandler(mock_checkin_scheduler, test_flight)
+    @pytest.fixture(autouse=True)
+    def _set_up_handler(self, mocker: MockerFixture) -> None:
+        test_flight = mocker.patch("lib.checkin_handler.Flight")
+        mock_checkin_scheduler = mocker.patch("lib.checkin_scheduler.CheckInScheduler")
+        # pylint: disable=attribute-defined-outside-init
+        self.handler = CheckInHandler(mock_checkin_scheduler, test_flight)
 
+    def test_schedule_check_in_starts_a_process(self, mocker: MockerFixture) -> None:
+        mock_process = mocker.patch("lib.checkin_handler.Process")
+        mock_process.start = mock.Mock()
 
-def test_schedule_check_in_starts_a_process(
-    mocker: MockerFixture, checkin_handler: CheckInHandler
-) -> None:
-    mock_process = mocker.patch("lib.checkin_handler.Process")
-    mock_process.start = mock.Mock()
+        self.handler.schedule_check_in()
 
-    checkin_handler.schedule_check_in()
+        mock_process.return_value.start.assert_called_once()
+        assert self.handler.pid is not None
 
-    mock_process.return_value.start.assert_called_once()
-    assert checkin_handler.pid is not None
+    def test_stop_check_in_stops_a_process_by_killing_its_pid(self, mocker: MockerFixture) -> None:
+        mock_os_kill = mocker.patch("os.kill")
+        mock_os_waitpid = mocker.patch("os.waitpid")
 
+        self.handler.stop_check_in()
 
-def test_stop_check_in_stops_a_process_by_killing_its_pid(
-    mocker: MockerFixture, checkin_handler: CheckInHandler
-) -> None:
-    mock_os_kill = mocker.patch("os.kill")
-    mock_os_waitpid = mocker.patch("os.waitpid")
+        mock_os_kill.assert_called_once_with(self.handler.pid, signal.SIGTERM)
+        mock_os_waitpid.assert_called_once_with(self.handler.pid, 0)
 
-    checkin_handler.stop_check_in()
+    def test_stop_check_in_handles_permission_error(self, mocker: MockerFixture) -> None:
+        mock_os_kill = mocker.patch("os.kill", side_effect=PermissionError)
+        mock_os_waitpid = mocker.patch("os.waitpid")
 
-    mock_os_kill.assert_called_once_with(checkin_handler.pid, signal.SIGTERM)
-    mock_os_waitpid.assert_called_once_with(checkin_handler.pid, 0)
+        self.handler.stop_check_in()
 
+        mock_os_kill.assert_called_once_with(self.handler.pid, signal.SIGTERM)
+        mock_os_waitpid.assert_not_called()
 
-def test_stop_check_in_handles_permission_error(
-    mocker: MockerFixture, checkin_handler: CheckInHandler
-) -> None:
-    mock_os_kill = mocker.patch("os.kill", side_effect=PermissionError)
-    mock_os_waitpid = mocker.patch("os.waitpid")
+    def test_stop_check_in_handles_child_process_error(self, mocker: MockerFixture) -> None:
+        mock_os_kill = mocker.patch("os.kill")
+        mock_os_waitpid = mocker.patch("os.waitpid", side_effect=ChildProcessError)
 
-    checkin_handler.stop_check_in()
+        self.handler.stop_check_in()
 
-    mock_os_kill.assert_called_once_with(checkin_handler.pid, signal.SIGTERM)
-    mock_os_waitpid.assert_not_called()
+        mock_os_kill.assert_called_once_with(self.handler.pid, signal.SIGTERM)
+        mock_os_waitpid.assert_called_once_with(self.handler.pid, 0)
 
+    def test_set_check_in_correctly_sets_up_check_in_process(self, mocker: MockerFixture) -> None:
+        self.handler.flight.departure_time = datetime(1999, 12, 31, 18, 29)
+        mock_wait_for_check_in = mocker.patch.object(CheckInHandler, "_wait_for_check_in")
+        mock_check_in = mocker.patch.object(CheckInHandler, "_check_in")
 
-def test_stop_check_in_handles_child_process_error(
-    mocker: MockerFixture, checkin_handler: CheckInHandler
-) -> None:
-    mock_os_kill = mocker.patch("os.kill")
-    mock_os_waitpid = mocker.patch("os.waitpid", side_effect=ChildProcessError)
+        self.handler._set_check_in()
 
-    checkin_handler.stop_check_in()
+        mock_wait_for_check_in.assert_called_once_with(datetime(1999, 12, 30, 18, 28, 55))
+        mock_check_in.assert_called_once()
 
-    mock_os_kill.assert_called_once_with(checkin_handler.pid, signal.SIGTERM)
-    mock_os_waitpid.assert_called_once_with(checkin_handler.pid, 0)
+    def test_set_check_in_passes_on_keyboard_interrupt(self, mocker: MockerFixture) -> None:
+        mocker.patch.object(CheckInHandler, "_wait_for_check_in", side_effect=KeyboardInterrupt)
+        self.handler._set_check_in()
 
+    def test_wait_for_check_in_exits_immediately_if_checkin_time_has_passed(
+        self, mocker: MockerFixture
+    ) -> None:
+        mock_sleep = mocker.patch("time.sleep")
+        self.handler._wait_for_check_in(datetime(1999, 12, 31))
+        mock_sleep.assert_not_called()
 
-def test_set_check_in_correctly_sets_up_check_in_process(
-    mocker: MockerFixture, checkin_handler: CheckInHandler
-) -> None:
-    checkin_handler.flight.departure_time = datetime(1999, 12, 31, 18, 29)
-    mock_wait_for_check_in = mocker.patch.object(CheckInHandler, "_wait_for_check_in")
-    mock_check_in = mocker.patch.object(CheckInHandler, "_check_in")
+    def test_wait_for_check_in_sleeps_once_when_check_in_is_less_than_ten_minutes_away(
+        self, mocker: MockerFixture
+    ) -> None:
+        mock_sleep = mocker.patch("time.sleep")
+        mock_datetime = mocker.patch("lib.checkin_handler.datetime")
+        mock_datetime.utcnow.return_value = datetime(1999, 12, 31, 18, 29, 59)
 
-    checkin_handler._set_check_in()
+        self.handler._wait_for_check_in(datetime(1999, 12, 31, 18, 39, 59))
 
-    mock_wait_for_check_in.assert_called_once_with(datetime(1999, 12, 30, 18, 28, 55))
-    mock_check_in.assert_called_once()
+        mock_sleep.assert_called_once_with(600)
 
+    def test_wait_for_check_in_refreshes_headers_ten_minutes_before_check_in(
+        self, mocker: MockerFixture
+    ) -> None:
+        mock_sleep = mocker.patch("time.sleep")
+        mock_refresh_headers = self.handler.checkin_scheduler.refresh_headers
+        mock_datetime = mocker.patch("lib.checkin_handler.datetime")
+        mock_datetime.utcnow.side_effect = [
+            datetime(1999, 12, 31, 18, 29, 59),
+            datetime(1999, 12, 31, 23, 19, 59),
+        ]
 
-def test_set_check_in_passes_on_keyboard_interrupt(
-    mocker: MockerFixture, checkin_handler: CheckInHandler
-) -> None:
-    mocker.patch.object(CheckInHandler, "_wait_for_check_in", side_effect=KeyboardInterrupt)
-    checkin_handler._set_check_in()
+        self.handler._wait_for_check_in(datetime(1999, 12, 31, 23, 29, 59))
 
+        mock_sleep.assert_has_calls([mock.call(17400), mock.call(600)])
+        mock_refresh_headers.assert_called_once()
 
-def test_wait_for_check_in_exits_immediately_if_checkin_time_has_passed(
-    mocker: MockerFixture, checkin_handler: CheckInHandler
-) -> None:
-    mock_sleep = mocker.patch("time.sleep")
-    checkin_handler._wait_for_check_in(datetime(1999, 12, 31))
-    mock_sleep.assert_not_called()
+    @pytest.mark.parametrize(["weeks", "expected_sleep_calls"], [(0, 0), (1, 1), (3, 2)])
+    def test_safe_sleep_sleeps_in_intervals(
+        self,
+        mocker: MockerFixture,
+        weeks: int,
+        expected_sleep_calls: int,
+    ) -> None:
+        mock_sleep = mocker.patch("time.sleep")
 
+        total_sleep_time = weeks * 7 * 24 * 60 * 60
+        self.handler._safe_sleep(total_sleep_time)
 
-def test_wait_for_check_in_sleeps_once_when_check_in_is_less_than_ten_minutes_away(
-    mocker: MockerFixture, checkin_handler: CheckInHandler
-) -> None:
-    mock_sleep = mocker.patch("time.sleep")
-    mock_datetime = mocker.patch("lib.checkin_handler.datetime")
-    mock_datetime.utcnow.return_value = datetime(1999, 12, 31, 18, 29, 59)
+        assert mock_sleep.call_count == expected_sleep_calls
 
-    checkin_handler._wait_for_check_in(datetime(1999, 12, 31, 18, 39, 59))
+    def test_check_in_sends_error_notification_when_check_in_fails(
+        self, mocker: MockerFixture
+    ) -> None:
+        mocker.patch("lib.checkin_handler.make_request", side_effect=RequestError("", ""))
+        mock_notification_handler = mocker.patch("lib.notification_handler.NotificationHandler")
 
-    mock_sleep.assert_called_once_with(600)
+        self.handler.notification_handler = mock_notification_handler
+        self.handler._check_in()
 
+        mock_notification_handler.failed_checkin.assert_called_once()
 
-def test_wait_for_check_in_refreshes_headers_ten_minutes_before_check_in(
-    mocker: MockerFixture, checkin_handler: CheckInHandler
-) -> None:
-    mock_sleep = mocker.patch("time.sleep")
-    mock_refresh_headers = checkin_handler.checkin_scheduler.refresh_headers
-    mock_datetime = mocker.patch("lib.checkin_handler.datetime")
-    mock_datetime.utcnow.side_effect = [
-        datetime(1999, 12, 31, 18, 29, 59),
-        datetime(1999, 12, 31, 23, 19, 59),
-    ]
+    def test_check_in_sends_error_notification_when_submit_check_in_fails(
+        self, mocker: MockerFixture
+    ) -> None:
+        get_response = {
+            "checkInViewReservationPage": {"_links": {"checkIn": {"href": "", "body": ""}}}
+        }
+        mocker.patch("lib.checkin_handler.make_request", return_value=get_response)
+        mocker.patch.object(CheckInHandler, "_submit_check_in", side_effect=RequestError("", ""))
+        mock_notification_handler = mocker.patch("lib.notification_handler.NotificationHandler")
 
-    checkin_handler._wait_for_check_in(datetime(1999, 12, 31, 23, 29, 59))
+        self.handler.notification_handler = mock_notification_handler
+        self.handler._check_in()
 
-    mock_sleep.assert_has_calls([mock.call(17400), mock.call(600)])
-    mock_refresh_headers.assert_called_once()
+        mock_notification_handler.failed_checkin.assert_called_once()
 
+    def test_check_in_sends_success_notification_on_successful_check_in(
+        self, mocker: MockerFixture
+    ) -> None:
+        get_response = {
+            "checkInViewReservationPage": {"_links": {"checkIn": {"href": "", "body": ""}}}
+        }
+        post_response = {"checkInConfirmationPage": "Checked In!"}
+        mock_notification_handler = mocker.patch("lib.notification_handler.NotificationHandler")
+        mocker.patch("lib.checkin_handler.make_request", return_value=get_response)
+        mocker.patch.object(CheckInHandler, "_submit_check_in", return_value=post_response)
 
-@pytest.mark.parametrize(["weeks", "expected_sleep_calls"], [(0, 0), (1, 1), (3, 2)])
-def test_safe_sleep_sleeps_in_intervals(
-    mocker: MockerFixture, checkin_handler: CheckInHandler, weeks: int, expected_sleep_calls: int
-) -> None:
-    mock_sleep = mocker.patch("time.sleep")
+        self.handler.notification_handler = mock_notification_handler
+        self.handler._check_in()
 
-    total_sleep_time = weeks * 7 * 24 * 60 * 60
-    checkin_handler._safe_sleep(total_sleep_time)
+        mock_notification_handler.successful_checkin.assert_called_once_with(
+            "Checked In!", self.handler.flight
+        )
 
-    assert mock_sleep.call_count == expected_sleep_calls
+    def test_submit_check_in_succeeds_first_time_when_flight_is_not_same_day(
+        self, mocker: MockerFixture
+    ) -> None:
+        post_response = {"checkInConfirmationPage": {"flights": ["flight1"]}}
+        mock_make_request = mocker.patch(
+            "lib.checkin_handler.make_request", return_value=post_response
+        )
 
+        self.handler.flight.is_same_day = False
+        reservation = self.handler._submit_check_in({"href": "", "body": ""})
 
-def test_check_in_sends_error_notification_when_check_in_fails(
-    mocker: MockerFixture, checkin_handler: CheckInHandler
-) -> None:
-    mocker.patch("lib.checkin_handler.make_request", side_effect=RequestError("", ""))
-    mock_notification_handler = mocker.patch("lib.notification_handler.NotificationHandler")
+        mock_make_request.assert_called_once()
+        assert reservation == post_response
 
-    checkin_handler.notification_handler = mock_notification_handler
-    checkin_handler._check_in()
+    def test_submit_check_in_succeeds_after_multiple_attempts(self, mocker: MockerFixture) -> None:
+        first_post_response = {"checkInConfirmationPage": {"flights": ["flight1"]}}
+        second_post_response = {"checkInConfirmationPage": {"flights": ["flight1", "flight2"]}}
+        mocker.patch(
+            "lib.checkin_handler.make_request",
+            side_effect=[first_post_response, second_post_response],
+        )
+        mock_sleep = mocker.patch("time.sleep")
 
-    mock_notification_handler.failed_checkin.assert_called_once()
+        self.handler.flight.is_same_day = True
+        reservation = self.handler._submit_check_in({"href": "", "body": ""})
 
+        assert reservation == second_post_response
+        mock_sleep.assert_called_once()
 
-def test_check_in_sends_success_notification_on_successful_check_in(
-    mocker: MockerFixture, checkin_handler: CheckInHandler
-) -> None:
-    get_response = {"checkInViewReservationPage": {"_links": {"checkIn": {"href": "", "body": ""}}}}
-    post_response = {"checkInConfirmationPage": "Checked In!"}
-    mock_notification_handler = mocker.patch("lib.notification_handler.NotificationHandler")
-    mocker.patch("lib.checkin_handler.make_request", side_effect=[get_response, post_response])
+    def test_submit_check_in_fails_when_max_attempts_reached(self, mocker: MockerFixture) -> None:
+        post_response = {"checkInConfirmationPage": {"flights": ["flight1"]}}
+        mock_make_request = mocker.patch(
+            "lib.checkin_handler.make_request", return_value=post_response
+        )
+        mocker.patch("time.sleep")
 
-    checkin_handler.notification_handler = mock_notification_handler
-    checkin_handler._check_in()
+        self.handler.flight.is_same_day = True
+        with pytest.raises(RequestError):
+            self.handler._submit_check_in({"href": "", "body": ""})
 
-    mock_notification_handler.successful_checkin.assert_called_once_with(
-        "Checked In!", checkin_handler.flight
-    )
+        assert mock_make_request.call_count == MAX_CHECK_IN_ATTEMPTS
