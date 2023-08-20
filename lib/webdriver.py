@@ -6,6 +6,7 @@ import re
 import time
 from typing import TYPE_CHECKING, Any, Dict, List
 
+from requests.compat import quote_plus
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
@@ -103,7 +104,9 @@ class WebDriver:
         password_element = WebDriverWait(driver, 30).until(
             EC.presence_of_element_located((By.NAME, "password"))
         )
-        password_element.send_keys(account_monitor.password)
+
+        # Use quote_plus to workaround a x-www-form-urlencoded encoding bug on the mobile site
+        password_element.send_keys(quote_plus(account_monitor.password))
         password_element.submit()
 
         response = self._wait_for_response(driver, 0)
