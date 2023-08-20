@@ -89,7 +89,7 @@ def test_set_up_accounts_starts_all_accounts(mocker: MockerFixture) -> None:
     config.accounts = [AccountConfig(), AccountConfig()]
 
     mock_account_start = mocker.patch.object(AccountMonitor, "start")
-    main.set_up_accounts(config)
+    main.set_up_accounts(config, None)
     assert mock_account_start.call_count == len(config.accounts)
 
 
@@ -98,7 +98,7 @@ def test_set_up_reservations_starts_all_reservations(mocker: MockerFixture) -> N
     config.reservations = [ReservationConfig(), ReservationConfig()]
 
     mock_reservation_start = mocker.patch.object(ReservationMonitor, "start")
-    main.set_up_reservations(config)
+    main.set_up_reservations(config, None)
     assert mock_reservation_start.call_count == len(config.reservations)
 
 

@@ -49,18 +49,19 @@ class CheckInHandler:
         be pickled (necessary when using multiprocessing's 'spawn' start method).
         """
         logger.debug("Stopping check-in for current flight")
-        logger.debug(f"Killing process with PID {self.pid}")
-        os.kill(self.pid, signal.SIGTERM)
 
-        # Wait so zombie (defunct) processes are not created
-        logger.debug(f"Waiting for process with PID {self.pid} to be terminated")
         try:
+            logger.debug("Killing process with PID %d", self.pid)
+            os.kill(self.pid, signal.SIGTERM)
+
+            # Wait so zombie (defunct) processes are not created
+            logger.debug("Waiting for process with PID %d to be terminated", self.pid)
             os.waitpid(self.pid, 0)
-        except ChildProcessError:
-            # Processes are cleaned up without needing waitpid on Windows
+        except (ChildProcessError, PermissionError):
+            # Processes are handled differently in Windows
             pass
 
-        logger.debug(f"Process with PID {self.pid} successfully terminated")
+        logger.debug("Process with PID %d successfully terminated", self.pid)
 
     def _set_check_in(self) -> None:
         # Starts to check in five seconds early in case the Southwest server is ahead of your server
