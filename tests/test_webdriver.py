@@ -21,7 +21,10 @@ def mock_driver(mocker: MockerFixture) -> mock.Mock:
 
 @pytest.fixture
 def mock_reservation_monitor(mocker: MockerFixture) -> mock.Mock:
-    return mocker.patch("lib.reservation_monitor.AccountMonitor")
+    mock = mocker.patch("lib.reservation_monitor.AccountMonitor")
+    mock.username = "default_user"
+    mock.password = "some-password"
+    return mock
 
 
 @pytest.fixture
