@@ -17,7 +17,8 @@ def checkin_handler(mocker: MockerFixture) -> CheckInHandler:
     test_flight = mocker.patch("lib.checkin_handler.Flight")
 
     mock_checkin_scheduler = mocker.patch("lib.checkin_scheduler.CheckInScheduler")
-    return CheckInHandler(mock_checkin_scheduler, test_flight)
+    mock_lock = mocker.patch("multiprocessing.Lock")
+    return CheckInHandler(mock_checkin_scheduler, test_flight, mock_lock)
 
 
 def test_schedule_check_in_starts_a_process(
@@ -96,19 +97,23 @@ def test_wait_for_check_in_exits_immediately_if_checkin_time_has_passed(
     mock_sleep.assert_not_called()
 
 
-def test_wait_for_check_in_sleeps_once_when_check_in_is_less_than_ten_minutes_away(
+def test_wait_for_check_in_sleeps_once_when_check_in_is_less_than_thirty_minutes_away(
     mocker: MockerFixture, checkin_handler: CheckInHandler
 ) -> None:
     mock_sleep = mocker.patch("time.sleep")
     mock_datetime = mocker.patch("lib.checkin_handler.datetime")
     mock_datetime.utcnow.return_value = datetime(1999, 12, 31, 18, 29, 59)
 
-    checkin_handler._wait_for_check_in(datetime(1999, 12, 31, 18, 39, 59))
+    checkin_handler._wait_for_check_in(datetime(1999, 12, 31, 18, 59, 59))
 
-    mock_sleep.assert_called_once_with(600)
+    mock_sleep.assert_called_once_with(1800)
 
 
-def test_wait_for_check_in_refreshes_headers_ten_minutes_before_check_in(
+@pytest.mark.filterwarnings(
+    # Mocking multiprocessing.Lock causes this warning
+    "ignore:Mocks returned by pytest-mock do not need to be used as context managers:"
+)
+def test_wait_for_check_in_refreshes_headers_thirty_minutes_before_check_in(
     mocker: MockerFixture, checkin_handler: CheckInHandler
 ) -> None:
     mock_sleep = mocker.patch("time.sleep")
@@ -119,9 +124,9 @@ def test_wait_for_check_in_refreshes_headers_ten_minutes_before_check_in(
         datetime(1999, 12, 31, 23, 19, 59),
     ]
 
-    checkin_handler._wait_for_check_in(datetime(1999, 12, 31, 23, 29, 59))
+    checkin_handler._wait_for_check_in(datetime(1999, 12, 31, 23, 49, 59))
 
-    mock_sleep.assert_has_calls([mock.call(17400), mock.call(600)])
+    mock_sleep.assert_has_calls([mock.call(17400), mock.call(1800)])
     mock_refresh_headers.assert_called_once()
 
 

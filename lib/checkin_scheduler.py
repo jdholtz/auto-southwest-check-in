@@ -103,7 +103,7 @@ class CheckInScheduler:
     def _schedule_flights(self, flights: List[Flight]) -> None:
         logger.debug("Scheduling %d flights for check-in", len(flights))
         for flight in flights:
-            checkin_handler = CheckInHandler(self, flight)
+            checkin_handler = CheckInHandler(self, flight, self.reservation_monitor.lock)
             checkin_handler.schedule_check_in()
 
             self.flights.append(flight)

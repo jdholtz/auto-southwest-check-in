@@ -4,7 +4,7 @@ import os
 import signal
 import time
 from datetime import datetime, timedelta
-from multiprocessing import Process
+from multiprocessing import Lock, Process
 from typing import TYPE_CHECKING
 
 from .flight import Flight
@@ -27,9 +27,10 @@ class CheckInHandler:
     Sleeps until the flight's check-in time and then attempts the check in.
     """
 
-    def __init__(self, checkin_scheduler: CheckInScheduler, flight: Flight) -> None:
+    def __init__(self, checkin_scheduler: CheckInScheduler, flight: Flight, lock: Lock) -> None:
         self.checkin_scheduler = checkin_scheduler
         self.flight = flight
+        self.lock = lock
         self.pid = None
 
         self.notification_handler = checkin_scheduler.notification_handler
@@ -80,14 +81,22 @@ class CheckInHandler:
             logger.debug("Check-in time has passed. Going straight to check-in")
             return
 
-        # Refresh headers 10 minutes before to make sure they are valid
-        sleep_time = (checkin_time - current_time - timedelta(minutes=10)).total_seconds()
+        # Refresh headers 30 minutes before to make sure they are valid
+        sleep_time = (checkin_time - current_time - timedelta(minutes=30)).total_seconds()
 
         # Only try to refresh the headers if the check-in is more than ten minutes away
         if sleep_time > 0:
-            logger.debug("Sleeping until ten minutes before check-in...")
+            logger.debug("Sleeping until thirty minutes before check-in...")
             self._safe_sleep(sleep_time)
-            self.checkin_scheduler.refresh_headers()
+
+            # Lock to ensure multiple checkin handlers aren't refreshing headers
+            # at the same time (the webdriver doesn't work well with concurrency)
+            logger.debug("Acquiring lock...")
+            with self.lock:
+                logger.debug("Lock acquired")
+                self.checkin_scheduler.refresh_headers()
+
+            logger.debug("Lock released")
 
         current_time = datetime.utcnow()
         sleep_time = (checkin_time - current_time).total_seconds()

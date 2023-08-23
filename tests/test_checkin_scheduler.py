@@ -188,8 +188,8 @@ def test_remove_old_flights_removes_flights_not_currently_scheduled(
     checkin_scheduler = CheckInScheduler(ReservationMonitor(ReservationConfig()))
     checkin_scheduler.flights = test_flights
     checkin_scheduler.checkin_handlers = [
-        CheckInHandler(checkin_scheduler, test_flights[0]),
-        CheckInHandler(checkin_scheduler, test_flights[1]),
+        CheckInHandler(checkin_scheduler, test_flights[0], None),
+        CheckInHandler(checkin_scheduler, test_flights[1], None),
     ]
 
     checkin_scheduler._remove_old_flights([test_flights[1]])
