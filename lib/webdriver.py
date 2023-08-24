@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
 import time
@@ -30,6 +31,10 @@ RESERVATION_URL = BASE_URL + "/api/mobile-air-operations/v1/mobile-air-operation
 INVALID_CREDENTIALS_CODE = 400518024
 
 logger = get_logger(__name__)
+
+# Temporary workaround to not log a warning message when not providing version_main. Can be removed
+# once my PR gets merged (https://github.com/ultrafunkamsterdam/undetected-chromedriver/pull/1504)
+logging.getLogger("uc").setLevel(logging.ERROR)
 
 
 class WebDriver:
@@ -206,17 +211,15 @@ class WebDriver:
 
     def _get_options(self) -> ChromeOptions:
         options = ChromeOptions()
+        options.add_argument("--headless")
         options.add_argument("--disable-dev-shm-usage")  # For docker containers
 
-        # This is a temporary workaround for later chrome versions. Currently, the latest
-        # version of undetected_chromedriver adds this argument correctly, but it gets
-        # detected by Southwest, so this will be here until it can bypass their bot detection.
-        chrome_version = self.checkin_scheduler.reservation_monitor.config.chrome_version
-        if not chrome_version or chrome_version >= 109:
-            options.add_argument("--headless=new")
-        else:
-            options.add_argument("--headless=chrome")
-
+        # This is a temporary workaround due to incompatibilities between selenium-wire and
+        # Selenium 4.10+. Can be removed when it is either fixed in Selenium Wire (see my PR
+        # here: https://github.com/wkeeling/selenium-wire/pull/699) or in Undetected
+        # Chromdriver (see my PR here:
+        # https://github.com/ultrafunkamsterdam/undetected-chromedriver/pull/1503)
+        options.set_capability("acceptInsecureCerts", True)
         return options
 
     def _handle_login_error(self, response: Response) -> LoginError:
@@ -245,6 +248,8 @@ class WebDriver:
     def _quit_browser(self, driver: Chrome) -> None:
         driver.quit()
 
+        # Can be removed when my PR in Undetected Chromedriver is merged:
+        # https://github.com/ultrafunkamsterdam/undetected-chromedriver/pull/1391
         try:
             # Wait so zombie (defunct) processes are not created
             os.waitpid(driver.browser_pid, 0)

@@ -1,7 +1,7 @@
-apprise==1.4.0
-certifi==2023.05.07
-pytz==2023.3
+apprise==1.4.5
+certifi==2023.07.22
+pytz==2023.3  # Remove when this script only supports Python 3.9+
 requests==2.31.0
-selenium==4.9.0
+selenium==4.11.2
 selenium_wire==5.1.0
-undetected_chromedriver==3.1.7
+undetected_chromedriver==3.5.2

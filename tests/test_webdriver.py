@@ -239,22 +239,13 @@ class TestWebDriver:
         self.driver._set_headers_from_request(mock_chrome)
         assert self.driver.checkin_scheduler.headers == {"test": "headers"}
 
-    @pytest.mark.parametrize(
-        ["chrome_version", "option"],
-        [
-            (None, "new"),
-            (109, "new"),
-            (108, "chrome"),
-        ],
-    )
-    def test_get_options_adds_the_correct_headless_option(
-        self, chrome_version: int, option: str
-    ) -> None:
-        self.driver.checkin_scheduler.reservation_monitor.config.chrome_version = chrome_version
+    def test_get_options_adds_the_correct_headless_option(self) -> None:
         options = self.driver._get_options()
 
+        assert "--headless" in options.arguments
         assert "--disable-dev-shm-usage" in options.arguments
-        assert f"--headless={option}" in options.arguments
+        assert "acceptInsecureCerts" in options.capabilities
+        assert options.capabilities["acceptInsecureCerts"]
 
     def test_handle_login_error_handles_invalid_credentials(self) -> None:
         response = Response(

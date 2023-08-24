@@ -16,6 +16,11 @@ If there is no "Upgrading" header for that version, no post-upgrade actions need
 ([#140](https://github.com/jdholtz/auto-southwest-check-in/pull/140) by
 [@davidkassa](https://github.com/davidkassa))
 
+### Upgrading
+- Upgrade the dependencies to the latest versions by running `pip install -r requirements.txt`
+    - If you have issues with Chrome versions 115+, see
+    [this issue](https://github.com/jdholtz/auto-southwest-check-in/issues/139) for workarounds
+
 ## 5.0 (2023-08-04)
 
 ### New Features
