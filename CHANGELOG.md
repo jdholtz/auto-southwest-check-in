@@ -12,6 +12,14 @@ If there is no "Upgrading" header for that version, no post-upgrade actions need
 [@StevenMassaro](https://github.com/StevenMassaro))
     - Since these checks are now run sequentially, it may take longer on the initial startup to get
     notifications for all your check-ins. This does not affect the check-in process at all
+- Fix authentication issue for passwords with special characters
+([#140](https://github.com/jdholtz/auto-southwest-check-in/pull/140) by
+[@davidkassa](https://github.com/davidkassa))
+
+### Upgrading
+- Upgrade the dependencies to the latest versions by running `pip install -r requirements.txt`
+    - If you have issues with Chrome versions 115+, see
+    [this issue](https://github.com/jdholtz/auto-southwest-check-in/issues/139) for workarounds
 
 ## 5.0 (2023-08-04)
 
