@@ -145,7 +145,7 @@ class FareChecker:
         ):
             raise FlightChangeError("Fare check is not supported with companion passes")
 
-    def _get_matching_fare(self, fares: JSON, fare_type: str) -> JSON:
+    def _get_matching_fare(self, fares: List[JSON], fare_type: str) -> JSON:
         if fares is None:
             return self._unavailable_fare(fare_type)
 
@@ -156,7 +156,7 @@ class FareChecker:
 
                 return self._unavailable_fare(fare_type)
 
-        raise KeyError(f"No fare type found matching {fare_type}")
+        return self._unavailable_fare(fare_type)
 
     def _unavailable_fare(self, fare_type: str) -> JSON:
         """

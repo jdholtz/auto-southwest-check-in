@@ -260,17 +260,12 @@ class TestFareChecker:
         fare_price = self.checker._get_matching_fare(fares, "right_fare")
         assert fare_price == "price"
 
-    @pytest.mark.parametrize("fares", [None, [{"_meta": {"fareProductId": "right_fare"}}]])
+    @pytest.mark.parametrize("fares", [None, [], [{"_meta": {"fareProductId": "right_fare"}}]])
     def test_get_matching_fare_returns_default_price_when_price_is_not_available(
         self, fares: List[JSON]
     ) -> None:
         fare_price = self.checker._get_matching_fare(fares, "right_fare")
         assert fare_price == {"amount": "0", "currencyCode": "USD"}
-
-    def test_get_matching_fare_raises_exception_when_fare_does_not_exist(self) -> None:
-        fares = [{"_meta": {"fareProductId": "wrong_fare"}}]
-        with pytest.raises(KeyError):
-            self.checker._get_matching_fare(fares, "right_fare")
 
     def test_unavailable_fare_returns_default_price(self) -> None:
         fare_price = self.checker._unavailable_fare("fare")
