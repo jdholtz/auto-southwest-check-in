@@ -22,6 +22,7 @@ class ConfigError(Exception):
 class Config:
     def __init__(self) -> None:
         # Default values are set
+        self.browser_path = None
         self.check_fares = False
         self.chrome_version = None
         self.notification_level = NotificationLevel.INFO
@@ -42,6 +43,7 @@ class Config:
         or reservation, those will override the global configuration.
         """
         self.check_fares = global_config.check_fares
+        self.browser_path = global_config.browser_path
         self.chrome_version = global_config.chrome_version
         self.chromedriver_path = global_config.chromedriver_path
         self.notification_level = global_config.notification_level
@@ -149,6 +151,13 @@ class GlobalConfig(Config):
 
     def _parse_config(self, config: JSON) -> None:
         super()._parse_config(config)
+
+        if "browser_path" in config:
+            self.browser_path = config["browser_path"]
+            logger.debug("Setting custom Browser path")
+
+            if not isinstance(self.browser_path, str):
+                raise ConfigError("'browser_path' must be a string")
 
         if "chrome_version" in config:
             self.chrome_version = config["chrome_version"]

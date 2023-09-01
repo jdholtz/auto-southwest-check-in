@@ -40,9 +40,10 @@ class TestConfig:
 
         global_config._parse_config(
             {
+                "browser_path": "test/browser_path",
                 "check_fares": True,
                 "chrome_version": 100,
-                "chromedriver_path": "test/path",
+                "chromedriver_path": "test/driver_path",
                 "notification_level": 1,
                 "notification_urls": "url1",
                 "retrieval_interval": 20,
@@ -51,9 +52,10 @@ class TestConfig:
 
         test_config._parse_config(
             {
+                "browser_path": "test/browser_path2",
                 "check_fares": False,
                 "chrome_version": 200,
-                "chromedriver_path": "test/path2",
+                "chromedriver_path": "test/driver_path2",
                 "notification_level": 2,
                 "notification_urls": ["url2"],
                 "retrieval_interval": 10,
@@ -101,9 +103,7 @@ class TestConfig:
         assert test_config.notification_urls == ["test_url"]
         assert test_config.retrieval_interval == 30 * 60 * 60
 
-    def test_parse_config_does_not_set_values_when_a_config_value_is_empty(
-        self, mocker: MockerFixture
-    ) -> None:
+    def test_parse_config_does_not_set_values_when_a_config_value_is_empty(self) -> None:
         test_config = Config()
         expected_config = Config()
 
@@ -197,6 +197,7 @@ class TestGlobalConfig:
     @pytest.mark.parametrize(
         "config_content",
         [
+            {"browser_path": 0},
             {"chrome_version": "invalid"},
             {"chromedriver_path": 0},
             {"accounts": "invalid"},
@@ -216,17 +217,19 @@ class TestGlobalConfig:
         test_config = GlobalConfig()
         test_config._parse_config(
             {
+                "browser_path": "test/browser_path",
                 "check_fares": True,
                 "chrome_version": 100,
-                "chromedriver_path": "test/path",
+                "chromedriver_path": "test/chromedriver_path",
                 "accounts": [],
                 "reservations": [],
             }
         )
 
+        assert test_config.browser_path == "test/browser_path"
         assert test_config.check_fares is True  # Make sure it calls super._parse_config
         assert test_config.chrome_version == 100
-        assert test_config.chromedriver_path == "test/path"
+        assert test_config.chromedriver_path == "test/chromedriver_path"
         mock_account_config.assert_called_once_with([])
         mock_reservation_config.assert_called_once_with([])
 
@@ -238,6 +241,7 @@ class TestGlobalConfig:
 
         test_config._parse_config({})
 
+        assert test_config.browser_path == expected_config.browser_path
         assert test_config.chrome_version == expected_config.chrome_version
         assert test_config.chromedriver_path == expected_config.chromedriver_path
         assert test_config.accounts == expected_config.accounts
