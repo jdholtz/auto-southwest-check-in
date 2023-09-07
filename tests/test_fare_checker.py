@@ -82,7 +82,7 @@ class TestFareChecker:
 
     # This scenario should not happen because Southwest should always have a flight
     # at the same time (as it is a scheduled flight)
-    def test_get_flight_price_returns_nothing_when_no_matching_flights_appear(
+    def test_get_flight_price_raises_error_when_no_matching_flights_appear(
         self, mocker: MockerFixture, test_flight: Flight
     ) -> None:
         flights = [{"departureTime": "10:30"}, {"departureTime": "11:30"}]
@@ -91,9 +91,8 @@ class TestFareChecker:
         )
 
         test_flight.local_departure_time = "12:00"
-        price = self.checker._get_flight_price(test_flight)
-
-        assert price is None
+        with pytest.raises(ValueError):
+            self.checker._get_flight_price(test_flight)
 
     @pytest.mark.parametrize("bound", ["outbound", "inbound"])
     def test_get_matching_flights_retrieves_correct_bound_page(

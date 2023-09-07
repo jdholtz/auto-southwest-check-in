@@ -57,6 +57,9 @@ class FareChecker:
             ):
                 return self._get_matching_fare(new_flight["fares"], fare_type)
 
+        # Should never be reached as a matching flight should already be found
+        raise ValueError("Flight did not match any flights retrieved for the same day")
+
     def _get_matching_flights(self, flight: Flight) -> Tuple[List[JSON], str]:
         """
         Get all of the flights that match the current flight's departure airport,
