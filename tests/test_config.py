@@ -233,9 +233,7 @@ class TestGlobalConfig:
         mock_account_config.assert_called_once_with([])
         mock_reservation_config.assert_called_once_with([])
 
-    def test_parse_config_does_not_set_values_when_a_config_value_is_empty(
-        self, mocker: MockerFixture
-    ) -> None:
+    def test_parse_config_does_not_set_values_when_a_config_value_is_empty(self) -> None:
         test_config = GlobalConfig()
         expected_config = GlobalConfig()
 

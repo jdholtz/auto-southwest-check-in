@@ -141,7 +141,7 @@ class TestCheckInScheduler:
         assert reservation_info == []
 
     def test_get_new_flights_gets_flights_not_already_scheduled(
-        self, mocker: MockerFixture, test_flights: List[Flight]
+        self, test_flights: List[Flight]
     ) -> None:
         flight1 = test_flights[0]
         flight2 = test_flights[1]

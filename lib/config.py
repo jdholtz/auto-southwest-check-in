@@ -66,10 +66,12 @@ class Config:
             notification_level = config["notification_level"]
             try:
                 self.notification_level = NotificationLevel(notification_level)
-            except ValueError:
-                raise ConfigError(f"'{notification_level}' is not a valid notification level")
+            except ValueError as err:
+                raise ConfigError(
+                    f"'{notification_level}' is not a valid notification level"
+                ) from err
 
-            logger.debug("Setting notification level to %s", self.notification_level.__repr__())
+            logger.debug("Setting notification level to %s", repr(self.notification_level))
 
         if "notification_urls" in config:
             notification_urls = config["notification_urls"]

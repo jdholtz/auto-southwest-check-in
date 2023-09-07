@@ -173,7 +173,8 @@ class TestWebDriver:
         driver = self.driver._get_driver()
 
         mock_init_driver.assert_called_once()
-        assert driver.get.call_count == 1
+        # pylint: disable-next=no-member
+        driver.get.assert_called_once()
 
     @pytest.mark.usefixtures("mock_get_options")
     def test_init_driver_initializes_the_webdriver_correctly(self) -> None:

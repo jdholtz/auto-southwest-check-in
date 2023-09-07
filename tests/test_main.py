@@ -62,7 +62,7 @@ def test_check_flags_does_not_exit_when_flags_are_not_matched(
     mock_exit.assert_not_called()
 
 
-def test_get_notification_urls_gets_all_urls(mocker: MockerFixture) -> None:
+def test_get_notification_urls_gets_all_urls() -> None:
     config = GlobalConfig()
     config.accounts = [AccountConfig()]
     config.reservations = [ReservationConfig()]
