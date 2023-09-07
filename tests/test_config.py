@@ -91,14 +91,14 @@ class TestConfig:
         test_config = Config()
         test_config._parse_config(
             {
-                "check_fares": True,
+                "check_fares": False,
                 "notification_level": 2,
                 "notification_urls": "test_url",
                 "retrieval_interval": 30,
             }
         )
 
-        assert test_config.check_fares is True
+        assert test_config.check_fares is False
         assert test_config.notification_level == NotificationLevel.ERROR
         assert test_config.notification_urls == ["test_url"]
         assert test_config.retrieval_interval == 30 * 60 * 60
@@ -218,7 +218,7 @@ class TestGlobalConfig:
         test_config._parse_config(
             {
                 "browser_path": "test/browser_path",
-                "check_fares": True,
+                "check_fares": False,
                 "chrome_version": 100,
                 "chromedriver_path": "test/chromedriver_path",
                 "accounts": [],
@@ -227,7 +227,7 @@ class TestGlobalConfig:
         )
 
         assert test_config.browser_path == "test/browser_path"
-        assert test_config.check_fares is True  # Make sure it calls super._parse_config
+        assert test_config.check_fares is False  # Make sure it calls super._parse_config
         assert test_config.chrome_version == 100
         assert test_config.chromedriver_path == "test/chromedriver_path"
         mock_account_config.assert_called_once_with([])
@@ -265,9 +265,9 @@ class TestAccountConfig:
 
     def test_parse_config_sets_the_correct_config_values(self) -> None:
         test_config = AccountConfig()
-        test_config._parse_config({"username": "user", "password": "pass", "check_fares": True})
+        test_config._parse_config({"username": "user", "password": "pass", "check_fares": False})
 
-        assert test_config.check_fares is True  # Make sure it calls super._parse_config
+        assert test_config.check_fares is False  # Make sure it calls super._parse_config
         assert test_config.username == "user"
         assert test_config.password == "pass"
 
@@ -295,11 +295,11 @@ class TestReservationConfig:
             "confirmationNumber": "num",
             "firstName": "first",
             "lastName": "last",
-            "check_fares": True,
+            "check_fares": False,
         }
         test_config._parse_config(reservation_config)
 
-        assert test_config.check_fares is True  # Make sure it calls super._parse_config
+        assert test_config.check_fares is False  # Make sure it calls super._parse_config
         assert test_config.confirmation_number == "num"
         assert test_config.first_name == "first"
         assert test_config.last_name == "last"

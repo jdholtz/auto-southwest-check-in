@@ -8,6 +8,13 @@ If there is no "Upgrading" header for that version, no post-upgrade actions need
 - Specifying your [browser's executable path](CONFIGURATION.md#browser-path) can now be done in the configuration
     - Allows you to use other browsers besides Chrome and Chromium (such as Brave)
 
+### Improvements
+- Fares will now be checked for flights by default (`check_fares` does not need to be specified as `true` in your `config.json`
+for fares to be checked now)
+
+### Upgrading
+- If you do not want fares to be checked, `check_fares: false` is now needed in your `config.json`
+
 
 ## 5.1 (2023-08-27)
 ### Improvements
