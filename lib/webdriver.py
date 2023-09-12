@@ -213,6 +213,7 @@ class WebDriver:
         options = ChromeOptions()
         options.add_argument("--headless")
         options.add_argument("--disable-dev-shm-usage")  # For docker containers
+        options.add_argument("--no-sandbox") # Run in docker containers without SYS_ADMIN or --privileged mode
 
         # This is a temporary workaround due to incompatibilities between selenium-wire and
         # Selenium 4.10+. Can be removed when it is either fixed in Selenium Wire (see my PR
