@@ -1,4 +1,4 @@
-"""Runs a mock check-in for the CheckInHandler"""
+"""Runs a mock check-in for the CheckInHandler as well as a same-day flight check-in"""
 
 from datetime import datetime
 from multiprocessing import Lock
@@ -29,8 +29,12 @@ def handler(mocker: MockerFixture) -> None:
     return CheckInHandler(mock_scheduler, flight, Lock())
 
 
+@pytest.mark.parametrize("same_day_flight", [False, True])
 def test_check_in(
-    requests_mock: RequestMocker, mocker: MockerFixture, handler: CheckInHandler
+    requests_mock: RequestMocker,
+    mocker: MockerFixture,
+    handler: CheckInHandler,
+    same_day_flight: bool,
 ) -> None:
     mock_datetime = mocker.patch("lib.checkin_handler.datetime")
     mock_datetime.utcnow.side_effect = [
@@ -50,14 +54,20 @@ def test_check_in(
 
     post_response = {
         "checkInConfirmationPage": {
-            "flights": {
-                "passengers": [
-                    {"boardingGroup": "A", "boardingPosition": "42", "name": "Garry Lin"},
-                    {"boardingGroup": "A", "boardingPosition": "43", "name": "Erin Lin"},
-                ]
-            }
+            "flights": [
+                {
+                    "passengers": [
+                        {"boardingGroup": "A", "boardingPosition": "42", "name": "Garry Lin"},
+                        {"boardingGroup": "A", "boardingPosition": "43", "name": "Erin Lin"},
+                    ]
+                }
+            ]
         }
     }
+
+    if same_day_flight:
+        # Add a flight before to make sure a same day flight selects the second flight
+        post_response["checkInConfirmationPage"]["flights"].insert(0, {})
 
     requests_mock.get(
         BASE_URL + CHECKIN_URL + "TEST?first-name=Garry&last-name=Lin",
@@ -69,6 +79,7 @@ def test_check_in(
         [{"json": post_response, "status_code": 200}],
     )
 
+    handler.flight.is_same_day = same_day_flight
     # pylint: disable-next=protected-access
     handler._set_check_in()
 
