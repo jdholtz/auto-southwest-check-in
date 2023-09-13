@@ -65,6 +65,7 @@ def test_flight_is_scheduled_checks_in_and_departs(
     mock_new_flights_notification = mocker.patch(
         "lib.notification_handler.NotificationHandler.new_flights"
     )
+    mocker.patch("os.kill")
     mock_sleep = mocker.patch("time.sleep")
 
     # Will be checked in a separate integration test

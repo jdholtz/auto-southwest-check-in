@@ -77,7 +77,7 @@ def test_notifications_are_tested(mocker: MockerFixture) -> None:
     mock_apprise.assert_called_once()
 
     expected_urls = ["test_global_1", "test_global_2", "test_account_1", "test_reservation_1"]
-    called_urls = mock_apprise.call_args.args[0]
+    called_urls = mock_apprise.call_args[0][0]
 
     assert len(called_urls) == 4
     assert all(url in called_urls for url in expected_urls)
