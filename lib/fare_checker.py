@@ -157,7 +157,7 @@ class FareChecker:
                 if "priceDifference" in fare:
                     return fare["priceDifference"]
 
-                return self._unavailable_fare(fare_type)
+                break
 
         return self._unavailable_fare(fare_type)
 
