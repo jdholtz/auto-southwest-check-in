@@ -11,6 +11,7 @@ If there is no "Upgrading" header for that version, no post-upgrade actions need
 ### Improvements
 - Fares will now be checked for flights by default (`check_fares` does not need to be specified as `true` in your `config.json`
 for fares to be checked now)
+- Integration tests were added to further increase the reliability of the script
 
 ### Upgrading
 - If you do not want fares to be checked, `check_fares: false` is now needed in your `config.json`
