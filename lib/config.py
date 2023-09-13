@@ -22,7 +22,8 @@ class ConfigError(Exception):
 class Config:
     def __init__(self) -> None:
         # Default values are set
-        self.check_fares = False
+        self.browser_path = None
+        self.check_fares = True
         self.chrome_version = None
         self.notification_level = NotificationLevel.INFO
         self.notification_urls = []
@@ -42,6 +43,7 @@ class Config:
         or reservation, those will override the global configuration.
         """
         self.check_fares = global_config.check_fares
+        self.browser_path = global_config.browser_path
         self.chrome_version = global_config.chrome_version
         self.chromedriver_path = global_config.chromedriver_path
         self.notification_level = global_config.notification_level
@@ -64,10 +66,12 @@ class Config:
             notification_level = config["notification_level"]
             try:
                 self.notification_level = NotificationLevel(notification_level)
-            except ValueError:
-                raise ConfigError(f"'{notification_level}' is not a valid notification level")
+            except ValueError as err:
+                raise ConfigError(
+                    f"'{notification_level}' is not a valid notification level"
+                ) from err
 
-            logger.debug("Setting notification level to %s", self.notification_level.__repr__())
+            logger.debug("Setting notification level to %s", repr(self.notification_level))
 
         if "notification_urls" in config:
             notification_urls = config["notification_urls"]
@@ -149,6 +153,13 @@ class GlobalConfig(Config):
 
     def _parse_config(self, config: JSON) -> None:
         super()._parse_config(config)
+
+        if "browser_path" in config:
+            self.browser_path = config["browser_path"]
+            logger.debug("Setting custom Browser path")
+
+            if not isinstance(self.browser_path, str):
+                raise ConfigError("'browser_path' must be a string")
 
         if "chrome_version" in config:
             self.chrome_version = config["chrome_version"]

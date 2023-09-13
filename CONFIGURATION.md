@@ -11,6 +11,7 @@ Auto-Southwest Check-In supports both global configuration and account/reservati
     * [Notification URLS](#notification-urls)
     * [Notification Level](#notification-level)
     * [Test The Notifications](#test-the-notifications)
+- [Browser Path](#browser-path)
 - [Chrome Version](#chrome-version)
 - [Chromedriver Path](#chromedriver-path)
 - [Retrieval Interval](#retrieval-interval)
@@ -73,6 +74,20 @@ Level 2 means you receive only error messages (failed scheduling and check-ins).
 To test if the notification URLs work, you can run the following command
 ```shell
 $ python3 southwest.py --test-notifications
+```
+
+## Browser Path
+Default: The path to your Chrome or Chromium browser (if installed) \
+Type: String
+
+If you use another Chromium-based browser besides Google Chrome or Chromium (such as Brave), you need to specify the path to
+the browser executable.
+
+**Note**: Microsoft Edge can't be used as `undetected_chromedriver` does not support it.
+```json
+{
+    "browser_path": "/usr/bin/browser_path"
+}
 ```
 
 ## Chrome Version

@@ -162,6 +162,7 @@ class WebDriver:
         initializations can occasionally occur. Trying multiple times makes the initialization
         more reliable.
         """
+        browser_path = self.checkin_scheduler.reservation_monitor.config.browser_path
         chromedriver_path = self.checkin_scheduler.reservation_monitor.config.chromedriver_path
         chrome_version = self.checkin_scheduler.reservation_monitor.config.chrome_version
 
@@ -170,6 +171,7 @@ class WebDriver:
         while attempts < max_attempts:
             try:
                 driver = Chrome(
+                    browser_executable_path=browser_path,
                     driver_executable_path=chromedriver_path,
                     options=self._get_options(),
                     seleniumwire_options=self.seleniumwire_options,

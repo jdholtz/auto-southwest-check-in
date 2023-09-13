@@ -2,7 +2,22 @@
 When upgrading to a new version, make sure to follow the directions under the "Upgrading" header of the corresponding version.
 If there is no "Upgrading" header for that version, no post-upgrade actions need to be performed.
 
+
 ## Upcoming
+### New Features
+- Specifying your [browser's executable path](CONFIGURATION.md#browser-path) can now be done in the configuration
+    - Allows you to use other browsers besides Chrome and Chromium (such as Brave)
+
+### Improvements
+- Fares will now be checked for flights by default (`check_fares` does not need to be specified as `true` in your `config.json`
+for fares to be checked now)
+- Integration tests were added to further increase the reliability of the script
+
+### Upgrading
+- If you do not want fares to be checked, `check_fares: false` is now needed in your `config.json`
+
+
+## 5.1 (2023-08-27)
 ### Improvements
 - Ctrl-C is now handled better on Windows systems
 
@@ -18,8 +33,13 @@ If there is no "Upgrading" header for that version, no post-upgrade actions need
 
 ### Upgrading
 - Upgrade the dependencies to the latest versions by running `pip install -r requirements.txt`
-    - If you have issues with Chrome versions 115+, see
-    [this issue](https://github.com/jdholtz/auto-southwest-check-in/issues/139) for workarounds
+
+### Additional Notes
+- Same day flight check-ins currently don't work for the second flight. If you have a same-day flight
+(departing and return flights are within 24 hours of each other), see
+[my comment](https://github.com/jdholtz/auto-southwest-check-in/issues/135#issuecomment-1685040843) on issue #135
+to test a potential fix for this issue (and report back if it worked or not)
+
 
 ## 5.0 (2023-08-04)
 

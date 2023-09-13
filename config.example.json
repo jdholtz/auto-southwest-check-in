@@ -1,5 +1,5 @@
 {
-    "check_fares": false,
+    "check_fares": true,
     "notification_urls": "",
     "notification_level": 1,
     "retrieval_interval": 24,
