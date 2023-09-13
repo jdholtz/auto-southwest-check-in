@@ -55,7 +55,7 @@ class TestReservationMonitor:
     def test_monitor_monitors_reservations_continuously(self, mocker: MockerFixture) -> None:
         # Since the monitor function runs in an infinite loop, throw an Exception when the
         # sleep function is called a second time to break out of the loop.
-        mocker.patch.object(ReservationMonitor, "_smart_sleep", side_effect=["", KeyboardInterrupt])
+        mocker.patch.object(ReservationMonitor, "_smart_sleep", side_effect=["", StopIteration])
         mock_refresh_headers = mocker.patch.object(CheckInScheduler, "refresh_headers")
         mock_schedule_reservations = mocker.patch.object(
             ReservationMonitor, "_schedule_reservations"
@@ -65,7 +65,7 @@ class TestReservationMonitor:
         self.monitor.config.confirmation_number = "test_num"
         self.monitor.checkin_scheduler.flights = ["test_flight"]
 
-        with pytest.raises(KeyboardInterrupt):
+        with pytest.raises(StopIteration):
             self.monitor._monitor()
 
         assert mock_refresh_headers.call_count == 2
@@ -192,14 +192,14 @@ class TestAccountMonitor:
     def test_monitor_monitors_the_account_continuously(self, mocker: MockerFixture) -> None:
         # Since the monitor function runs in an infinite loop, throw an Exception
         # when the sleep function is called a second time to break out of the loop.
-        mocker.patch.object(AccountMonitor, "_smart_sleep", side_effect=["", KeyboardInterrupt])
+        mocker.patch.object(AccountMonitor, "_smart_sleep", side_effect=["", StopIteration])
         mock_get_reservations = mocker.patch.object(
             AccountMonitor, "_get_reservations", return_value=([], False)
         )
         mock_schedule_reservations = mocker.patch.object(AccountMonitor, "_schedule_reservations")
         mock_check_flight_fares = mocker.patch.object(AccountMonitor, "_check_flight_fares")
 
-        with pytest.raises(KeyboardInterrupt):
+        with pytest.raises(StopIteration):
             self.monitor._monitor()
 
         assert mock_get_reservations.call_count == 2
@@ -211,14 +211,14 @@ class TestAccountMonitor:
     ) -> None:
         # Since the monitor function runs in an infinite loop, throw an Exception
         # when the sleep function is called a second time to break out of the loop.
-        mocker.patch.object(AccountMonitor, "_smart_sleep", side_effect=[KeyboardInterrupt])
+        mocker.patch.object(AccountMonitor, "_smart_sleep", side_effect=[StopIteration])
         mock_get_reservations = mocker.patch.object(
             AccountMonitor, "_get_reservations", return_value=([], True)
         )
         mock_schedule_reservations = mocker.patch.object(AccountMonitor, "_schedule_reservations")
         mock_check_flight_fares = mocker.patch.object(AccountMonitor, "_check_flight_fares")
 
-        with pytest.raises(KeyboardInterrupt):
+        with pytest.raises(StopIteration):
             self.monitor._monitor()
 
         assert mock_get_reservations.call_count == 1

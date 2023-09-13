@@ -214,11 +214,11 @@ class TestWebDriver:
     ) -> None:
         # Since the wait_for_response function runs in an infinite loop, throw an Exception
         # when the sleep function is called a second time to break out of the loop.
-        mocker.patch("time.sleep", side_effect=["", KeyboardInterrupt])
+        mocker.patch("time.sleep", side_effect=["", StopIteration])
         mock_chrome.requests = driver_requests
 
         # It should throw an exception if sleep is called multiple times
-        with pytest.raises(KeyboardInterrupt):
+        with pytest.raises(StopIteration):
             self.driver._wait_for_response(mock_chrome, request_num)
 
     def test_wait_for_response_waits_for_correct_response(self, mock_chrome: mock.Mock) -> None:

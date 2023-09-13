@@ -1,28 +1,29 @@
 import logging
 import multiprocessing
 import sys
+from typing import Iterator
 
 import pytest
 from pytest_mock import MockerFixture
 
 from lib import log
 
-# Don't write logs to a file during testing
-log.LOG_FILE = "/dev/null"
-
 
 @pytest.fixture(autouse=True)
-def logger():
+def logger(mocker: MockerFixture) -> Iterator[logging.Logger]:
     logger = logging.getLogger("lib")
+    # Make sure logs aren't written to a file
+    mock_file_handler = mocker.patch("logging.handlers.RotatingFileHandler")
+    mock_file_handler.return_value.level = logging.DEBUG
+
     yield logger
+
     logger.handlers = []  # Clean up after test
 
 
-def test_init_main_logging_initializes_the_logging_correctly(mocker: MockerFixture) -> None:
-    mock_rollover = mocker.patch("logging.handlers.RotatingFileHandler.doRollover")
-
+def test_init_main_logging_initializes_the_logging_correctly(logger: logging.Logger) -> None:
     log.init_main_logging()
-    mock_rollover.assert_called_once()
+    logger.handlers[0].doRollover.assert_called_once()
 
 
 @pytest.mark.parametrize(

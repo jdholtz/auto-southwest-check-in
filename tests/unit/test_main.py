@@ -165,7 +165,7 @@ def test_main_sets_up_the_script(mocker: MockerFixture) -> None:
 def test_main_exits_on_keyboard_interrupt(mocker: MockerFixture) -> None:
     mocker.patch("lib.main.check_flags")
     mocker.patch("lib.log.init_main_logging")
-    mocker.patch("lib.main.set_up_check_in", side_effect=KeyboardInterrupt)
+    mocker.patch.object(main, "set_up_check_in", side_effect=KeyboardInterrupt)
 
     with pytest.raises(SystemExit):
         main.main([])
