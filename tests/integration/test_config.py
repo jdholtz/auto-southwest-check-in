@@ -11,8 +11,6 @@ def test_config(mocker: MockerFixture) -> None:
     config = {
         "browser_path": "chrome_path",
         "check_fares": True,
-        "chrome_version": 10,
-        "chromedriver_path": "driver_path",
         "notification_level": 1,
         "notification_urls": ["test1.com", "test2.com"],
         "retrieval_interval": 16,
@@ -55,8 +53,6 @@ def test_config(mocker: MockerFixture) -> None:
 
     assert account_one.browser_path == "chrome_path"
     assert account_one.check_fares
-    assert account_one.chrome_version == 10
-    assert account_one.chromedriver_path == "driver_path"
     assert account_one.notification_level == 1
     assert account_one.notification_urls == ["test1.com", "test2.com"]
     assert account_one.password == "test_pass1"
@@ -65,8 +61,6 @@ def test_config(mocker: MockerFixture) -> None:
 
     assert account_two.browser_path == "chrome_path"
     assert not account_two.check_fares
-    assert account_two.chrome_version == 10
-    assert account_two.chromedriver_path == "driver_path"
     assert account_two.notification_level == 2
     assert account_two.notification_urls == ["test1.com", "test2.com", "test3.com"]
     assert account_two.password == "test_pass2"
@@ -79,8 +73,6 @@ def test_config(mocker: MockerFixture) -> None:
 
     assert reservation_one.browser_path == "chrome_path"
     assert reservation_one.check_fares
-    assert reservation_one.chrome_version == 10
-    assert reservation_one.chromedriver_path == "driver_path"
     assert reservation_one.confirmation_number == "test_num1"
     assert reservation_one.first_name == "Winston"
     assert reservation_one.last_name == "Smith"
@@ -90,8 +82,6 @@ def test_config(mocker: MockerFixture) -> None:
 
     assert reservation_two.browser_path == "chrome_path"
     assert not reservation_two.check_fares
-    assert reservation_two.chrome_version == 10
-    assert reservation_two.chromedriver_path == "driver_path"
     assert reservation_two.confirmation_number == "test_num2"
     assert reservation_two.first_name == "Edmond"
     assert reservation_two.last_name == "Dantès"

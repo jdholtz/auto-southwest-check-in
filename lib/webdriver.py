@@ -89,6 +89,9 @@ class WebDriver:
         password = quote_plus(account_monitor.password)
         driver.type('input[name="password"]', f"{password}\n")
 
+        # Wait for the headers to be set first
+        self._wait_for_attribute("headers_set")
+
         # Wait for the login response to go through and grab the response body
         self._wait_for_attribute("login_request_id")
         login_response = self._get_response_body(driver, self.login_request_id)

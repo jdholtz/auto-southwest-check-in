@@ -6,17 +6,17 @@ are set, errors are handled, and integration with the webdriver works.
 import copy
 import json
 from multiprocessing import Lock
+from unittest import mock
 
 import pytest
 from pytest_mock import MockerFixture
 from requests_mock.mocker import Mocker as RequestMocker
-from seleniumwire.request import Request, Response
 
 from lib.checkin_scheduler import VIEW_RESERVATION_URL
 from lib.config import GlobalConfig
 from lib.reservation_monitor import AccountMonitor, ReservationMonitor
 from lib.utils import BASE_URL
-from lib.webdriver import INVALID_CREDENTIALS_CODE
+from lib.webdriver import WebDriver
 
 TEST_RESERVATION_URL = BASE_URL + VIEW_RESERVATION_URL + "TEST"
 
@@ -59,8 +59,6 @@ def test_flight_is_scheduled_checks_in_and_departs(
     tz_data = {"LAX": "America/Los_Angeles"}
 
     mocker.patch("pathlib.Path.read_text", return_value=json.dumps(tz_data))
-    mocker.patch("lib.webdriver.WebDriverWait")
-    mock_driver = mocker.patch("lib.webdriver.Chrome")
     mock_process = mocker.patch("lib.checkin_handler.Process").return_value
     mock_new_flights_notification = mocker.patch(
         "lib.notification_handler.NotificationHandler.new_flights"
@@ -76,13 +74,13 @@ def test_flight_is_scheduled_checks_in_and_departs(
         [{"confirmationNumber": "TEST", "firstName": "Berkant", "lastName": "Marika"}]
     )
 
-    def mock_get(url: str) -> None:
-        # Add a request and response from the get request
-        mock_request = Request(method="GET", url=url, headers=ALL_HEADERS.items())
-        mock_request.response = Response(status_code=200, reason="", headers={})
-        mock_driver.return_value.requests = [mock_request]
+    def mock_get_driver(self) -> mock.Mock:
+        # pylint: disable-next=protected-access
+        self.checkin_scheduler.headers = self._get_needed_headers(ALL_HEADERS)
+        self.headers_set = True
+        return mocker.patch("lib.webdriver.Driver")
 
-    mock_driver.return_value.get = mock_get
+    mocker.patch.object(WebDriver, "_get_driver", mock_get_driver)
 
     reservation1 = {
         "viewReservationViewPage": {
@@ -139,57 +137,54 @@ def test_account_schedules_new_flights(requests_mock: RequestMocker, mocker: Moc
 
     mocker.patch("lib.webdriver.WebDriverWait")
     mock_process = mocker.patch("lib.checkin_handler.Process").return_value
-    mock_driver = mocker.patch("lib.webdriver.Chrome")
     # Raise a StopIteration to prevent an infinite loop
     mocker.patch("time.sleep", side_effect=[None, None, StopIteration])
 
     # Will be checked in a separate integration test
     mock_check_flight_price = mocker.patch("lib.fare_checker.FareChecker.check_flight_price")
 
+    login_response = {
+        "body": (
+            '{"customers.userInformation.firstName": "Forrest", '
+            '"customers.userInformation.lastName": "Gump"}'
+        )
+    }
+
+    trips_response = {
+        "body": (
+            '{"upcomingTripsPage": [{"tripType": "FLIGHT", "confirmationNumber": "TEST"}, '
+            '{"tripType": "CAR"}]}'
+        )
+    }
+
     login_attempts = 0
 
-    def mock_get(url: str) -> None:
+    def mock_get_driver(self) -> mock.Mock:
         """
-        Adds a login and trips response + request. The second login request will be a 429 to test
-        that the error is handled correctly
+        Adds login and trips responses. The second login request will be a 429 to test
+        that the error is handled correctly.
         """
         nonlocal login_attempts
         login_attempts += 1
 
-        login_request = Request(method="GET", url=url, headers=ALL_HEADERS.items())
-        login_response_body = {
-            "customers.userInformation.firstName": "Forrest",
-            "customers.userInformation.lastName": "Gump",
-        }
+        # pylint: disable-next=protected-access
+        self.checkin_scheduler.headers = self._get_needed_headers(ALL_HEADERS)
+        self.headers_set = True
 
         if login_attempts == 2:
             # Respond with a 429 error to ensure it is handled correctly
-            login_request.response = Response(
-                status_code=429,
-                reason="",
-                headers={},
-                body=json.dumps({"code": INVALID_CREDENTIALS_CODE}),
-            )
+            self.login_status_code = 429
         else:
-            login_request.response = Response(
-                status_code=200, reason="", headers={}, body=json.dumps(login_response_body)
-            )
+            self.login_status_code = 200
 
-        trips_request = Request(method="GET", url=url, headers=ALL_HEADERS.items())
-        trips_response_body = {
-            "upcomingTripsPage": [
-                {"tripType": "FLIGHT", "confirmationNumber": "TEST"},
-                {"tripType": "CAR"},
-            ]
-        }
-        trips_request.response = Response(
-            status_code=200, reason="", headers={}, body=json.dumps(trips_response_body)
-        )
+        self.login_request_id = "login"
+        self.trips_request_id = "trips"
 
-        mock_driver.return_value.requests = [login_request, trips_request]
+        mock_driver = mocker.patch("lib.webdriver.Driver")
+        mock_driver.execute_cdp_cmd.side_effect = [login_response, trips_response]
+        return mock_driver
 
-    login_attempts = 0
-    mock_driver.return_value.get = mock_get
+    mocker.patch.object(WebDriver, "_get_driver", mock_get_driver)
 
     reservation = {
         "viewReservationViewPage": {

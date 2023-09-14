@@ -7,6 +7,7 @@ skip = 'venv,./utils/airport_timezones.json'
 
 [tool.isort]
 line_length = 100
+profile = "black"
 
 [tool.coverage.run]
 branch = true
@@ -25,10 +26,11 @@ exclude_lines = [
 ]
 
 [tool.pytest.ini_options]
+
+# Don't use the seleniumbase plugin for pytest
+addopts = "-p no:seleniumbase"
+
 filterwarnings = [
     # Currently used by Apprise. Remove once Apprise removes it for Python 3.11+
     'ignore:Use setlocale\(\), getencoding\(\) and getlocale\(\) instead:DeprecationWarning',
-
-    # Currently used by Selenium Wire. Remove once Selenium Wire removes it
-    'ignore:pkg_resources is deprecated as an API:DeprecationWarning'
 ]
