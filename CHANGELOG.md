@@ -19,6 +19,8 @@ for fares to be checked now)
 - Fix logging in failing on Chrome v117+ (fixed by SeleniumBase)
 
 ### Upgrading
+- Upgrade the dependencies to the latest versions by running `pip install -r requirements.txt`
+    - You may want to recreate your virtual environment as `undetected_chromedriver` and `seleniumwire` were removed
 - Both `chrome_version` and `chromedriver_path` have been removed from the configuration. SeleniumBase now automatically
 handles downloading the correct driver, so you don't need to worry about having a version mismatch
 - If you do not want fares to be checked, `check_fares: false` is now needed in your `config.json`

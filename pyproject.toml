@@ -26,11 +26,5 @@ exclude_lines = [
 ]
 
 [tool.pytest.ini_options]
-
 # Don't use the seleniumbase plugin for pytest
 addopts = "-p no:seleniumbase"
-
-filterwarnings = [
-    # Currently used by Apprise. Remove once Apprise removes it for Python 3.11+
-    'ignore:Use setlocale\(\), getencoding\(\) and getlocale\(\) instead:DeprecationWarning',
-]
