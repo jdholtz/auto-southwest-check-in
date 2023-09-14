@@ -10,3 +10,6 @@ config.json
 logs/
 Pipfile
 venv/
+
+# From SeleniumBase
+downloaded_files/

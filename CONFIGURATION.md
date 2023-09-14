@@ -12,8 +12,6 @@ Auto-Southwest Check-In supports both global configuration and account/reservati
     * [Notification Level](#notification-level)
     * [Test The Notifications](#test-the-notifications)
 - [Browser Path](#browser-path)
-- [Chrome Version](#chrome-version)
-- [Chromedriver Path](#chromedriver-path)
 - [Retrieval Interval](#retrieval-interval)
 - [Accounts and Reservations](#accounts-and-reservations)
     * [Accounts](#accounts)
@@ -83,35 +81,10 @@ Type: String
 If you use another Chromium-based browser besides Google Chrome or Chromium (such as Brave), you need to specify the path to
 the browser executable.
 
-**Note**: Microsoft Edge can't be used as `undetected_chromedriver` does not support it.
+**Note**: Microsoft Edge is not supported
 ```json
 {
     "browser_path": "/usr/bin/browser_path"
-}
-```
-
-## Chrome Version
-Default: The latest stable version \
-Type: Integer
-
-You can specify a specific version of your Chromium browser for the script to use (only the main version - e.g. 108, 109, etc.).
-This is highly recommended if you don't want to continuously keep your Chromium browser on the latest version.
-```json
-{
-    "chrome_version": 110
-}
-```
-
-## Chromedriver Path
-Default: The path of the Chromedriver executable downloaded by undetected_chromedriver \
-Type: String
-
-You can specify a custom path of the Chromedriver executable for the script to use.
-
-**Note**: This should not be used in a Docker container because the Chromedriver path is set automatically.
-```json
-{
-    "chromedriver_path": "/usr/bin/chromedriver"
 }
 ```
 

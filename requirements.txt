@@ -3,5 +3,4 @@ certifi==2023.07.22
 pytz==2023.3  # Remove when this script only supports Python 3.9+
 requests==2.31.0
 selenium==4.11.2
-selenium_wire==5.1.0
-undetected_chromedriver==3.5.3
+seleniumbase==4.18.6
