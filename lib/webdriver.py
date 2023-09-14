@@ -127,6 +127,7 @@ class WebDriver:
         browser_path = self.checkin_scheduler.reservation_monitor.config.browser_path
         driver = Driver(
             binary_location=browser_path,
+            headless=True,
             uc_cdp_events=True,
             undetectable=True,
         )
