@@ -52,7 +52,7 @@ class TestWebDriver:
     def test_get_reservations_raises_exception_on_failed_login(
         self, mocker: MockerFixture, mock_chrome: mock.Mock, mock_account_monitor: mock.Mock
     ) -> None:
-        mocker.patch("lib.webdriver.WebDriverWait")
+        mocker.patch("lib.webdriver.seleniumbase_actions.wait_for_element_not_visible")
         mocker.patch.object(WebDriver, "_get_driver", return_value=mock_chrome)
         mocker.patch.object(WebDriver, "_handle_login_error", return_value=LoginError("", 400))
         mock_wait_for_attribute = mocker.patch.object(self.driver, "_wait_for_attribute")
@@ -72,7 +72,7 @@ class TestWebDriver:
         login_response = {"name": "John Doe"}
         trips_response = {"upcomingTripsPage": [{"tripType": "FLIGHT"}, {"tripType": "CAR"}]}
 
-        mocker.patch("lib.webdriver.WebDriverWait")
+        mocker.patch("lib.webdriver.seleniumbase_actions.wait_for_element_not_visible")
         mocker.patch.object(WebDriver, "_get_driver", return_value=mock_chrome)
         mock_set_account_name = mocker.patch.object(WebDriver, "_set_account_name")
         mock_wait_for_attribute = mocker.patch.object(self.driver, "_wait_for_attribute")
@@ -96,7 +96,7 @@ class TestWebDriver:
         login_response = {"name": "John Doe"}
         trips_response = {"upcomingTripsPage": [{"tripType": "FLIGHT"}, {"tripType": "CAR"}]}
 
-        mocker.patch("lib.webdriver.WebDriverWait")
+        mocker.patch("lib.webdriver.seleniumbase_actions.wait_for_element_not_visible")
         mocker.patch.object(WebDriver, "_get_driver", return_value=mock_chrome)
         mock_set_account_name = mocker.patch.object(WebDriver, "_set_account_name")
         mock_wait_for_attribute = mocker.patch.object(self.driver, "_wait_for_attribute")

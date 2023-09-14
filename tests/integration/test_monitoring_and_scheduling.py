@@ -135,7 +135,7 @@ def test_account_schedules_new_flights(requests_mock: RequestMocker, mocker: Moc
     tz_data = {"LAX": "America/Los_Angeles", "SYD": "Australia/Sydney"}
     mocker.patch("pathlib.Path.read_text", return_value=json.dumps(tz_data))
 
-    mocker.patch("lib.webdriver.WebDriverWait")
+    mocker.patch("lib.webdriver.seleniumbase_actions.wait_for_element_not_visible")
     mock_process = mocker.patch("lib.checkin_handler.Process").return_value
     # Raise a StopIteration to prevent an infinite loop
     mocker.patch("time.sleep", side_effect=[None, None, StopIteration])

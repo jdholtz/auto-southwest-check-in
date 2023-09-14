@@ -6,10 +6,8 @@ import time
 from typing import TYPE_CHECKING, Any, Dict, List
 
 from requests.compat import quote_plus
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.ui import WebDriverWait
 from seleniumbase import Driver
+from seleniumbase.fixtures import page_actions as seleniumbase_actions
 
 from .log import get_logger
 from .utils import LoginError
@@ -81,7 +79,7 @@ class WebDriver:
         logger.debug("Logging into account to get a list of reservations and valid headers")
 
         # Log in to retrieve the account's reservations and needed headers for later requests
-        WebDriverWait(driver, 30).until(EC.invisibility_of_element((By.CLASS_NAME, "dimmer")))
+        seleniumbase_actions.wait_for_element_not_visible(driver, ".dimmer")
         driver.click(".login-button--box")
         driver.type('input[name="userNameOrAccountNumber"]', account_monitor.username)
 
