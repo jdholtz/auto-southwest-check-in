@@ -5,6 +5,8 @@ If there is no "Upgrading" header for that version, no post-upgrade actions need
 
 ## Upcoming
 ### New Features
+- [SeleniumBase](https://github.com/seleniumbase/SeleniumBase) is now used as the script's browser framework. This has brought a
+lot of changes to the script, mostly through performance improvements
 - Specifying your [browser's executable path](CONFIGURATION.md#browser-path) can now be done in the configuration
     - Allows you to use other browsers besides Chrome and Chromium (such as Brave)
 
@@ -13,7 +15,14 @@ If there is no "Upgrading" header for that version, no post-upgrade actions need
 for fares to be checked now)
 - Integration tests were added to further increase the reliability of the script
 
+### Bug Fixes
+- Fix logging in failing on Chrome v117+ (fixed by SeleniumBase)
+
 ### Upgrading
+- Upgrade the dependencies to the latest versions by running `pip install -r requirements.txt`
+    - You may want to recreate your virtual environment as `undetected_chromedriver` and `seleniumwire` were removed
+- Both `chrome_version` and `chromedriver_path` have been removed from the configuration. SeleniumBase now automatically
+handles downloading the correct driver, so you don't need to worry about having a version mismatch
 - If you do not want fares to be checked, `check_fares: false` is now needed in your `config.json`
 
 
