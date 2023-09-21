@@ -2,11 +2,7 @@ FROM python:3.11-alpine
 
 WORKDIR /app
 
-# Used in the script to point to the correct Chromedriver executable
-ENV _CHROMEDRIVER_PATH="/usr/bin/chromedriver"
-
-# gcc, libffi-dev, and musl-dev are dependencies needed for building Python wheels
-RUN apk add --update --no-cache chromium chromium-chromedriver gcc libffi-dev musl-dev
+RUN apk add --update --no-cache chromium chromium-chromedriver
 
 COPY requirements.txt requirements.txt
 RUN pip3 install --upgrade pip && pip3 install --no-cache-dir -r requirements.txt

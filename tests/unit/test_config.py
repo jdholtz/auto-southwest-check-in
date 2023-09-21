@@ -15,14 +15,6 @@ JSON = Dict[str, Any]
 
 
 class TestConfig:
-    def test_init_sets_chromedriver_path_from_environment_variable(
-        self, mocker: MockerFixture
-    ) -> None:
-        mocker.patch("os.getenv", return_value="/test/path")
-
-        test_config = Config()
-        assert test_config.chromedriver_path == "/test/path"
-
     def test_create_merges_and_parses_config(self, mocker: MockerFixture) -> None:
         mock_merge_globals = mocker.patch.object(Config, "_merge_globals")
         mock_parse_config = mocker.patch.object(Config, "_parse_config")
@@ -42,8 +34,6 @@ class TestConfig:
             {
                 "browser_path": "test/browser_path",
                 "check_fares": True,
-                "chrome_version": 100,
-                "chromedriver_path": "test/driver_path",
                 "notification_level": 1,
                 "notification_urls": "url1",
                 "retrieval_interval": 20,
@@ -54,8 +44,6 @@ class TestConfig:
             {
                 "browser_path": "test/browser_path2",
                 "check_fares": False,
-                "chrome_version": 200,
-                "chromedriver_path": "test/driver_path2",
                 "notification_level": 2,
                 "notification_urls": ["url2"],
                 "retrieval_interval": 10,
@@ -65,8 +53,6 @@ class TestConfig:
         test_config._merge_globals(global_config)
 
         assert test_config.check_fares == global_config.check_fares
-        assert test_config.chrome_version == global_config.chrome_version
-        assert test_config.chromedriver_path == global_config.chromedriver_path
         assert test_config.notification_level == global_config.notification_level
         assert test_config.notification_urls == ["url2", "url1"]
         assert test_config.retrieval_interval == global_config.retrieval_interval
@@ -198,8 +184,6 @@ class TestGlobalConfig:
         "config_content",
         [
             {"browser_path": 0},
-            {"chrome_version": "invalid"},
-            {"chromedriver_path": 0},
             {"accounts": "invalid"},
             {"reservations": "invalid"},
         ],
@@ -219,8 +203,6 @@ class TestGlobalConfig:
             {
                 "browser_path": "test/browser_path",
                 "check_fares": False,
-                "chrome_version": 100,
-                "chromedriver_path": "test/chromedriver_path",
                 "accounts": [],
                 "reservations": [],
             }
@@ -228,8 +210,6 @@ class TestGlobalConfig:
 
         assert test_config.browser_path == "test/browser_path"
         assert test_config.check_fares is False  # Make sure it calls super._parse_config
-        assert test_config.chrome_version == 100
-        assert test_config.chromedriver_path == "test/chromedriver_path"
         mock_account_config.assert_called_once_with([])
         mock_reservation_config.assert_called_once_with([])
 
@@ -240,8 +220,6 @@ class TestGlobalConfig:
         test_config._parse_config({})
 
         assert test_config.browser_path == expected_config.browser_path
-        assert test_config.chrome_version == expected_config.chrome_version
-        assert test_config.chromedriver_path == expected_config.chromedriver_path
         assert test_config.accounts == expected_config.accounts
         assert test_config.reservations == expected_config.reservations
 

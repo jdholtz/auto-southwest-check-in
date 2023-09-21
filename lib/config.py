@@ -1,5 +1,4 @@
 import json
-import os
 import sys
 from pathlib import Path
 from typing import Any, Dict, List
@@ -24,13 +23,9 @@ class Config:
         # Default values are set
         self.browser_path = None
         self.check_fares = True
-        self.chrome_version = None
         self.notification_level = NotificationLevel.INFO
         self.notification_urls = []
         self.retrieval_interval = 24 * 60 * 60
-
-        # _CHROMEDRIVER_PATH is set in the Docker container
-        self.chromedriver_path = os.getenv("_CHROMEDRIVER_PATH", None)
 
     def create(self, config_json: JSON, global_config: "GlobalConfig") -> None:
         self._merge_globals(global_config)
@@ -44,8 +39,6 @@ class Config:
         """
         self.check_fares = global_config.check_fares
         self.browser_path = global_config.browser_path
-        self.chrome_version = global_config.chrome_version
-        self.chromedriver_path = global_config.chromedriver_path
         self.notification_level = global_config.notification_level
         self.notification_urls.extend(global_config.notification_urls)
         self.retrieval_interval = global_config.retrieval_interval
@@ -160,20 +153,6 @@ class GlobalConfig(Config):
 
             if not isinstance(self.browser_path, str):
                 raise ConfigError("'browser_path' must be a string")
-
-        if "chrome_version" in config:
-            self.chrome_version = config["chrome_version"]
-            logger.debug("Setting chrome version to %s", self.chrome_version)
-
-            if not isinstance(self.chrome_version, int):
-                raise ConfigError("'chrome_version' must be an integer")
-
-        if "chromedriver_path" in config:
-            self.chromedriver_path = config["chromedriver_path"]
-            logger.debug("Setting custom Chromedriver path")
-
-            if not isinstance(self.chromedriver_path, str):
-                raise ConfigError("'chromedriver_path' must be a string")
 
         if "accounts" in config:
             accounts = config["accounts"]
