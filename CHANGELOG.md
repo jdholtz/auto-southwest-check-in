@@ -3,7 +3,7 @@ When upgrading to a new version, make sure to follow the directions under the "U
 If there is no "Upgrading" header for that version, no post-upgrade actions need to be performed.
 
 
-## Upcoming
+## 6.0 (2023-09-23)
 ### New Features
 - [SeleniumBase](https://github.com/seleniumbase/SeleniumBase) is now used as the script's browser framework. This has brought a
 lot of changes to the script, mostly through performance improvements
