@@ -41,7 +41,7 @@ CHANGE_FLIGHT_PAGE = {
                 "originalDate": "2021-12-06",
                 "toAirportCode": "SYD",
                 "fromAirportCode": "LAX",
-                "timeDeparts": "14:40",
+                "flight": "100/101",
             }
         ],
     }
@@ -49,8 +49,8 @@ CHANGE_FLIGHT_PAGE = {
 
 FLIGHT_CARDS = [
     {
-        "departureTime": "02:15",
-        "arrivalTime": "17:25",
+        "departureTime": "14:40",  # Here to make sure it doesn't select based off time
+        "flightNumbers": "97",
         "fares": [
             {
                 "_meta": {"fareProductId": "WGA"},
@@ -58,10 +58,9 @@ FLIGHT_CARDS = [
             }
         ],
     },
-    {"departureTime": "14:40", "arrivalTime": "06:15"},
+    {"flightNumbers": "98/99"},
     {
-        "departureTime": "14:40",
-        "arrivalTime": "05:50",
+        "flightNumbers": "100/101",
         "fares": [
             {"_meta": {"fareProductId": "TEST"}},
             {
@@ -90,10 +89,10 @@ def monitor() -> ReservationMonitor:
 def flight() -> Flight:
     flight_info = {
         "arrivalAirport": {"name": "test_inbound"},
-        "arrivalTime": "05:50",
         "departureAirport": {"code": "LAX", "name": "test_outbound"},
         "departureDate": "2021-12-06",
         "departureTime": "14:40",
+        "flights": [{"number": "100"}, {"number": "101"}],
     }
     return Flight(flight_info, "TEST")
 
@@ -114,8 +113,7 @@ def test_fare_drop_outbound(
 def test_fare_drop_inbound(
     requests_mock: RequestMocker, monitor: ReservationMonitor, flight: Flight
 ) -> None:
-    flight.local_departure_time = "02:15"
-    flight.local_arrival_time = "17:25"
+    flight.flight_number = "97"
 
     bounds = [
         {"fareProductDetails": {"fareProductId": "TEST"}},
@@ -132,7 +130,7 @@ def test_fare_drop_inbound(
         "originalDate": "2021-12-12",
         "toAirportCode": "LAX",
         "fromAirportCode": "SYD",
-        "timeDeparts": "02:15",
+        "flight": "97",
     }
     page_info["boundSelections"].append(bound_selection)
 

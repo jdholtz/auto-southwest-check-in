@@ -7,6 +7,8 @@ from typing import Any, Dict
 
 import pytz
 
+JSON = Dict[str, Any]
+
 TZ_FILE_PATH = "utils/airport_timezones.json"
 
 
@@ -22,21 +24,13 @@ class Flight:
         self.departure_airport = flight_info["departureAirport"]["name"]
         self.destination_airport = flight_info["arrivalAirport"]["name"]
         self.departure_time = self._get_flight_time(flight_info)
-
-        # Needed for the fare checker
-        self.local_departure_time = flight_info["departureTime"]
-        self.local_arrival_time = flight_info["arrivalTime"]
+        self.flight_number = self._get_flight_number(flight_info["flights"])
 
     def __eq__(self, other: object) -> bool:
         # Define how two flights are equal to each other
-        return (
-            isinstance(other, Flight)
-            and self.departure_airport == other.departure_airport
-            and self.destination_airport == other.destination_airport
-            and self.departure_time == other.departure_time
-        )
+        return isinstance(other, Flight) and self.flight_number == other.flight_number
 
-    def _get_flight_time(self, flight: Dict[str, Any]) -> datetime:
+    def _get_flight_time(self, flight: JSON) -> datetime:
         flight_date = f"{flight['departureDate']} {flight['departureTime']}"
         departure_airport_code = flight["departureAirport"]["code"]
         airport_timezone = self._get_airport_timezone(departure_airport_code)
@@ -58,3 +52,10 @@ class Flight:
         utc_time = flight_time.astimezone(pytz.utc).replace(tzinfo=None)
 
         return utc_time
+
+    def _get_flight_number(self, flights: JSON) -> str:
+        flight_number = ""
+        for flight in flights:
+            flight_number += flight["number"] + "/"
+
+        return flight_number.rstrip("/")

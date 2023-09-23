@@ -3,6 +3,11 @@ When upgrading to a new version, make sure to follow the directions under the "U
 If there is no "Upgrading" header for that version, no post-upgrade actions need to be performed.
 
 
+## Upcoming
+### Improvements
+- Flights are now identified by their flight number, ensuring the correct flight is referenced when checking fares and scheduling check-ins
+
+
 ## 6.0 (2023-09-23)
 ### New Features
 - [SeleniumBase](https://github.com/seleniumbase/SeleniumBase) is now used as the script's browser framework. This has brought a

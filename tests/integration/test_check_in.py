@@ -18,10 +18,10 @@ def handler(mocker: MockerFixture) -> None:
     mock_scheduler = mocker.patch("lib.checkin_scheduler.CheckInScheduler")
     flight_info = {
         "arrivalAirport": {"name": "test_inbound"},
-        "arrivalTime": "05:50",
         "departureAirport": {"code": "LAX", "name": "test_outbound"},
         "departureDate": "2021-12-06",
         "departureTime": "14:40",
+        "flights": [{"number": "100"}],
     }
     flight = Flight(flight_info, "TEST")
     # Make sure it isn't affected by local time

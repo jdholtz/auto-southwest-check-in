@@ -25,7 +25,7 @@ def test_flights(mocker: MockerFixture) -> List[Flight]:
         "departureAirport": {"name": None},
         "arrivalAirport": {"name": None},
         "departureTime": None,
-        "arrivalTime": None,
+        "flights": [{"number": "100"}],
     }
     return [Flight(flight_info, ""), Flight(flight_info, "")]
 
@@ -145,8 +145,8 @@ class TestCheckInScheduler:
     ) -> None:
         flight1 = test_flights[0]
         flight2 = test_flights[1]
-        # Change the airport so it is seen as a new flight
-        flight2.departure_airport = "LAX"
+        # Change the flight number so it is seen as a new flight
+        flight2.flight_number = "101"
 
         self.scheduler.flights = [flight1]
         new_flights = self.scheduler._get_new_flights([flight1, flight2])
@@ -169,7 +169,7 @@ class TestCheckInScheduler:
     def test_remove_old_flights_removes_flights_not_currently_scheduled(
         self, mocker: MockerFixture, test_flights: List[Flight]
     ) -> None:
-        test_flights[0].departure_airport = "LAX"
+        test_flights[0].flight_number = "101"
         mock_stop_check_in = mocker.patch.object(CheckInHandler, "stop_check_in")
         self.scheduler.flights = test_flights
         self.scheduler.checkin_handlers = [
