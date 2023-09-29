@@ -1,6 +1,6 @@
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, List
 from unittest import mock
 
 import pytest
@@ -20,7 +20,7 @@ class TestFlight:
             "departureAirport": {"name": None},
             "arrivalAirport": {"name": None},
             "departureTime": None,
-            "arrivalTime": None,
+            "flights": [{"number": "100"}],
         }
 
         # Needs to be mocked so it is only run when Flight is instantiated
@@ -28,13 +28,13 @@ class TestFlight:
             # pylint: disable=attribute-defined-outside-init
             self.flight = Flight(flight_info, "test_num")
 
-    def test_flights_with_the_same_attributes_are_equal(self, mocker: MockerFixture) -> None:
+    def test_flights_with_the_same_flight_numbers_are_equal(self, mocker: MockerFixture) -> None:
         mocker.patch.object(Flight, "_get_flight_time")
         flight_info = {
             "departureAirport": {"name": None},
             "arrivalAirport": {"name": None},
             "departureTime": None,
-            "arrivalTime": None,
+            "flights": [{"number": "100"}],
         }
         flight1 = Flight(flight_info, "")
         flight2 = Flight(flight_info, "")
@@ -45,29 +45,29 @@ class TestFlight:
         "flight_info",
         [
             {
-                "departureAirport": {"name": "test"},
+                "departureAirport": {"name": None},
                 "arrivalAirport": {"name": None},
                 "departureTime": None,
-                "arrivalTime": None,
-            },
-            {
-                "departureAirport": {"name": None},
-                "arrivalAirport": {"name": "test"},
-                "departureTime": None,
-                "arrivalTime": None,
+                "flights": [{"number": "101"}],
             },
             {
                 "departureAirport": {"name": None},
                 "arrivalAirport": {"name": None},
-                "departureTime": "12:08",
-                "arrivalTime": None,
+                "departureTime": None,
+                "flights": [{"number": "102"}],
+            },
+            {
+                "departureAirport": {"name": None},
+                "arrivalAirport": {"name": None},
+                "departureTime": None,
+                "flights": [{"number": "103"}],
             },
         ],
     )
-    def test_flights_with_different_attributes_are_not_equal(
+    def test_flights_with_different_flight_numbers_are_not_equal(
         self, mocker: MockerFixture, flight_info: Dict[str, Any]
     ) -> None:
-        mocker.patch.object(Flight, "_get_flight_time", return_value=flight_info["departureTime"])
+        mocker.patch.object(Flight, "_get_flight_time")
         new_flight = Flight(flight_info, "")
 
         assert self.flight != new_flight
@@ -102,3 +102,12 @@ class TestFlight:
         utc_flight_time = self.flight._convert_to_utc("1999-12-31 23:59", tz)
 
         assert utc_flight_time == datetime(1999, 12, 31, 18, 29)
+
+    @pytest.mark.parametrize(
+        ["numbers", "expected_num"], [(["100"], "100"), (["100", "101"], "100/101")]
+    )
+    def test_get_flight_number_creates_flight_number_correctly(
+        self, numbers: List[str], expected_num: str
+    ) -> None:
+        flights = [{"number": num} for num in numbers]
+        assert self.flight._get_flight_number(flights) == expected_num

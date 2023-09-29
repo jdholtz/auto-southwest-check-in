@@ -87,11 +87,11 @@ def test_flight_is_scheduled_checks_in_and_departs(
             "bounds": [
                 {
                     "arrivalAirport": {"name": "test_inbound"},
-                    "arrivalTime": "05:50",
                     "departureAirport": {"code": "LAX", "name": "test_outbound"},
                     "departureDate": "2020-10-13",
                     "departureStatus": None,
                     "departureTime": "14:40",
+                    "flights": [{"number": "100"}, {"number": "101"}],
                 },
             ],
         }
@@ -191,19 +191,19 @@ def test_account_schedules_new_flights(requests_mock: RequestMocker, mocker: Moc
             "bounds": [
                 {
                     "arrivalAirport": {"name": "test_inbound"},
-                    "arrivalTime": "05:50",
                     "departureAirport": {"code": "LAX", "name": "test_outbound"},
                     "departureDate": "2020-10-13",
                     "departureStatus": None,
                     "departureTime": "14:40",
+                    "flights": [{"number": "100"}],
                 },
                 {
                     "arrivalAirport": {"name": "test_outbound"},
-                    "arrivalTime": "22:30",
                     "departureAirport": {"code": "SYD", "name": "test_inbound"},
                     "departureDate": "2020-10-16",
                     "departureStatus": None,
                     "departureTime": "07:20",
+                    "flights": [{"number": "101"}],
                 },
             ],
         }

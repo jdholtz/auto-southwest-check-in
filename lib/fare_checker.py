@@ -51,10 +51,7 @@ class FareChecker:
 
         # Get the fares from the same flight
         for new_flight in flights:
-            if (
-                new_flight["departureTime"] == flight.local_departure_time
-                and new_flight["arrivalTime"] == flight.local_arrival_time
-            ):
+            if new_flight["flightNumbers"] == flight.flight_number:
                 return self._get_matching_fare(new_flight["fares"], fare_type)
 
         # Should never be reached as a matching flight should already be found
@@ -130,7 +127,7 @@ class FareChecker:
                     "destination-airport": bound["toAirportCode"],
                     "origin-airport": bound["fromAirportCode"],
                     # This allows selecting the correct flight for a round-trip reservation.
-                    "isChangeBound": bound["timeDeparts"] == flight.local_departure_time,
+                    "isChangeBound": bound["flight"] == flight.flight_number,
                 }
             )
 

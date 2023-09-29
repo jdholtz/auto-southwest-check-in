@@ -23,7 +23,7 @@ def test_flight(mocker: MockerFixture) -> Flight:
         "departureAirport": {"name": None},
         "arrivalAirport": {"name": None},
         "departureTime": None,
-        "arrivalTime": None,
+        "flights": [{"number": "100"}],
     }
     return Flight(flight_info, "")
 
@@ -63,8 +63,8 @@ class TestFareChecker:
         self, mocker: MockerFixture, test_flight: Flight
     ) -> None:
         flights = [
-            {"departureTime": "11:30", "arrivalTime": "14:00"},
-            {"departureTime": "11:30", "arrivalTime": "13:30", "fares": ["fare_one", "fare_two"]},
+            {"flightNumbers": "99"},
+            {"flightNumbers": "100", "fares": ["fare_one", "fare_two"]},
         ]
         mocker.patch.object(
             FareChecker, "_get_matching_flights", return_value=(flights, "test_fare")
@@ -73,8 +73,6 @@ class TestFareChecker:
             FareChecker, "_get_matching_fare", return_value="price"
         )
 
-        test_flight.local_departure_time = "11:30"
-        test_flight.local_arrival_time = "13:30"
         price = self.checker._get_flight_price(test_flight)
 
         assert price == "price"
@@ -85,12 +83,11 @@ class TestFareChecker:
     def test_get_flight_price_raises_error_when_no_matching_flights_appear(
         self, mocker: MockerFixture, test_flight: Flight
     ) -> None:
-        flights = [{"departureTime": "10:30"}, {"departureTime": "11:30"}]
+        flights = [{"flightNumbers": "98"}, {"flightNumbers": "99"}]
         mocker.patch.object(
             FareChecker, "_get_matching_flights", return_value=(flights, "test_fare")
         )
 
-        test_flight.local_departure_time = "12:00"
         with pytest.raises(ValueError):
             self.checker._get_flight_price(test_flight)
 
@@ -168,14 +165,13 @@ class TestFareChecker:
             "originalDate": "1/1",
             "toAirportCode": "LAX",
             "fromAirportCode": "MIA",
-            "timeDeparts": "12:00",
+            "flight": "100",
         }
         flight_page = {
             "boundSelections": [bound_one],
             "_links": {"changeShopping": {"body": [{"boundReference": "bound_1"}]}},
         }
 
-        test_flight.local_departure_time = "12:00"
         search_query = self.checker._get_search_query(flight_page, test_flight)
 
         assert len(search_query) == 1
@@ -194,13 +190,13 @@ class TestFareChecker:
             "originalDate": "1/1",
             "toAirportCode": "LAX",
             "fromAirportCode": "MIA",
-            "timeDeparts": "12:00",
+            "flight": "99",
         }
         bound_two = {
             "originalDate": "1/2",
             "toAirportCode": "MIA",
             "fromAirportCode": "LAX",
-            "timeDeparts": "1:00",
+            "flight": "100",
         }
         flight_page = {
             "boundSelections": [bound_one, bound_two],
@@ -211,7 +207,6 @@ class TestFareChecker:
             },
         }
 
-        test_flight.local_departure_time = "1:00"
         search_query = self.checker._get_search_query(flight_page, test_flight)
 
         assert len(search_query) == 2
