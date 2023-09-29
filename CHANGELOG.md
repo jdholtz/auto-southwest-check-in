@@ -3,9 +3,13 @@ When upgrading to a new version, make sure to follow the directions under the "U
 If there is no "Upgrading" header for that version, no post-upgrade actions need to be performed.
 
 
-## Upcoming
+## 6.1 (2023-09-28)
 ### Improvements
 - Flights are now identified by their flight number, ensuring the correct flight is referenced when checking fares and scheduling check-ins
+
+### Bug Fixes
+- Fix a 'Too Many Requests' error when using Docker
+([#159](https://github.com/jdholtz/auto-southwest-check-in/issues/159))
 
 
 ## 6.0 (2023-09-23)
