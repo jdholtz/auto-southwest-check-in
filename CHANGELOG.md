@@ -4,8 +4,13 @@ If there is no "Upgrading" header for that version, no post-upgrade actions need
 
 
 ## Upcoming
+### New Features
+- Added official Python 3.12 support
+    - Python 3.7 is officially unsupported now
 ### Upgrading
 - Upgrade the dependencies to the latest versions by running `pip install -r requirements.txt`
+- If you are using Python 3.7, the script still works. However, it is officially unsupported and therefore recommended to upgrade
+to a newer version
 
 
 ## 6.1 (2023-09-28)

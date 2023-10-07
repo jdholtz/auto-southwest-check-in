@@ -23,7 +23,7 @@ information beforehand.
 ## Installation
 
 ### Prerequisites
-- [Python 3.7+][0]
+- [Python 3.8+][0]
 - [Pip][1]
 - [Any Chromium-based browser][2]
 
