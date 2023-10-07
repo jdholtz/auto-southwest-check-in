@@ -49,70 +49,23 @@ class TestWebDriver:
         mock_wait_for_attribute.assert_called_once_with("headers_set")
         mock_chrome.quit.assert_called_once()
 
-    def test_get_reservations_raises_exception_on_failed_login(
+    def test_get_reservations_fetches_reservations(
         self, mocker: MockerFixture, mock_chrome: mock.Mock, mock_account_monitor: mock.Mock
     ) -> None:
         mocker.patch("lib.webdriver.seleniumbase_actions.wait_for_element_not_visible")
         mocker.patch.object(WebDriver, "_get_driver", return_value=mock_chrome)
-        mocker.patch.object(WebDriver, "_handle_login_error", return_value=LoginError("", 400))
         mock_wait_for_attribute = mocker.patch.object(self.driver, "_wait_for_attribute")
-        mocker.patch.object(self.driver, "_get_response_body")
+        mock_wait_for_login = mocker.patch.object(WebDriver, "_wait_for_login")
+        mocker.patch.object(self.driver, "_fetch_reservations", return_value=["res1", "res2"])
 
-        self.driver.login_status_code = 400
-        with pytest.raises(LoginError):
-            self.driver.get_reservations(mock_account_monitor)
+        reservations = self.driver.get_reservations(mock_account_monitor)
 
-        assert mock_wait_for_attribute.call_count == 2
+        assert reservations == ["res1", "res2"]
+
+        mock_wait_for_attribute.assert_called_once()
+        mock_wait_for_login.assert_called_once()
         mock_chrome.add_cdp_listener.assert_called_once()
         mock_chrome.quit.assert_called_once()
-
-    def test_get_reservations_sets_account_name_when_it_is_not_set(
-        self, mocker: MockerFixture, mock_chrome: mock.Mock, mock_account_monitor: mock.Mock
-    ) -> None:
-        login_response = {"name": "John Doe"}
-        trips_response = {"upcomingTripsPage": [{"tripType": "FLIGHT"}, {"tripType": "CAR"}]}
-
-        mocker.patch("lib.webdriver.seleniumbase_actions.wait_for_element_not_visible")
-        mocker.patch.object(WebDriver, "_get_driver", return_value=mock_chrome)
-        mock_set_account_name = mocker.patch.object(WebDriver, "_set_account_name")
-        mock_wait_for_attribute = mocker.patch.object(self.driver, "_wait_for_attribute")
-        mocker.patch.object(
-            self.driver, "_get_response_body", side_effect=[login_response, trips_response]
-        )
-
-        self.driver.login_status_code = 200
-        mock_account_monitor.first_name = None
-        flights = self.driver.get_reservations(mock_account_monitor)
-
-        assert mock_wait_for_attribute.call_count == 3
-        mock_set_account_name.assert_called_once_with(mock_account_monitor, {"name": "John Doe"})
-        mock_chrome.add_cdp_listener.assert_called_once()
-        mock_chrome.quit.assert_called_once()
-        assert flights == [{"tripType": "FLIGHT"}]
-
-    def test_get_reservations_does_not_set_account_name_when_it_is_already_set(
-        self, mocker: MockerFixture, mock_chrome: mock.Mock, mock_account_monitor: mock.Mock
-    ) -> None:
-        login_response = {"name": "John Doe"}
-        trips_response = {"upcomingTripsPage": [{"tripType": "FLIGHT"}, {"tripType": "CAR"}]}
-
-        mocker.patch("lib.webdriver.seleniumbase_actions.wait_for_element_not_visible")
-        mocker.patch.object(WebDriver, "_get_driver", return_value=mock_chrome)
-        mock_set_account_name = mocker.patch.object(WebDriver, "_set_account_name")
-        mock_wait_for_attribute = mocker.patch.object(self.driver, "_wait_for_attribute")
-        mocker.patch.object(
-            self.driver, "_get_response_body", side_effect=[login_response, trips_response]
-        )
-
-        self.driver.login_status_code = 200
-        mock_account_monitor.first_name = "John"
-        flights = self.driver.get_reservations(mock_account_monitor)
-
-        assert mock_wait_for_attribute.call_count == 3
-        mock_set_account_name.assert_not_called()
-        mock_chrome.add_cdp_listener.assert_called_once()
-        mock_chrome.quit.assert_called_once()
-        assert flights == [{"tripType": "FLIGHT"}]
 
     def test_get_driver_returns_a_webdriver_with_one_request(self) -> None:
         driver = self.driver._get_driver()
@@ -170,6 +123,41 @@ class TestWebDriver:
 
         self.driver._wait_for_attribute("headers_set")
 
+    def test_wait_for_login_raises_error_on_failed_login(
+        self, mocker: MockerFixture, mock_chrome: mock.Mock
+    ) -> None:
+        mocker.patch.object(WebDriver, "_wait_for_attribute")
+        mocker.patch.object(WebDriver, "_get_response_body")
+        mocker.patch.object(WebDriver, "_handle_login_error", return_value=LoginError("", 400))
+        mock_set_account_name = mocker.patch.object(WebDriver, "_set_account_name")
+
+        self.driver.login_status_code = 400
+        with pytest.raises(LoginError):
+            self.driver._wait_for_login(mock_chrome, None)
+
+        mock_set_account_name.assert_not_called()
+        mock_chrome.quit.assert_called_once()
+
+    def test_wait_for_login_sets_account_name(self, mocker: MockerFixture) -> None:
+        mocker.patch.object(WebDriver, "_wait_for_attribute")
+        mocker.patch.object(WebDriver, "_get_response_body")
+        mock_set_account_name = mocker.patch.object(WebDriver, "_set_account_name")
+
+        self.driver.login_status_code = 200
+        self.driver._wait_for_login(mock_chrome, None)
+
+        mock_set_account_name.assert_called_once()
+
+    def test_fetch_reservations_fetches_only_flight_reservations(
+        self, mocker: MockerFixture
+    ) -> None:
+        trips_response = {"upcomingTripsPage": [{"tripType": "FLIGHT"}, {"tripType": "CAR"}]}
+
+        mocker.patch.object(WebDriver, "_wait_for_attribute")
+        mocker.patch.object(WebDriver, "_get_response_body", return_value=trips_response)
+
+        assert self.driver._fetch_reservations(None) == [{"tripType": "FLIGHT"}]
+
     def test_get_response_body_loads_body_from_response(self, mock_chrome: mock.Mock) -> None:
         mock_chrome.execute_cdp_cmd.return_value = {"body": '{"response": "body"}'}
         assert self.driver._get_response_body(mock_chrome, "") == {"response": "body"}
@@ -205,10 +193,17 @@ class TestWebDriver:
         headers = self.driver._get_needed_headers(original_headers)
         assert headers == expected_headers
 
-    def test_set_account_name_sets_the_correct_values_for_the_name(
-        self,
-        mock_account_monitor: mock.Mock,
+    def test_set_account_name_does_not_set_name_if_already_set(
+        self, mock_account_monitor: mock.Mock
     ) -> None:
+        mock_account_monitor.first_name = "Jane"
+        self.driver._set_account_name(mock_account_monitor, {})
+        assert mock_account_monitor.first_name == "Jane"
+
+    def test_set_account_name_sets_the_correct_values_for_the_name(
+        self, mock_account_monitor: mock.Mock
+    ) -> None:
+        mock_account_monitor.first_name = None
         self.driver._set_account_name(
             mock_account_monitor,
             {

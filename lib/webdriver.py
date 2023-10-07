@@ -87,38 +87,17 @@ class WebDriver:
         password = quote_plus(account_monitor.password)
         driver.type('input[name="password"]', f"{password}\n")
 
-        # Wait for the headers to be set first
+        # Wait for the necessary information to be set
         self._wait_for_attribute("headers_set")
+        self._wait_for_login(driver, account_monitor)
 
-        # Wait for the login response to go through and grab the response body
-        self._wait_for_attribute("login_request_id")
-        login_response = self._get_response_body(driver, self.login_request_id)
-
-        # Handle login errors
-        if self.login_status_code != 200:
-            driver.quit()
-            error = self._handle_login_error(login_response)
-            raise error
-
-        # If this is the first time logging in, the account name needs to be set
-        # because that is needed later
-        if account_monitor.first_name is None:
-            logger.debug("First time logging in. Setting account name")
-            self._set_account_name(account_monitor, login_response)
-            print(
-                f"Successfully logged in to {account_monitor.first_name} "
-                f"{account_monitor.last_name}'s account\n"
-            )  # Don't log as it contains sensitive information
-
-        # This page is also loaded when we log in, so we might as well grab it instead of
-        # requesting again later
-        self._wait_for_attribute("trips_request_id")
-        trips_response = self._get_response_body(driver, self.trips_request_id)
-        reservations = trips_response["upcomingTripsPage"]
+        # The upcoming trips page is also loaded when we log in, so we might as well grab it
+        # instead of requesting again later
+        reservations = self._fetch_reservations(driver)
 
         driver.quit()
 
-        return [reservation for reservation in reservations if reservation["tripType"] == "FLIGHT"]
+        return reservations
 
     def _get_driver(self) -> Driver:
         logger.debug("Starting webdriver for current session")
@@ -167,6 +146,32 @@ class WebDriver:
 
         logger.debug("%s set successfully", attribute)
 
+    def _wait_for_login(self, driver: Driver, account_monitor: AccountMonitor) -> None:
+        """
+        Waits for the login request to go through and sets the account name appropriately.
+        Handles login errors, if necessary.
+        """
+        self._wait_for_attribute("login_request_id")
+        login_response = self._get_response_body(driver, self.login_request_id)
+
+        # Handle login errors
+        if self.login_status_code != 200:
+            driver.quit()
+            error = self._handle_login_error(login_response)
+            raise error
+
+        self._set_account_name(account_monitor, login_response)
+
+    def _fetch_reservations(self, driver: Driver) -> List[JSON]:
+        """
+        Waits for the reservations request to go through and returns only reservations
+        that are flights.
+        """
+        self._wait_for_attribute("trips_request_id")
+        trips_response = self._get_response_body(driver, self.trips_request_id)
+        reservations = trips_response["upcomingTripsPage"]
+        return [reservation for reservation in reservations if reservation["tripType"] == "FLIGHT"]
+
     def _get_response_body(self, driver: Driver, request_id: str) -> JSON:
         response = driver.execute_cdp_cmd("Network.getResponseBody", {"requestId": request_id})
         return json.loads(response["body"])
@@ -190,5 +195,15 @@ class WebDriver:
         return headers
 
     def _set_account_name(self, account_monitor: AccountMonitor, response: JSON) -> None:
+        if account_monitor.first_name:
+            # No need to set the name if this isn't the first time logging in
+            return
+
+        logger.debug("First time logging in. Setting account name")
         account_monitor.first_name = response["customers.userInformation.firstName"]
         account_monitor.last_name = response["customers.userInformation.lastName"]
+
+        print(
+            f"Successfully logged in to {account_monitor.first_name} "
+            f"{account_monitor.last_name}'s account\n"
+        )  # Don't log as it contains sensitive information
