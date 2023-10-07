@@ -95,7 +95,18 @@ Additional arguments for the script can be passed in after the image name.
 You can optionally attach a configuration file to the container by adding the
 `--volume /full-path/to/config.json:/app/config.json` flag before the image name.
 
-**Note**: The recommended restart policy for the container is `on-failed` or `no`
+**Note**: The recommended restart policy for the container is `on-failure` or `no`
+
+#### Docker Compose Example
+```yaml
+services:
+  auto-southwest:
+    image: jdholtz/auto-southwest-check-in
+    container_name: auto-southwest
+    restart: on-failure
+    volumes:
+      - /full-path/to/config.json:/app/config.json
+```
 
 Additional information on the Docker container can be found in the [public repository][5].
 
