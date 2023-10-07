@@ -103,10 +103,6 @@ services:
   auto-southwest:
     image: jdholtz/auto-southwest-check-in
     container_name: auto-southwest
-    networks:
-      - default
-    security_opt:
-      - no-new-privileges:true
     restart: on-failed
     volumes:
       - /full-path/to/config.json:/app/config.json
