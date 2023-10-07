@@ -99,7 +99,7 @@ You can optionally attach a configuration file to the container by adding the
 
 #### Docker Compose Example
 ```yaml
-...
+services:
   auto-southwest:
     image: jdholtz/auto-southwest-check-in
     container_name: auto-southwest
@@ -110,7 +110,6 @@ You can optionally attach a configuration file to the container by adding the
     restart: on-failed
     volumes:
       - /full-path/to/config.json:/app/config.json
-...
 ```
 
 Additional information on the Docker container can be found in the [public repository][5].
