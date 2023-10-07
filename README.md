@@ -97,6 +97,22 @@ You can optionally attach a configuration file to the container by adding the
 
 **Note**: The recommended restart policy for the container is `on-failed` or `no`
 
+#### Docker Compose Example
+```yaml
+...
+  auto-southwest:
+    image: jdholtz/auto-southwest-check-in
+    container_name: auto-southwest
+    networks:
+      - default
+    security_opt:
+      - no-new-privileges:true
+    restart: on-failed
+    volumes:
+      - /full-path/to/config.json:/app/config.json
+...
+```
+
 Additional information on the Docker container can be found in the [public repository][5].
 
 ## Configuration
