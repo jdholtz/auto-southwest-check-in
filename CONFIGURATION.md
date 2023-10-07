@@ -18,7 +18,7 @@ Auto-Southwest Check-In supports both global configuration and account/reservati
     * [Reservations](#reservations)
 
 ## Fare Check
-Default: false \
+Default: true \
 Type: Boolean
 
 In addition to automatically checking in, check for price drops on an interval
