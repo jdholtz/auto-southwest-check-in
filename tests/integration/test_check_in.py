@@ -1,5 +1,6 @@
 """Runs a mock check-in for the CheckInHandler as well as a same-day flight check-in"""
 
+import copy
 from datetime import datetime
 from multiprocessing import Lock
 from unittest.mock import call
@@ -65,19 +66,27 @@ def test_check_in(
         }
     }
 
-    if same_day_flight:
-        # Add a flight before to make sure a same day flight selects the second flight
-        post_response["checkInConfirmationPage"]["flights"].insert(0, {})
-
     requests_mock.get(
         BASE_URL + CHECKIN_URL + "TEST?first-name=Garry&last-name=Lin",
         [{"json": get_response, "status_code": 200}],
     )
-
     requests_mock.post(
         BASE_URL + "mobile-air-operations/post_check_in",
         [{"json": post_response, "status_code": 200}],
     )
+
+    if same_day_flight:
+        # Add a flight before to make sure a same day flight selects the second flight
+        second_post_response = copy.deepcopy(post_response)
+        second_post_response["checkInConfirmationPage"]["flights"].insert(0, {})
+
+        requests_mock.post(
+            BASE_URL + "mobile-air-operations/post_check_in",
+            [
+                {"json": post_response, "status_code": 200},
+                {"json": second_post_response, "status_code": 200},
+            ],
+        )
 
     handler.flight.is_same_day = same_day_flight
     # pylint: disable-next=protected-access

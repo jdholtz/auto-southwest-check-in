@@ -123,29 +123,16 @@ class CheckInHandler:
 
     def _check_in(self) -> None:
         """
-        First, make a GET request to get the needed check-in information. Then, make
-        a POST request to submit the check in.
+        Checks into a flight. Will catch any errors that occur during the check-in process.
         """
-        account_name = f"{self.first_name} {self.last_name}"
         logger.debug("Attempting to check in")
         print(
             f"Checking in to flight from '{self.flight.departure_airport}' to "
-            f"'{self.flight.destination_airport}' for {account_name}\n"
+            f"'{self.flight.destination_airport}' for {self.first_name} {self.last_name}\n"
         )  # Don't log as it has sensitive information
 
-        headers = self.checkin_scheduler.headers
-        info = {
-            "first-name": self.first_name,
-            "last-name": self.last_name,
-        }
-        site = CHECKIN_URL + self.flight.confirmation_number
-
         try:
-            logger.debug("Making GET request to check in")
-            response = make_request("GET", site, headers, info)
-
-            info = response["checkInViewReservationPage"]["_links"]["checkIn"]
-            reservation = self._submit_check_in(info)
+            reservation = self._attempt_check_in()
         except RequestError as err:
             logger.debug("Failed to check in. Error: %s. Exiting", err)
             self.notification_handler.failed_checkin(err, self.flight)
@@ -155,7 +142,7 @@ class CheckInHandler:
             reservation["checkInConfirmationPage"], self.flight
         )
 
-    def _submit_check_in(self, checkin_info: JSON) -> JSON:
+    def _attempt_check_in(self) -> JSON:
         """
         Keeps attempting to check in until all flights are checked in. This should
         succeed after one attempt for non-same-day flights, but is necessary for
@@ -168,12 +155,10 @@ class CheckInHandler:
         """
         logger.debug("Submitting check-in with a POST request")
         expected_flights = 2 if self.flight.is_same_day else 1
-        headers = self.checkin_scheduler.headers
-        site = f"mobile-air-operations{checkin_info['href']}"
 
         attempts = 0
         while attempts < MAX_CHECK_IN_ATTEMPTS:
-            reservation = make_request("POST", site, headers, checkin_info["body"])
+            reservation = self._check_in_to_flight()
             flights = reservation["checkInConfirmationPage"]["flights"]
             if len(flights) >= expected_flights:
                 logger.debug("Successfully checked in after %d attempts", attempts + 1)
@@ -189,3 +174,25 @@ class CheckInHandler:
 
         logger.debug("Same-day flight failed to check in after %d attempts", MAX_CHECK_IN_ATTEMPTS)
         raise RequestError("Too many attempts during check-in")
+
+    def _check_in_to_flight(self) -> JSON:
+        """
+        First, make a GET request to get the needed check-in information. Then, make
+        a POST request to submit the check in.
+        """
+        headers = self.checkin_scheduler.headers
+        info = {
+            "first-name": self.first_name,
+            "last-name": self.last_name,
+        }
+        site = CHECKIN_URL + self.flight.confirmation_number
+
+        logger.debug("Making GET request to check in")
+        response = make_request("GET", site, headers, info)
+
+        info = response["checkInViewReservationPage"]["_links"]["checkIn"]
+        site = f"mobile-air-operations{info['href']}"
+
+        logger.debug("Making POST request to check in")
+        reservation = make_request("POST", site, headers, info["body"])
+        return reservation
