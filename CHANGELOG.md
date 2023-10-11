@@ -7,6 +7,11 @@ If there is no "Upgrading" header for that version, no post-upgrade actions need
 ### New Features
 - Added official Python 3.12 support
     - Python 3.7 is officially unsupported now
+- A Docker Compose example is now in the Readme under the [Running in Docker](README.md#running-in-docker) section
+([#171](https://github.com/jdholtz/auto-southwest-check-in/pull/171) by [@ntalekt](https://github.com/ntalekt))
+- A new [FAQ question](README.md#faq) was added to help users that run into issues starting the webdriver in Docker
+    - If you find a better solution to this issue, please let me know
+
 ### Upgrading
 - Upgrade the dependencies to the latest versions by running `pip install -r requirements.txt`
 - If you are using Python 3.7, the script still works. However, it is officially unsupported and therefore recommended to upgrade

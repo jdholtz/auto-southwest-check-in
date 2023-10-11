@@ -159,6 +159,14 @@ install these certificates, follow the directions found at [this Stack Overflow 
 Credit to [@greennayr](https://github.com/greennayr) for the answer to this question.
 </details>
 
+<details>
+<summary>Script Is Stuck on 'Starting webdriver for current session' When Running in Docker. How Can I Fix It?</summary>
+
+The current workaround is to run the Docker container with the `--privileged` flag
+(see [the comment on #96](https://github.com/jdholtz/auto-southwest-check-in/issues/96#issuecomment-1587779388)). However, this
+is not a very good solution. If anyone figures out a better solution, please let me know and I can make the change.
+</details>
+
 
 [0]: https://www.python.org/downloads/
 [1]: https://pip.pypa.io/en/stable/installation/
