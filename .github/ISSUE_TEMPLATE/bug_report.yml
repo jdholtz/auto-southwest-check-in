@@ -12,6 +12,12 @@ body:
       description: Output of `python southwest.py --version`
     validations:
       required: true
+  - type: input
+    attributes:
+      label: Browser Version
+      description: The version of the browser used by the script (Google Chrome, Brave, Chromium, etc.)
+    validations:
+      required: true
   - type: textarea
     attributes:
       label: Description
@@ -41,4 +47,4 @@ body:
   - type: textarea
     attributes:
       label: Additional context
-      description: Add any other context about the problem here such as your Google Chrome version, Python version, etc.
+      description: Add any other context about the problem here such as your Python version, operating system, etc.
