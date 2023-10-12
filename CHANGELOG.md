@@ -12,6 +12,10 @@ If there is no "Upgrading" header for that version, no post-upgrade actions need
 - A new [FAQ question](README.md#faq) was added to help users that run into issues starting the webdriver in Docker
     - If you find a better solution to this issue, please let me know
 
+### Improvements
+- Ensure the chromedriver version always matches the downloaded browser version
+([#172](https://github.com/jdholtz/auto-southwest-check-in/issues/172))
+
 ### Upgrading
 - Upgrade the dependencies to the latest versions by running `pip install -r requirements.txt`
 - If you are using Python 3.7, the script still works. However, it is officially unsupported and therefore recommended to upgrade
