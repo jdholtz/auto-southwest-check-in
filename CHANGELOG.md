@@ -16,6 +16,10 @@ If there is no "Upgrading" header for that version, no post-upgrade actions need
 - Ensure the chromedriver version always matches the downloaded browser version
 ([#172](https://github.com/jdholtz/auto-southwest-check-in/issues/172))
 
+### Bug Fixes
+- Fix logging in not always submitting Southwest's login form correctly. Thanks to [@bradzab0623](https://github.com/bradzab0623)
+for help fixing this issue
+
 ### Upgrading
 - Upgrade the dependencies to the latest versions by running `pip install -r requirements.txt`
 - If you are using Python 3.7, the script still works. However, it is officially unsupported and therefore recommended to upgrade

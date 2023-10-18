@@ -96,7 +96,6 @@ class WebDriver:
         reservations = self._fetch_reservations(driver)
 
         driver.quit()
-
         return reservations
 
     def _get_driver(self) -> Driver:
@@ -152,6 +151,7 @@ class WebDriver:
         Waits for the login request to go through and sets the account name appropriately.
         Handles login errors, if necessary.
         """
+        self._click_login_button(driver)
         self._wait_for_attribute("login_request_id")
         login_response = self._get_response_body(driver, self.login_request_id)
 
@@ -162,6 +162,20 @@ class WebDriver:
             raise error
 
         self._set_account_name(account_monitor, login_response)
+
+    def _click_login_button(self, driver: Driver) -> None:
+        """
+        In some cases, the submit action on the login form may fail. Therefore, try clicking
+        again, if necessary.
+        """
+        seleniumbase_actions.wait_for_element_not_visible(driver, ".dimmer")
+        login_button = "button#login-btn"
+
+        try:
+            seleniumbase_actions.wait_for_element_not_visible(driver, login_button, timeout=5)
+        except Exception:
+            logger.debug("Login form failed to submit. Clicking login button again")
+            driver.click(login_button)
 
     def _fetch_reservations(self, driver: Driver) -> List[JSON]:
         """

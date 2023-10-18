@@ -126,6 +126,7 @@ class TestWebDriver:
     def test_wait_for_login_raises_error_on_failed_login(
         self, mocker: MockerFixture, mock_chrome: mock.Mock
     ) -> None:
+        mocker.patch.object(WebDriver, "_click_login_button")
         mocker.patch.object(WebDriver, "_wait_for_attribute")
         mocker.patch.object(WebDriver, "_get_response_body")
         mocker.patch.object(WebDriver, "_handle_login_error", return_value=LoginError("", 400))
@@ -139,6 +140,7 @@ class TestWebDriver:
         mock_chrome.quit.assert_called_once()
 
     def test_wait_for_login_sets_account_name(self, mocker: MockerFixture) -> None:
+        mocker.patch.object(WebDriver, "_click_login_button")
         mocker.patch.object(WebDriver, "_wait_for_attribute")
         mocker.patch.object(WebDriver, "_get_response_body")
         mock_set_account_name = mocker.patch.object(WebDriver, "_set_account_name")
@@ -147,6 +149,23 @@ class TestWebDriver:
         self.driver._wait_for_login(mock_chrome, None)
 
         mock_set_account_name.assert_called_once()
+
+    def test_click_login_button_does_not_click_when_form_submits(
+        self, mocker: MockerFixture, mock_chrome: mock.Mock
+    ) -> None:
+        mocker.patch("seleniumbase.fixtures.page_actions.wait_for_element_not_visible")
+        self.driver._click_login_button(mock_chrome)
+        mock_chrome.click.assert_not_called()
+
+    def test_click_login_button_clicks_when_form_fails_to_submit(
+        self, mocker: MockerFixture, mock_chrome: mock.Mock
+    ) -> None:
+        mocker.patch(
+            "seleniumbase.fixtures.page_actions.wait_for_element_not_visible",
+            side_effect=[None, Exception],
+        )
+        self.driver._click_login_button(mock_chrome)
+        mock_chrome.click.assert_called_once()
 
     def test_fetch_reservations_fetches_only_flight_reservations(
         self, mocker: MockerFixture
