@@ -108,6 +108,7 @@ class WebDriver:
             uc_cdp_events=True,
             undetectable=True,
         )
+        logger.debug("Using browser version: %s", driver.caps["browserVersion"])
 
         driver.add_cdp_listener("Network.requestWillBeSent", self._headers_listener)
 
