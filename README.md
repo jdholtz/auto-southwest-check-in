@@ -151,6 +151,14 @@ you can set up their reservation or account separately in the configuration file
 </details>
 
 <details>
+<summary>Will This Script Check Me in Even if I Put My Computer to Sleep?</summary>
+
+No, the script will stop while your computer is asleep and only continue once it wakes. You will need to rerun the script
+if your computer goes to sleep while it is running because the timing will be off, causing your reservations to not be checked
+in at the correct time.
+</details>
+
+<details>
 <summary>While Attempting to Run This Script, I Get a [SSL: CERTIFICATE_VERIFY_FAILED] Error. How Can I Fix It?</summary>
 
 If you are on MacOS, this error most likely occurred because your Python installation does not have any root certificates. To

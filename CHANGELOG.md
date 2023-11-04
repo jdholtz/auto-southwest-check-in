@@ -11,6 +11,8 @@ If there is no "Upgrading" header for that version, no post-upgrade actions need
 ([#171](https://github.com/jdholtz/auto-southwest-check-in/pull/171) by [@ntalekt](https://github.com/ntalekt))
 - A new [FAQ question](README.md#faq) was added to help users that run into issues starting the webdriver in Docker
     - If you find a better solution to this issue, please let me know
+- Another new [FAQ question](README.md#faq) was added to clear up confusion about putting a computer to sleep that is
+running this script
 
 ### Improvements
 - Ensure the chromedriver version always matches the downloaded browser version
