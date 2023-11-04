@@ -2,4 +2,4 @@ apprise==1.6.0
 certifi==2023.07.22
 pytz==2023.3.post1  # Remove when this script only supports Python 3.9+
 requests==2.31.0
-seleniumbase==4.20.3
+seleniumbase==4.20.9
