@@ -3,7 +3,7 @@ When upgrading to a new version, make sure to follow the directions under the "U
 If there is no "Upgrading" header for that version, no post-upgrade actions need to be performed.
 
 
-## Upcoming
+## 7.0 (2023-11-05)
 ### New Features
 - Added official Python 3.12 support
     - Python 3.7 is officially unsupported now
