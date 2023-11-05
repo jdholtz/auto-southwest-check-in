@@ -84,7 +84,7 @@ class CheckInHandler:
         # Refresh headers 30 minutes before to make sure they are valid
         sleep_time = (checkin_time - current_time - timedelta(minutes=30)).total_seconds()
 
-        # Only try to refresh the headers if the check-in is more than ten minutes away
+        # Only try to refresh the headers if the check-in is more than thirty minutes away
         if sleep_time > 0:
             logger.debug("Sleeping until thirty minutes before check-in...")
             self._safe_sleep(sleep_time)

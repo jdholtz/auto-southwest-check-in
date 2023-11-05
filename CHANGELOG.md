@@ -21,6 +21,8 @@ running this script
 ### Bug Fixes
 - Fix logging in not always submitting Southwest's login form correctly. Thanks to [@bradzab0623](https://github.com/bradzab0623)
 for help fixing this issue
+- Fix Docker image not working on ARM architecture
+([#177](https://github.com/jdholtz/auto-southwest-check-in/issues/177))
 
 ### Upgrading
 - Upgrade the dependencies to the latest versions by running `pip install -r requirements.txt`
