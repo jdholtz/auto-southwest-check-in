@@ -2,6 +2,41 @@
 When upgrading to a new version, make sure to follow the directions under the "Upgrading" header of the corresponding version.
 If there is no "Upgrading" header for that version, no post-upgrade actions need to be performed.
 
+## Upcoming
+### Bug Fixes
+- Fix situations where the Chromedriver version isn't available for the current browser version
+([#180](https://github.com/jdholtz/auto-southwest-check-in/issues/180))
+
+### Upgrading
+- Upgrade the dependencies to the latest versions by running `pip install -r requirements.txt`
+
+
+## 7.0 (2023-11-05)
+### New Features
+- Added official Python 3.12 support
+    - Python 3.7 is officially unsupported now
+- A Docker Compose example is now in the Readme under the [Running in Docker](README.md#running-in-docker) section
+([#171](https://github.com/jdholtz/auto-southwest-check-in/pull/171) by [@ntalekt](https://github.com/ntalekt))
+- A new [FAQ question](README.md#faq) was added to help users that run into issues starting the webdriver in Docker
+    - If you find a better solution to this issue, please let me know
+- Another new [FAQ question](README.md#faq) was added to clear up confusion about putting a computer to sleep that is
+running this script
+
+### Improvements
+- Ensure the chromedriver version always matches the downloaded browser version
+([#172](https://github.com/jdholtz/auto-southwest-check-in/issues/172))
+
+### Bug Fixes
+- Fix logging in not always submitting Southwest's login form correctly. Thanks to [@bradzab0623](https://github.com/bradzab0623)
+for help fixing this issue
+- Fix Docker image not working on ARM architecture
+([#177](https://github.com/jdholtz/auto-southwest-check-in/issues/177))
+
+### Upgrading
+- Upgrade the dependencies to the latest versions by running `pip install -r requirements.txt`
+- If you are using Python 3.7, the script still works. However, it is officially unsupported and therefore recommended to upgrade
+to a newer version
+
 
 ## 6.1 (2023-09-28)
 ### Improvements

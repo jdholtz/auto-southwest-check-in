@@ -23,7 +23,7 @@ information beforehand.
 ## Installation
 
 ### Prerequisites
-- [Python 3.7+][0]
+- [Python 3.8+][0]
 - [Pip][1]
 - [Any Chromium-based browser][2]
 
@@ -95,7 +95,18 @@ Additional arguments for the script can be passed in after the image name.
 You can optionally attach a configuration file to the container by adding the
 `--volume /full-path/to/config.json:/app/config.json` flag before the image name.
 
-**Note**: The recommended restart policy for the container is `on-failed` or `no`
+**Note**: The recommended restart policy for the container is `on-failure` or `no`
+
+#### Docker Compose Example
+```yaml
+services:
+  auto-southwest:
+    image: jdholtz/auto-southwest-check-in
+    container_name: auto-southwest
+    restart: on-failure
+    volumes:
+      - /full-path/to/config.json:/app/config.json
+```
 
 Additional information on the Docker container can be found in the [public repository][5].
 
@@ -140,12 +151,28 @@ you can set up their reservation or account separately in the configuration file
 </details>
 
 <details>
+<summary>Will This Script Check Me in Even if I Put My Computer to Sleep?</summary>
+
+No, the script will stop while your computer is asleep and only continue once it wakes. You will need to rerun the script
+if your computer goes to sleep while it is running because the timing will be off, causing your reservations to not be checked
+in at the correct time.
+</details>
+
+<details>
 <summary>While Attempting to Run This Script, I Get a [SSL: CERTIFICATE_VERIFY_FAILED] Error. How Can I Fix It?</summary>
 
 If you are on MacOS, this error most likely occurred because your Python installation does not have any root certificates. To
 install these certificates, follow the directions found at [this Stack Overflow question][9].
 
 Credit to [@greennayr](https://github.com/greennayr) for the answer to this question.
+</details>
+
+<details>
+<summary>Script Is Stuck on 'Starting webdriver for current session' When Running in Docker. How Can I Fix It?</summary>
+
+The current workaround is to run the Docker container with the `--privileged` flag
+(see [the comment on #96](https://github.com/jdholtz/auto-southwest-check-in/issues/96#issuecomment-1587779388)). However, this
+is not a very good solution. If anyone figures out a better solution, please let me know and I can make the change.
 </details>
 
 
