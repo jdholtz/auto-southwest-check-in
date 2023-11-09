@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import time
 from typing import TYPE_CHECKING, Any, Dict, List
@@ -101,9 +102,16 @@ class WebDriver:
     def _get_driver(self) -> Driver:
         logger.debug("Starting webdriver for current session")
         browser_path = self.checkin_scheduler.reservation_monitor.config.browser_path
+
+        driver_version = "mlatest"
+        if os.environ.get("AUTO_SOUTHWEST_CHECK_IN_DOCKER") == "1":
+            # This environment variable is set in the Docker image. Makes sure a new driver
+            # is not downloaded as the Docker image already has the correct driver
+            driver_version = "keep"
+
         driver = Driver(
             binary_location=browser_path,
-            driver_version="browser",  # Always ensure the browser and driver versions match
+            driver_version=driver_version,
             headless=True,
             uc_cdp_events=True,
             undetectable=True,

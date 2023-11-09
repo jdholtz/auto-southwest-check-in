@@ -1,3 +1,4 @@
+import os
 from typing import Any, Dict
 from unittest import mock
 
@@ -67,11 +68,22 @@ class TestWebDriver:
         mock_chrome.add_cdp_listener.assert_called_once()
         mock_chrome.quit.assert_called_once()
 
-    def test_get_driver_returns_a_webdriver_with_one_request(self) -> None:
+    def test_get_driver_returns_a_webdriver_with_one_request(self, mock_chrome: mock.Mock) -> None:
         driver = self.driver._get_driver()
-
         driver.add_cdp_listener.assert_called_once()
         driver.get.assert_called_once()
+
+        assert mock_chrome.call_args.kwargs.get("driver_version") == "mlatest"
+
+    def test_get_driver_keeps_driver_version_in_docker(self, mock_chrome: mock.Mock) -> None:
+        # This env variable will be set in the Docker image
+        os.environ["AUTO_SOUTHWEST_CHECK_IN_DOCKER"] = "1"
+
+        driver = self.driver._get_driver()
+        driver.add_cdp_listener.assert_called_once()
+        driver.get.assert_called_once()
+
+        assert mock_chrome.call_args.kwargs.get("driver_version") == "keep"
 
     def test_headers_listener_sets_headers_when_correct_url(self, mocker: MockerFixture) -> None:
         mocker.patch.object(self.driver, "_get_needed_headers", return_value={"test": "headers"})
