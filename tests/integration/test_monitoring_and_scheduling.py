@@ -86,7 +86,7 @@ def test_flight_is_scheduled_checks_in_and_departs(
         "viewReservationViewPage": {
             "bounds": [
                 {
-                    "arrivalAirport": {"name": "test_inbound"},
+                    "arrivalAirport": {"name": "test_inbound", "country": None},
                     "departureAirport": {"code": "LAX", "name": "test_outbound"},
                     "departureDate": "2020-10-13",
                     "departureStatus": None,
@@ -190,7 +190,7 @@ def test_account_schedules_new_flights(requests_mock: RequestMocker, mocker: Moc
         "viewReservationViewPage": {
             "bounds": [
                 {
-                    "arrivalAirport": {"name": "test_inbound"},
+                    "arrivalAirport": {"name": "test_inbound", "country": None},
                     "departureAirport": {"code": "LAX", "name": "test_outbound"},
                     "departureDate": "2020-10-13",
                     "departureStatus": None,
@@ -198,7 +198,7 @@ def test_account_schedules_new_flights(requests_mock: RequestMocker, mocker: Moc
                     "flights": [{"number": "100"}],
                 },
                 {
-                    "arrivalAirport": {"name": "test_outbound"},
+                    "arrivalAirport": {"name": "test_outbound", "country": None},
                     "departureAirport": {"code": "SYD", "name": "test_inbound"},
                     "departureDate": "2020-10-16",
                     "departureStatus": None,

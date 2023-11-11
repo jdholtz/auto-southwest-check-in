@@ -23,7 +23,7 @@ def test_flights(mocker: MockerFixture) -> List[Flight]:
     mocker.patch.object(Flight, "_get_flight_time")
     flight_info = {
         "departureAirport": {"name": None},
-        "arrivalAirport": {"name": None},
+        "arrivalAirport": {"name": None, "country": None},
         "departureTime": None,
         "flights": [{"number": "100"}],
     }

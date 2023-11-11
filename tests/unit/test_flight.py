@@ -18,7 +18,7 @@ class TestFlight:
     def _set_up_flight(self) -> None:
         flight_info = {
             "departureAirport": {"name": None},
-            "arrivalAirport": {"name": None},
+            "arrivalAirport": {"name": None, "country": None},
             "departureTime": None,
             "flights": [{"number": "100"}],
         }
@@ -28,11 +28,26 @@ class TestFlight:
             # pylint: disable=attribute-defined-outside-init
             self.flight = Flight(flight_info, "test_num")
 
+    @pytest.mark.parametrize(["country", "is_international"], [(None, False), ("Mexico", True)])
+    def test_flight_is_international_when_country_is_specified(
+        self, mocker: MockerFixture, country: str, is_international: bool
+    ) -> None:
+        mocker.patch.object(Flight, "_get_flight_time")
+        flight_info = {
+            "departureAirport": {"name": None},
+            "arrivalAirport": {"name": None, "country": country},
+            "departureTime": None,
+            "flights": [{"number": "100"}],
+        }
+        flight = Flight(flight_info, "")
+
+        assert flight.is_international == is_international
+
     def test_flights_with_the_same_flight_numbers_are_equal(self, mocker: MockerFixture) -> None:
         mocker.patch.object(Flight, "_get_flight_time")
         flight_info = {
             "departureAirport": {"name": None},
-            "arrivalAirport": {"name": None},
+            "arrivalAirport": {"name": None, "country": None},
             "departureTime": None,
             "flights": [{"number": "100"}],
         }
@@ -46,19 +61,19 @@ class TestFlight:
         [
             {
                 "departureAirport": {"name": None},
-                "arrivalAirport": {"name": None},
+                "arrivalAirport": {"name": None, "country": None},
                 "departureTime": None,
                 "flights": [{"number": "101"}],
             },
             {
                 "departureAirport": {"name": None},
-                "arrivalAirport": {"name": None},
+                "arrivalAirport": {"name": None, "country": None},
                 "departureTime": None,
                 "flights": [{"number": "102"}],
             },
             {
                 "departureAirport": {"name": None},
-                "arrivalAirport": {"name": None},
+                "arrivalAirport": {"name": None, "country": None},
                 "departureTime": None,
                 "flights": [{"number": "103"}],
             },

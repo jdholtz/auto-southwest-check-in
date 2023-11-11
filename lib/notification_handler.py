@@ -42,6 +42,7 @@ class NotificationHandler:
         if len(flights) == 0:
             return
 
+        is_international = False
         flight_schedule_message = (
             "Successfully scheduled the following flights to check in for "
             f"{self._get_account_name()}:\n"
@@ -50,6 +51,16 @@ class NotificationHandler:
             flight_schedule_message += (
                 f"Flight from {flight.departure_airport} to {flight.destination_airport} at "
                 f"{flight.departure_time} UTC\n"
+            )
+            if flight.is_international:
+                is_international = True
+
+        if is_international:
+            # Add an extra message for international flights to make sure people fill out their
+            # passport information.
+            flight_schedule_message += (
+                "\nInternational flights were scheduled. Make sure to fill out your passport "
+                "information before the check-in date\n"
             )
 
         logger.debug("Sending new flights notification")

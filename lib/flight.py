@@ -26,6 +26,10 @@ class Flight:
         self.departure_time = self._get_flight_time(flight_info)
         self.flight_number = self._get_flight_number(flight_info["flights"])
 
+        # Track to notify the user of filling out their passport information.
+        # Southwest only fills the country's value for international flights
+        self.is_international = flight_info["arrivalAirport"]["country"] is not None
+
     def __eq__(self, other: object) -> bool:
         # Define how two flights are equal to each other
         return isinstance(other, Flight) and self.flight_number == other.flight_number
