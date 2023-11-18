@@ -46,9 +46,20 @@ class TestNotificationHandler:
     def test_new_flights_sends_notifications_for_new_flights(self, mocker: MockerFixture) -> None:
         mock_send_notification = mocker.patch.object(NotificationHandler, "send_notification")
         mock_flight = mocker.patch("lib.notification_handler.Flight")
+        mock_flight.is_international = False
 
         self.handler.new_flights([mock_flight])
         assert mock_send_notification.call_args[0][1] == NotificationLevel.INFO
+
+    def test_new_flights_sends_passport_information_when_flight_is_international(
+        self, mocker: MockerFixture
+    ) -> None:
+        mock_send_notification = mocker.patch.object(NotificationHandler, "send_notification")
+        mock_flight = mocker.patch("lib.notification_handler.Flight")
+        mock_flight.is_international = True
+
+        self.handler.new_flights([mock_flight])
+        assert "passport information" in mock_send_notification.call_args[0][0]
 
     def test_failed_reservation_retrieval_sends_error_notification(
         self, mocker: MockerFixture

@@ -2,7 +2,11 @@
 When upgrading to a new version, make sure to follow the directions under the "Upgrading" header of the corresponding version.
 If there is no "Upgrading" header for that version, no post-upgrade actions need to be performed.
 
-## Upcoming
+## 7.1 (2023-11-13)
+### New Features
+- Remind users with international flights to fill out their passport information in the scheduling notification
+([#182](https://github.com/jdholtz/auto-southwest-check-in/discussions/182))
+
 ### Bug Fixes
 - Fix situations where the Chromedriver version isn't available for the current browser version
 ([#180](https://github.com/jdholtz/auto-southwest-check-in/issues/180))

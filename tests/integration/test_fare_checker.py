@@ -88,7 +88,7 @@ def monitor() -> ReservationMonitor:
 @pytest.fixture
 def flight() -> Flight:
     flight_info = {
-        "arrivalAirport": {"name": "test_inbound"},
+        "arrivalAirport": {"name": "test_inbound", "country": None},
         "departureAirport": {"code": "LAX", "name": "test_outbound"},
         "departureDate": "2021-12-06",
         "departureTime": "14:40",
