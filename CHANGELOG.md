@@ -2,6 +2,13 @@
 When upgrading to a new version, make sure to follow the directions under the "Upgrading" header of the corresponding version.
 If there is no "Upgrading" header for that version, no post-upgrade actions need to be performed.
 
+
+## Upcoming
+### Bug Fixes
+- Fix failed logins not reporting the correct error
+([#189](https://github.com/jdholtz/auto-southwest-check-in/issues/189))
+
+
 ## 7.1 (2023-11-13)
 ### New Features
 - Remind users with international flights to fill out their passport information in the scheduling notification

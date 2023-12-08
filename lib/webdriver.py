@@ -178,8 +178,12 @@ class WebDriver:
         again, if necessary.
         """
         seleniumbase_actions.wait_for_element_not_visible(driver, ".dimmer")
-        login_button = "button#login-btn"
+        if driver.is_element_visible("div.popup"):
+            # Don't attempt to click the login button again if the submission form went through,
+            # yet there was an error
+            return
 
+        login_button = "button#login-btn"
         try:
             seleniumbase_actions.wait_for_element_not_visible(driver, login_button, timeout=5)
         except Exception:
