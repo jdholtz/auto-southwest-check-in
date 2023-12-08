@@ -138,11 +138,7 @@ class FareChecker:
 
     def _check_for_companion(self, reservation_info: JSON) -> None:
         grey_box_message = reservation_info["greyBoxMessage"]
-        if (
-            grey_box_message
-            and "body" in grey_box_message
-            and "companion" in grey_box_message["body"]
-        ):
+        if grey_box_message and "companion" in (grey_box_message.get("body") or ""):
             raise FlightChangeError("Fare check is not supported with companion passes")
 
     def _get_matching_fare(self, fares: List[JSON], fare_type: str) -> JSON:

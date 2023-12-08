@@ -240,7 +240,12 @@ class TestFareChecker:
 
     @pytest.mark.parametrize(
         "reservation",
-        [{"greyBoxMessage": None}, {"greyBoxMessage": {}}, {"greyBoxMessage": {"body": ""}}],
+        [
+            {"greyBoxMessage": None},
+            {"greyBoxMessage": {}},
+            {"greyBoxMessage": {"body": None}},
+            {"greyBoxMessage": {"body": ""}},
+        ],
     )
     def test_check_for_companion_passes_when_no_companion_exists(self, reservation: JSON) -> None:
         # It will throw an exception if the test does not pass
