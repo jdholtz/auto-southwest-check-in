@@ -162,8 +162,6 @@ class CheckInHandler:
             flights = reservation["checkInConfirmationPage"]["flights"]
             if len(flights) >= expected_flights:
                 logger.debug("Successfully checked in after %d attempts", attempts + 1)
-                # Only keep the last flight as that is the one that was just checked in
-                reservation["checkInConfirmationPage"]["flights"] = [flights[-1]]
                 return reservation
 
             logger.debug(
