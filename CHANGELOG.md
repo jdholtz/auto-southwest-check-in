@@ -8,6 +8,9 @@ If there is no "Upgrading" header for that version, no post-upgrade actions need
 - Fix failed logins not reporting the correct error
 ([#189](https://github.com/jdholtz/auto-southwest-check-in/issues/189))
 
+### Upgrading
+- Upgrade the dependencies to the latest versions by running `pip install -r requirements.txt`
+
 
 ## 7.1 (2023-11-13)
 ### New Features
