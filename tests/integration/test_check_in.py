@@ -94,4 +94,10 @@ def test_check_in(
 
     mock_sleep.assert_has_calls([call(1795), call(1195)])
     handler.checkin_scheduler.refresh_headers.assert_called_once()
-    handler.notification_handler.successful_checkin.assert_called_once()
+
+    mock_successful_checkin = handler.notification_handler.successful_checkin
+    mock_successful_checkin.assert_called_once()
+
+    # Ensure all flights have been checked in
+    checked_in_flights = mock_successful_checkin.call_args[0][0]["flights"]
+    assert len(checked_in_flights) == 2 if same_day_flight else 1
