@@ -32,7 +32,11 @@ class Flight:
 
     def __eq__(self, other: object) -> bool:
         # Define how two flights are equal to each other
-        return isinstance(other, Flight) and self.flight_number == other.flight_number
+        return (
+            isinstance(other, Flight)
+            and self.flight_number == other.flight_number
+            and self.departure_time == other.departure_time
+        )
 
     def _get_flight_time(self, flight: JSON) -> datetime:
         flight_date = f"{flight['departureDate']} {flight['departureTime']}"

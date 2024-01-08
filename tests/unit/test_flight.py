@@ -23,8 +23,9 @@ class TestFlight:
             "flights": [{"number": "100"}],
         }
 
+        departure_time = datetime(1999, 1, 1, 8, 59)
         # Needs to be mocked so it is only run when Flight is instantiated
-        with mock.patch.object(Flight, "_get_flight_time", return_value=None):
+        with mock.patch.object(Flight, "_get_flight_time", return_value=departure_time):
             # pylint: disable=attribute-defined-outside-init
             self.flight = Flight(flight_info, "test_num")
 
@@ -43,8 +44,10 @@ class TestFlight:
 
         assert flight.is_international == is_international
 
-    def test_flights_with_the_same_flight_numbers_are_equal(self, mocker: MockerFixture) -> None:
-        mocker.patch.object(Flight, "_get_flight_time")
+    def test_flights_with_the_same_flight_numbers_and_departure_times_are_equal(
+        self, mocker: MockerFixture
+    ) -> None:
+        mocker.patch.object(Flight, "_get_flight_time", return_value=datetime(1999, 1, 1, 8, 59))
         flight_info = {
             "departureAirport": {"name": None},
             "arrivalAirport": {"name": None, "country": None},
@@ -57,32 +60,32 @@ class TestFlight:
         assert flight1 == flight2
 
     @pytest.mark.parametrize(
-        "flight_info",
+        ["flight_info", "departure_time"],
         [
-            {
-                "departureAirport": {"name": None},
-                "arrivalAirport": {"name": None, "country": None},
-                "departureTime": None,
-                "flights": [{"number": "101"}],
-            },
-            {
-                "departureAirport": {"name": None},
-                "arrivalAirport": {"name": None, "country": None},
-                "departureTime": None,
-                "flights": [{"number": "102"}],
-            },
-            {
-                "departureAirport": {"name": None},
-                "arrivalAirport": {"name": None, "country": None},
-                "departureTime": None,
-                "flights": [{"number": "103"}],
-            },
+            (
+                {  # Test different flight numbers
+                    "departureAirport": {"name": None},
+                    "arrivalAirport": {"name": None, "country": None},
+                    "departureTime": None,
+                    "flights": [{"number": "101"}],
+                },
+                datetime(1999, 1, 1, 8, 59),
+            ),
+            (
+                {  # Test different departure times
+                    "departureAirport": {"name": None},
+                    "arrivalAirport": {"name": None, "country": None},
+                    "departureTime": None,
+                    "flights": [{"number": "100"}],
+                },
+                datetime(1999, 1, 1, 9, 59),
+            ),
         ],
     )
-    def test_flights_with_different_flight_numbers_are_not_equal(
-        self, mocker: MockerFixture, flight_info: Dict[str, Any]
+    def test_flights_with_different_flight_numbers_or_departure_times_are_not_equal(
+        self, mocker: MockerFixture, flight_info: Dict[str, Any], departure_time: datetime
     ) -> None:
-        mocker.patch.object(Flight, "_get_flight_time")
+        mocker.patch.object(Flight, "_get_flight_time", return_value=departure_time)
         new_flight = Flight(flight_info, "")
 
         assert self.flight != new_flight
