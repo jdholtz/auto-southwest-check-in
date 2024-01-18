@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import requests
+
 from typing import TYPE_CHECKING, Any, Dict, List, Tuple
 
 from .checkin_scheduler import VIEW_RESERVATION_URL
@@ -35,6 +37,8 @@ class FareChecker:
         amount = int(flight_price["amount"].replace(",", ""))
         price_info = f"{sign}{amount} {flight_price['currencyCode']}"
         logger.debug("Flight price change found for %s", price_info)
+        if self.reservation_monitor.config.healthchecks_url is not None:
+            requests.post(self.reservation_monitor.config.healthchecks_url, data="Successful fare check, confirmation number=" + flight.confirmation_number)
 
         # The Southwest website can report a fare price difference of -1 USD. This is a
         # false positive as no credit is actually received when the flight is changed.

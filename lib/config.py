@@ -26,6 +26,7 @@ class Config:
         self.notification_level = NotificationLevel.INFO
         self.notification_urls = []
         self.retrieval_interval = 24 * 60 * 60
+        self.healthchecks_url = None
 
     def create(self, config_json: JSON, global_config: "GlobalConfig") -> None:
         self._merge_globals(global_config)
@@ -95,6 +96,10 @@ class Config:
 
             # Convert hours to seconds
             self.retrieval_interval *= 3600
+
+        if "healthchecks_url" in config:
+            self.healthchecks_url = config["healthchecks_url"]
+            logger.debug("Setting healthchecks URL to %s", self.healthchecks_url)
 
 
 class GlobalConfig(Config):
@@ -178,6 +183,7 @@ class AccountConfig(Config):
         self.password = None
         self.first_name = None
         self.last_name = None
+        self.healthchecks_url = None
 
     def _parse_config(self, config: JSON) -> None:
         super()._parse_config(config)
