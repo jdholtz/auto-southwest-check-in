@@ -95,7 +95,7 @@ class TestNotificationHandler:
 
     def test_does_not_include_notification_for_lap_child(self, mocker: MockerFixture) -> None:
         """
-        A lapchild does not get a boarding position, and does not need a notification
+        A lap child does not get a boarding position, and does not need a notification
         """
         mock_send_notification = mocker.patch.object(NotificationHandler, "send_notification")
         mock_flight = mocker.patch("lib.notification_handler.Flight")

@@ -91,10 +91,11 @@ class NotificationHandler:
 
         for flight_info in boarding_pass["flights"]:
             for passenger in flight_info["passengers"]:
-                success_message += (
-                    f"{passenger['name']} got "
-                    f"{passenger['boardingGroup']}{passenger['boardingPosition']}!\n"
-                )
+                if passenger["boardingGroup"] is not None:
+                    success_message += (
+                        f"{passenger['name']} got "
+                        f"{passenger['boardingGroup']}{passenger['boardingPosition']}!\n"
+                    )
 
         logger.debug("Sending successful check-in notification...")
         self.send_notification(success_message, NotificationLevel.INFO)
