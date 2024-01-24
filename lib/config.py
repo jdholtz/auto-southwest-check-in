@@ -183,7 +183,6 @@ class AccountConfig(Config):
         self.password = None
         self.first_name = None
         self.last_name = None
-        self.healthchecks_url = None
 
     def _parse_config(self, config: JSON) -> None:
         super()._parse_config(config)
