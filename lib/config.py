@@ -56,6 +56,14 @@ class Config:
             if not isinstance(self.check_fares, bool):
                 raise ConfigError("'check_fares' must be a boolean")
 
+        if "healthchecks_url" in config:
+            self.healthchecks_url = config["healthchecks_url"]
+
+            if not isinstance(self.healthchecks_url, str):
+                raise ConfigError("'healthchecks_url' must be a string")
+
+            logger.debug("A Healthchecks URL has been provided")
+
         if "notification_level" in config:
             notification_level = config["notification_level"]
             try:
@@ -96,10 +104,6 @@ class Config:
 
             # Convert hours to seconds
             self.retrieval_interval *= 3600
-
-        if "healthchecks_url" in config:
-            self.healthchecks_url = config["healthchecks_url"]
-            logger.debug("Setting healthchecks URL to %s", self.healthchecks_url)
 
 
 class GlobalConfig(Config):
