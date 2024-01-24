@@ -100,14 +100,12 @@ class ReservationMonitor:
             try:
                 fare_checker.check_flight_price(flight)
             except RequestError as err:
-                if self.config.healthchecks_url is not None:
-                    requests.post(self.config.healthchecks_url + "/fail", data="Failed fare check, confirmation number=" + flight.confirmation_number)
+                self.notification_handler.healthchecks_fail("Failed fare check, confirmation number=" + flight.confirmation_number)
                 logger.error("Requesting error during fare check. %s. Skipping...", err)
             except FlightChangeError as err:
                 logger.debug("%s. Skipping fare check", err)
             except Exception as err:
-                if self.config.healthchecks_url is not None:
-                    requests.post(self.config.healthchecks_url + "/fail", data="Failed fare check, confirmation number=" + flight.confirmation_number)
+                self.notification_handler.healthchecks_fail("Failed fare check, confirmation number=" + flight.confirmation_number)
                 logger.exception("Unexpected error during fare check: %s", repr(err))
 
     def _smart_sleep(self, previous_time: datetime) -> None:
