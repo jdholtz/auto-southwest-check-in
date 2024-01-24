@@ -147,14 +147,10 @@ class CheckInHandler:
         except RequestError as err:
             logger.debug("Failed to check in. Error: %s. Exiting", err)
             self.notification_handler.failed_checkin(err, self.flight)
-            if self.checkin_scheduler.reservation_monitor.config.healthchecks_url is not None:
-                requests.post(self.checkin_scheduler.reservation_monitor.config.healthchecks_url + "/fail", data="Failed check in, confirmation number=" + self.flight.confirmation_number)
             return
 
         logger.debug("Successfully checked in!")
         self.notification_handler.successful_checkin(
             reservation["checkInConfirmationPage"], self.flight
         )
-        if self.checkin_scheduler.reservation_monitor.config.healthchecks_url is not None:
-            requests.post(self.checkin_scheduler.reservation_monitor.config.healthchecks_url, data="Successful check in, confirmation number=" + self.flight.confirmation_number)
 
