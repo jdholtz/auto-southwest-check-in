@@ -62,8 +62,8 @@ Alternatively, you can log in to your account, which will automatically check yo
 ```shell
 python3 southwest.py USERNAME PASSWORD
 ```
-**Note**: If any arguments contain special characters, make sure to escape them so they are passed into
-the script correctly.
+**Note**: If any arguments contain special characters, make sure to escape them or use
+environment variables so they are passed into the script correctly.
 
 For the full usage of the script, run:
 ```shell
@@ -97,7 +97,7 @@ You can optionally attach a configuration file to the container by adding the
 
 **Note**: The recommended restart policy for the container is `on-failure` or `no`
 
-#### Docker Compose Example
+#### Docker Compose Example Using Config
 ```yaml
 services:
   auto-southwest:
@@ -106,6 +106,18 @@ services:
     restart: on-failure
     volumes:
       - /full-path/to/config.json:/app/config.json
+```
+
+#### Docker Compose Example Using Environment Variables
+```yaml
+services:
+  auto-southwest:
+    image: jdholtz/auto-southwest-check-in
+    container_name: auto-southwest
+    restart: on-failure
+    environment:
+      - AUTO_SOUTHWEST_CHECK_IN_USERNAME=MyUsername
+      - AUTO_SOUTHWEST_CHECK_IN_PASSWORD=TopsyKretts
 ```
 
 Additional information on the Docker container can be found in the [public repository][5].
