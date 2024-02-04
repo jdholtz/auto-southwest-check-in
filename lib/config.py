@@ -61,7 +61,9 @@ class Config:
             try:
                 self.notification_level = NotificationLevel(notification_level)
             except ValueError as err:
-                raise ConfigError(f"'{notification_level}' is not a valid notification level") from err
+                raise ConfigError(
+                    f"'{notification_level}' is not a valid notification level"
+                ) from err
 
             logger.debug("Setting notification level to %s", repr(self.notification_level))
 
@@ -159,10 +161,7 @@ class GlobalConfig(Config):
         if notification_url:
             config.setdefault("notification_urls", [])
             if isinstance(config["notification_urls"], str):
-                if config["notification_urls"] == "":
-                    config["notification_urls"] = []
-                else:
-                    config["notification_urls"] = [config["notification_urls"]]
+                config["notification_urls"] = [config["notification_urls"]]
             if not isinstance(config["notification_urls"], list):
                 raise ConfigError("'notification_urls' must be a string or a list")
             if notification_url not in config["notification_urls"]:
@@ -174,7 +173,9 @@ class GlobalConfig(Config):
             try:
                 config["notification_level"] = int(notification_level)
             except ValueError as err:
-                raise ConfigError("'AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_LEVEL' must be an integer") from err
+                raise ConfigError(
+                    "'AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_LEVEL' must be an integer"
+                ) from err
 
         # Browser Path
         browser_path = os.getenv("AUTO_SOUTHWEST_CHECK_IN_BROWSER_PATH")
@@ -187,7 +188,9 @@ class GlobalConfig(Config):
             try:
                 config["retrieval_interval"] = int(retrieval_interval)
             except ValueError as err:
-                raise ConfigError("'AUTO_SOUTHWEST_CHECK_IN_RETRIEVAL_INTERVAL' must be an integer") from err
+                raise ConfigError(
+                    "'AUTO_SOUTHWEST_CHECK_IN_RETRIEVAL_INTERVAL' must be an integer"
+                ) from err
 
         # Account credentials
         username = os.getenv("AUTO_SOUTHWEST_CHECK_IN_USERNAME")
