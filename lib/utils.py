@@ -13,9 +13,7 @@ BASE_URL = "https://mobile.southwest.com/api/"
 logger = logging.getLogger(__name__)
 
 
-def make_request(
-    method: str, site: str, headers: JSON, info: Dict[str, str], max_attempts=20
-) -> JSON:
+def make_request(method: str, site: str, headers: JSON, info: JSON, max_attempts=20) -> JSON:
     # Ensure the URL is not malformed
     site = site.replace("//", "/").lstrip("/")
 

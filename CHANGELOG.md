@@ -6,7 +6,8 @@ If there is no "Upgrading" header for that version, no post-upgrade actions need
 ## Upcoming
 ### New Features
 - Added environment variable alternatives for many configuration items
-([#210](https://github.com/jdholtz/auto-southwest-check-in/pull/210))
+([#210](https://github.com/jdholtz/auto-southwest-check-in/pull/210) by [@joewesch](https://github.com/joewesch))
+    - Details on how to configure environment variables can be found in the [Configuration documentation](CONFIGURATION.md)
 
 ### Bug Fixes
 - Fix failed logins not reporting the correct error

@@ -146,6 +146,7 @@ class GlobalConfig(Config):
 
         return config
 
+    # pylint: disable=too-many-branches
     def _read_env_vars(self, config: JSON) -> JSON:
         logger.debug("Reading configuration from environment variables")
         # Check Fares

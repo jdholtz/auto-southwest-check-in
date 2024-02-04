@@ -3,7 +3,7 @@ line-length = 100
 target-version = ["py38", "py39", "py310", "py311", "py312"]
 
 [tool.codespell]
-skip = 'venv,./utils/airport_timezones.json'
+skip = "venv,./utils/airport_timezones.json"
 
 [tool.isort]
 line_length = 100
@@ -22,7 +22,7 @@ exclude_lines = [
     # This is not feasible to test as it requires some really wonky module loading.
     'if __name__ == "__main__":',
 
-    'if TYPE_CHECKING:',
+    "if TYPE_CHECKING:",
 ]
 
 [tool.pytest.ini_options]
