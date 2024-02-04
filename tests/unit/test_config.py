@@ -180,6 +180,202 @@ class TestGlobalConfig:
         with pytest.raises(ConfigError):
             test_config._read_config()
 
+    def test_read_env_vars_check_fares_successful(self, mocker: MockerFixture) -> None:
+        mocker.patch.dict("os.environ", {"AUTO_SOUTHWEST_CHECK_IN_CHECK_FARES": "true"})
+        test_config = GlobalConfig()
+        config_content = test_config._read_env_vars({})
+
+        assert config_content == {"check_fares": True}
+
+    def test_read_env_vars_check_fares_override_json_config(self, mocker: MockerFixture) -> None:
+        mocker.patch.dict("os.environ", {"AUTO_SOUTHWEST_CHECK_IN_CHECK_FARES": "true"})
+        test_config = GlobalConfig()
+        base_config = {"check_fares": False}
+        config_content = test_config._read_env_vars(base_config)
+
+        assert config_content == {"check_fares": True}
+
+    def test_read_env_vars_check_fares_invalid(self, mocker: MockerFixture) -> None:
+        mocker.patch.dict("os.environ", {"AUTO_SOUTHWEST_CHECK_IN_CHECK_FARES": "invalid"})
+        test_config = GlobalConfig()
+        with pytest.raises(ConfigError):
+            test_config._read_env_vars({})
+
+    def test_read_env_vars_notification_url_successful(self, mocker: MockerFixture) -> None:
+        mocker.patch.dict("os.environ", {"AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_URL": "test_url"})
+        test_config = GlobalConfig()
+        config_content = test_config._read_env_vars({})
+
+        assert config_content == {"notification_urls": ["test_url"]}
+
+    def test_read_env_vars_notification_url_duplicate(self, mocker: MockerFixture) -> None:
+        mocker.patch.dict("os.environ", {"AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_URL": "test_url"})
+        test_config = GlobalConfig()
+        base_config = {"notification_urls": ["test_url"]}
+        config_content = test_config._read_env_vars(base_config)
+
+        assert config_content == {"notification_urls": ["test_url"]}
+
+    def test_read_env_vars_notification_url_additional(self, mocker: MockerFixture) -> None:
+        mocker.patch.dict("os.environ", {"AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_URL": "test_url2"})
+        test_config = GlobalConfig()
+        base_config = {"notification_urls": ["test_url1"]}
+        config_content = test_config._read_env_vars(base_config)
+
+        assert config_content == {"notification_urls": ["test_url1", "test_url2"]}
+
+    def test_read_env_vars_notification_url_base_string(self, mocker: MockerFixture) -> None:
+        mocker.patch.dict("os.environ", {"AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_URL": "test_url2"})
+        test_config = GlobalConfig()
+        base_config = {"notification_urls": "test_url"}
+        config_content = test_config._read_env_vars(base_config)
+
+        assert config_content == {"notification_urls": ["test_url", "test_url2"]}
+
+    def test_read_env_vars_notification_url_base_invalid(self, mocker: MockerFixture) -> None:
+        mocker.patch.dict("os.environ", {"AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_URL": "test_url2"})
+        test_config = GlobalConfig()
+        base_config = {"notification_urls": 0}
+        with pytest.raises(ConfigError):
+            test_config._read_env_vars(base_config)
+
+    def test_read_env_vars_notification_level_successful(self, mocker: MockerFixture) -> None:
+        mocker.patch.dict("os.environ", {"AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_LEVEL": "1"})
+        test_config = GlobalConfig()
+        config_content = test_config._read_env_vars({})
+
+        assert config_content == {"notification_level": 1}
+
+    def test_read_env_vars_notification_level_invalid(self, mocker: MockerFixture) -> None:
+        mocker.patch.dict("os.environ", {"AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_LEVEL": "invalid"})
+        test_config = GlobalConfig()
+        with pytest.raises(ConfigError):
+            test_config._read_env_vars({})
+
+    def test_read_env_vars_browser_path_successful(self, mocker: MockerFixture) -> None:
+        mocker.patch.dict("os.environ", {"AUTO_SOUTHWEST_CHECK_IN_BROWSER_PATH": "test_path"})
+        test_config = GlobalConfig()
+        config_content = test_config._read_env_vars({})
+
+        assert config_content == {"browser_path": "test_path"}
+
+    def test_read_env_vars_browser_path_override_json_config(self, mocker: MockerFixture) -> None:
+        mocker.patch.dict("os.environ", {"AUTO_SOUTHWEST_CHECK_IN_BROWSER_PATH": "test_path"})
+        test_config = GlobalConfig()
+        base_config = {"browser_path": "test_path2"}
+        config_content = test_config._read_env_vars(base_config)
+
+        assert config_content == {"browser_path": "test_path"}
+
+    def test_read_env_vars_retrieval_interval_successful(self, mocker: MockerFixture) -> None:
+        mocker.patch.dict("os.environ", {"AUTO_SOUTHWEST_CHECK_IN_RETRIEVAL_INTERVAL": "10"})
+        test_config = GlobalConfig()
+        config_content = test_config._read_env_vars({})
+
+        assert config_content == {"retrieval_interval": 10}
+
+    def test_read_env_vars_retrieval_interval_override_json_config(
+        self, mocker: MockerFixture
+    ) -> None:
+        mocker.patch.dict("os.environ", {"AUTO_SOUTHWEST_CHECK_IN_RETRIEVAL_INTERVAL": "10"})
+        test_config = GlobalConfig()
+        base_config = {"retrieval_interval": 20}
+        config_content = test_config._read_env_vars(base_config)
+
+        assert config_content == {"retrieval_interval": 10}
+
+    def test_read_env_vars_retrieval_interval_invalid(self, mocker: MockerFixture) -> None:
+        mocker.patch.dict("os.environ", {"AUTO_SOUTHWEST_CHECK_IN_RETRIEVAL_INTERVAL": "invalid"})
+        test_config = GlobalConfig()
+        with pytest.raises(ConfigError):
+            test_config._read_env_vars({})
+
+    def test_read_env_vars_account_successful(self, mocker: MockerFixture) -> None:
+        mocker.patch.dict("os.environ", {"AUTO_SOUTHWEST_CHECK_IN_USERNAME": "test_user"})
+        mocker.patch.dict("os.environ", {"AUTO_SOUTHWEST_CHECK_IN_PASSWORD": "test_pass"})
+        test_config = GlobalConfig()
+        config_content = test_config._read_env_vars({})
+
+        assert config_content == {"accounts": [{"username": "test_user", "password": "test_pass"}]}
+
+    def test_read_env_vars_additional_account_successful(self, mocker: MockerFixture) -> None:
+        mocker.patch.dict("os.environ", {"AUTO_SOUTHWEST_CHECK_IN_USERNAME": "test_user2"})
+        mocker.patch.dict("os.environ", {"AUTO_SOUTHWEST_CHECK_IN_PASSWORD": "test_pass2"})
+        test_config = GlobalConfig()
+        base_config = {"accounts": [{"username": "test_user1", "password": "test_pass1"}]}
+        config_content = test_config._read_env_vars(base_config)
+
+        assert config_content == {
+            "accounts": [
+                {"username": "test_user1", "password": "test_pass1"},
+                {"username": "test_user2", "password": "test_pass2"},
+            ]
+        }
+
+    def test_read_env_vars_missing_credentials(self, mocker: MockerFixture) -> None:
+        mocker.patch.dict("os.environ", {"AUTO_SOUTHWEST_CHECK_IN_USERNAME": "test_user"})
+        test_config = GlobalConfig()
+        config_content = test_config._read_env_vars({})
+
+        assert config_content == {}
+
+    def test_read_env_vars_reservation_successful(self, mocker: MockerFixture) -> None:
+        mocker.patch.dict("os.environ", {"AUTO_SOUTHWEST_CHECK_IN_CONFIRMATION_NUMBER": "test_num"})
+        mocker.patch.dict("os.environ", {"AUTO_SOUTHWEST_CHECK_IN_FIRST_NAME": "test_first"})
+        mocker.patch.dict("os.environ", {"AUTO_SOUTHWEST_CHECK_IN_LAST_NAME": "test_last"})
+        test_config = GlobalConfig()
+        config_content = test_config._read_env_vars({})
+
+        assert config_content == {
+            "reservations": [
+                {
+                    "confirmationNumber": "test_num",
+                    "firstName": "test_first",
+                    "lastName": "test_last",
+                }
+            ]
+        }
+
+    def test_read_env_vars_additional_reservation_successful(self, mocker: MockerFixture) -> None:
+        mocker.patch.dict(
+            "os.environ", {"AUTO_SOUTHWEST_CHECK_IN_CONFIRMATION_NUMBER": "test_num2"}
+        )
+        mocker.patch.dict("os.environ", {"AUTO_SOUTHWEST_CHECK_IN_FIRST_NAME": "test_first2"})
+        mocker.patch.dict("os.environ", {"AUTO_SOUTHWEST_CHECK_IN_LAST_NAME": "test_last2"})
+        test_config = GlobalConfig()
+        base_config = {
+            "reservations": [
+                {
+                    "confirmationNumber": "test_num1",
+                    "firstName": "test_first1",
+                    "lastName": "test_last1",
+                }
+            ]
+        }
+        config_content = test_config._read_env_vars(base_config)
+
+        assert config_content == {
+            "reservations": [
+                {
+                    "confirmationNumber": "test_num1",
+                    "firstName": "test_first1",
+                    "lastName": "test_last1",
+                },
+                {
+                    "confirmationNumber": "test_num2",
+                    "firstName": "test_first2",
+                    "lastName": "test_last2",
+                },
+            ]
+        }
+
+    def test_read_env_vars_missing_reservation(self, mocker: MockerFixture) -> None:
+        mocker.patch.dict("os.environ", {"AUTO_SOUTHWEST_CHECK_IN_CONFIRMATION_NUMBER": "test_num"})
+        test_config = GlobalConfig()
+        config_content = test_config._read_env_vars({})
+
+        assert config_content == {}
+
     @pytest.mark.parametrize(
         "config_content",
         [
