@@ -2,7 +2,7 @@ import json
 import logging
 import time
 from enum import IntEnum
-from typing import Any, Dict
+from typing import Any, Dict, Union
 
 import requests
 
@@ -75,7 +75,7 @@ class NotificationLevel(IntEnum):
     ERROR = 2
 
 
-def is_truthy(arg):
+def is_truthy(arg: Union[bool, int, str]) -> bool:
     """
     Convert "truthy" strings into Booleans.
 
@@ -84,7 +84,7 @@ def is_truthy(arg):
         True
 
     Args:
-        arg (str): Truthy string (True values are y, yes, t, true, on and 1; false values are n, no,
+        arg: Truthy value (True values are y, yes, t, true, on and 1; false values are n, no,
         f, false, off and 0. Raises ValueError if val is anything else.
     """
     if isinstance(arg, bool):

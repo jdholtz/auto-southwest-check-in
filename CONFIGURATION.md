@@ -127,7 +127,6 @@ Environment Variables:
  - `AUTO_SOUTHWEST_CHECK_IN_USERNAME`
  - `AUTO_SOUTHWEST_CHECK_IN_PASSWORD`
 > When using the environment variables, you may only specify a single set of credentials.
-> If you are also using `config.json`, it will append the credentials as long as they are not a duplicate.
 
 You can add more accounts to the script, allowing you to run multiple accounts at the same time and/or not
 provide a username and password as arguments.
@@ -148,7 +147,6 @@ Environment Variables:
  - `AUTO_SOUTHWEST_CHECK_IN_FIRST_NAME`
  - `AUTO_SOUTHWEST_CHECK_IN_LAST_NAME`
 > When using the environment variables, you may only specify a single reservation.
-> If you are also using `config.json`, it will append the reservation as long as they are not a duplicate.
 
 You can also add more reservations to the script, allowing you check in to multiple reservations in the same instance
 and/or not provide reservation information as arguments.

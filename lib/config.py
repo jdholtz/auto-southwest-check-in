@@ -1,6 +1,6 @@
 import json
 import sys
-from os import getenv
+import os
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -61,9 +61,7 @@ class Config:
             try:
                 self.notification_level = NotificationLevel(notification_level)
             except ValueError as err:
-                raise ConfigError(
-                    f"'{notification_level}' is not a valid notification level"
-                ) from err
+                raise ConfigError(f"'{notification_level}' is not a valid notification level") from err
 
             logger.debug("Setting notification level to %s", repr(self.notification_level))
 
@@ -147,8 +145,9 @@ class GlobalConfig(Config):
         return config
 
     def _read_env_vars(self, config: JSON) -> JSON:
+        logger.debug("Reading configuration from environment variables")
         # Check Fares
-        check_fares = getenv("AUTO_SOUTHWEST_CHECK_IN_CHECK_FARES")
+        check_fares = os.getenv("AUTO_SOUTHWEST_CHECK_IN_CHECK_FARES")
         if check_fares:
             try:
                 config["check_fares"] = is_truthy(check_fares)
@@ -156,54 +155,52 @@ class GlobalConfig(Config):
                 raise ConfigError("Error parsing 'AUTO_SOUTHWEST_CHECK_IN_CHECK_FARES'") from err
 
         # Notification URL
-        notification_url = getenv("AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_URL")
+        notification_url = os.getenv("AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_URL")
         if notification_url:
             config.setdefault("notification_urls", [])
             if isinstance(config["notification_urls"], str):
-                config["notification_urls"] = [config["notification_urls"]]
+                if config["notification_urls"] == "":
+                    config["notification_urls"] = []
+                else:
+                    config["notification_urls"] = [config["notification_urls"]]
             if not isinstance(config["notification_urls"], list):
                 raise ConfigError("'notification_urls' must be a string or a list")
             if notification_url not in config["notification_urls"]:
                 config["notification_urls"].append(notification_url)
 
         # Notification Level
-        notification_level = getenv("AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_LEVEL")
+        notification_level = os.getenv("AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_LEVEL")
         if notification_level:
             try:
                 config["notification_level"] = int(notification_level)
             except ValueError as err:
-                raise ConfigError(
-                    "'AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_LEVEL' must be a number"
-                ) from err
+                raise ConfigError("'AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_LEVEL' must be an integer") from err
 
         # Browser Path
-        browser_path = getenv("AUTO_SOUTHWEST_CHECK_IN_BROWSER_PATH")
+        browser_path = os.getenv("AUTO_SOUTHWEST_CHECK_IN_BROWSER_PATH")
         if browser_path:
             config["browser_path"] = browser_path
 
         # Retrieval Interval
-        retrieval_interval = getenv("AUTO_SOUTHWEST_CHECK_IN_RETRIEVAL_INTERVAL")
+        retrieval_interval = os.getenv("AUTO_SOUTHWEST_CHECK_IN_RETRIEVAL_INTERVAL")
         if retrieval_interval:
             try:
                 config["retrieval_interval"] = int(retrieval_interval)
             except ValueError as err:
-                raise ConfigError(
-                    "'AUTO_SOUTHWEST_CHECK_IN_RETRIEVAL_INTERVAL' must be a number"
-                ) from err
+                raise ConfigError("'AUTO_SOUTHWEST_CHECK_IN_RETRIEVAL_INTERVAL' must be an integer") from err
 
         # Account credentials
-        username = getenv("AUTO_SOUTHWEST_CHECK_IN_USERNAME")
-        password = getenv("AUTO_SOUTHWEST_CHECK_IN_PASSWORD")
+        username = os.getenv("AUTO_SOUTHWEST_CHECK_IN_USERNAME")
+        password = os.getenv("AUTO_SOUTHWEST_CHECK_IN_PASSWORD")
         if username and password:
             new_credentials = {"username": username, "password": password}
             config.setdefault("accounts", [])
-            if new_credentials not in config["accounts"]:
-                config["accounts"].append(new_credentials)
+            config["accounts"].append(new_credentials)
 
         # Reservation information
-        confirmation_number = getenv("AUTO_SOUTHWEST_CHECK_IN_CONFIRMATION_NUMBER")
-        first_name = getenv("AUTO_SOUTHWEST_CHECK_IN_FIRST_NAME")
-        last_name = getenv("AUTO_SOUTHWEST_CHECK_IN_LAST_NAME")
+        confirmation_number = os.getenv("AUTO_SOUTHWEST_CHECK_IN_CONFIRMATION_NUMBER")
+        first_name = os.getenv("AUTO_SOUTHWEST_CHECK_IN_FIRST_NAME")
+        last_name = os.getenv("AUTO_SOUTHWEST_CHECK_IN_LAST_NAME")
         if confirmation_number and first_name and last_name:
             new_reservation = {
                 "confirmationNumber": confirmation_number,
@@ -211,8 +208,7 @@ class GlobalConfig(Config):
                 "lastName": last_name,
             }
             config.setdefault("reservations", [])
-            if new_reservation not in config["reservations"]:
-                config["reservations"].append(new_reservation)
+            config["reservations"].append(new_reservation)
 
         return config
 
