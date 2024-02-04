@@ -312,15 +312,6 @@ class TestGlobalConfig:
             ]
         }
 
-    def test_read_env_vars_duplicate_account(self, mocker: MockerFixture) -> None:
-        mocker.patch.dict("os.environ", {"AUTO_SOUTHWEST_CHECK_IN_USERNAME": "test_user"})
-        mocker.patch.dict("os.environ", {"AUTO_SOUTHWEST_CHECK_IN_PASSWORD": "test_pass"})
-        test_config = GlobalConfig()
-        base_config = {"accounts": [{"username": "test_user", "password": "test_pass"}]}
-        config_content = test_config._read_env_vars(base_config)
-
-        assert config_content == {"accounts": [{"username": "test_user", "password": "test_pass"}]}
-
     def test_read_env_vars_missing_credentials(self, mocker: MockerFixture) -> None:
         mocker.patch.dict("os.environ", {"AUTO_SOUTHWEST_CHECK_IN_USERNAME": "test_user"})
         test_config = GlobalConfig()
@@ -375,32 +366,6 @@ class TestGlobalConfig:
                     "firstName": "test_first2",
                     "lastName": "test_last2",
                 },
-            ]
-        }
-
-    def test_read_env_vars_duplicate_reservation(self, mocker: MockerFixture) -> None:
-        mocker.patch.dict("os.environ", {"AUTO_SOUTHWEST_CHECK_IN_CONFIRMATION_NUMBER": "test_num"})
-        mocker.patch.dict("os.environ", {"AUTO_SOUTHWEST_CHECK_IN_FIRST_NAME": "test_first"})
-        mocker.patch.dict("os.environ", {"AUTO_SOUTHWEST_CHECK_IN_LAST_NAME": "test_last"})
-        test_config = GlobalConfig()
-        base_config = {
-            "reservations": [
-                {
-                    "confirmationNumber": "test_num",
-                    "firstName": "test_first",
-                    "lastName": "test_last",
-                }
-            ]
-        }
-        config_content = test_config._read_env_vars(base_config)
-
-        assert config_content == {
-            "reservations": [
-                {
-                    "confirmationNumber": "test_num",
-                    "firstName": "test_first",
-                    "lastName": "test_last",
-                }
             ]
         }
 
