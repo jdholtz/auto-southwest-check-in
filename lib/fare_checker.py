@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import requests
-
 from typing import TYPE_CHECKING, Any, Dict, List, Tuple
 
 from .checkin_scheduler import VIEW_RESERVATION_URL

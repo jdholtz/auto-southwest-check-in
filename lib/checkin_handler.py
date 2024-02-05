@@ -3,7 +3,6 @@ from __future__ import annotations
 import os
 import signal
 import time
-import requests
 from datetime import datetime, timedelta
 from multiprocessing import Lock, Process
 from typing import TYPE_CHECKING
@@ -153,4 +152,3 @@ class CheckInHandler:
         self.notification_handler.successful_checkin(
             reservation["checkInConfirmationPage"], self.flight
         )
-

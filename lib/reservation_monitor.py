@@ -1,7 +1,6 @@
 import multiprocessing
 import sys
 import time
-import requests
 from datetime import datetime
 from typing import Any, Dict, List, Tuple
 
