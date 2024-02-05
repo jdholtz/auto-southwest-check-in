@@ -99,6 +99,7 @@ class ReservationMonitor:
             # and continue
             try:
                 fare_checker.check_flight_price(flight)
+                self.notification_handler.healthchecks_success("Successful fare check, confirmation number=" + flight.confirmation_number)
             except RequestError as err:
                 self.notification_handler.healthchecks_fail("Failed fare check, confirmation number=" + flight.confirmation_number)
                 logger.error("Requesting error during fare check. %s. Skipping...", err)
