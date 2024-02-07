@@ -3,10 +3,24 @@ When upgrading to a new version, make sure to follow the directions under the "U
 If there is no "Upgrading" header for that version, no post-upgrade actions need to be performed.
 
 
-## Upcoming
+## 7.2 (2024-02-07)
+**Note**: Due to [#201](https://github.com/jdholtz/auto-southwest-check-in/issues/201), the Docker image is currently
+failing to log in to accounts and check in to flights. The workaround for now is to run the script locally with Python,
+if possible
+
+### New Features
+- Added environment variable alternatives for many configuration items
+([#210](https://github.com/jdholtz/auto-southwest-check-in/pull/210) by [@joewesch](https://github.com/joewesch))
+    - Details on how to configure environment variables can be found in the [Configuration documentation](CONFIGURATION.md)
+
 ### Bug Fixes
 - Fix failed logins not reporting the correct error
 ([#189](https://github.com/jdholtz/auto-southwest-check-in/issues/189))
+- Handle flight departure time changes *mostly* correctly
+    - If a flight is rescheduled within the retrieval interval (default is 24 hours) of the check-in, the flight is still
+    not handled correctly. See [#199](https://github.com/jdholtz/auto-southwest-check-in/issues/199)
+- Don't notify check-ins for lap child passengers
+([#205](https://github.com/jdholtz/auto-southwest-check-in/pull/205) by [@pcarn](https://github.com/pcarn))
 
 ### Upgrading
 - Upgrade the dependencies to the latest versions by running `pip install -r requirements.txt`

@@ -2,7 +2,7 @@ import json
 import logging
 import time
 from enum import IntEnum
-from typing import Any, Dict
+from typing import Any, Dict, Union
 
 import requests
 
@@ -13,9 +13,7 @@ BASE_URL = "https://mobile.southwest.com/api/"
 logger = logging.getLogger(__name__)
 
 
-def make_request(
-    method: str, site: str, headers: JSON, info: Dict[str, str], max_attempts=20
-) -> JSON:
+def make_request(method: str, site: str, headers: JSON, info: JSON, max_attempts=20) -> JSON:
     # Ensure the URL is not malformed
     site = site.replace("//", "/").lstrip("/")
 
@@ -73,3 +71,26 @@ class FlightChangeError(Exception):
 class NotificationLevel(IntEnum):
     INFO = 1
     ERROR = 2
+
+
+def is_truthy(arg: Union[bool, int, str]) -> bool:
+    """
+    Convert "truthy" strings into Booleans.
+
+    Examples:
+        >>> is_truthy('yes')
+        True
+
+    Args:
+        arg: Truthy value (True values are y, yes, t, true, on and 1; false values are n, no,
+        f, false, off and 0. Raises ValueError if val is anything else.
+    """
+    if isinstance(arg, bool):
+        return arg
+
+    val = str(arg).lower()
+    if val in ("y", "yes", "t", "true", "on", "1"):
+        return True
+    if val in ("n", "no", "f", "false", "off", "0"):
+        return False
+    raise ValueError(f"Invalid truthy value: `{arg}`")

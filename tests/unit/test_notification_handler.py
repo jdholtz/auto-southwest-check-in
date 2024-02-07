@@ -93,6 +93,30 @@ class TestNotificationHandler:
         )
         assert mock_send_notification.call_args[0][1] == NotificationLevel.INFO
 
+    def test_does_not_include_notification_for_lap_child(self, mocker: MockerFixture) -> None:
+        """
+        A lap child does not get a boarding position, and does not need a notification
+        """
+        mock_send_notification = mocker.patch.object(NotificationHandler, "send_notification")
+        mock_flight = mocker.patch("lib.notification_handler.Flight")
+
+        self.handler.successful_checkin(
+            {
+                "flights": [
+                    {
+                        "passengers": [
+                            {"name": "John", "boardingGroup": "A", "boardingPosition": "1"},
+                            {"name": "Lap Child", "boardingGroup": None, "boardingPosition": None},
+                        ]
+                    }
+                ]
+            },
+            mock_flight,
+        )
+        assert "John got A1!" in mock_send_notification.call_args[0][0]
+        assert "Lap Child got NoneNone!" not in mock_send_notification.call_args[0][0]
+        assert mock_send_notification.call_args[0][1] == NotificationLevel.INFO
+
     def test_failed_checkin_sends_error_notification(self, mocker: MockerFixture) -> None:
         mock_send_notification = mocker.patch.object(NotificationHandler, "send_notification")
         mock_flight = mocker.patch("lib.notification_handler.Flight")

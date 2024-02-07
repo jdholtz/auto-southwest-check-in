@@ -5,6 +5,9 @@ file can be found at [config.example.json](config.example.json)
 Auto-Southwest Check-In supports both global configuration and account/reservation-specific configuration. See
 [Accounts and Reservations](#accounts-and-reservations) for more information.
 
+**Note**: Many configuration items may also be configured via environment variables (except for account and 
+reservation specific configurations).
+
 ## Table of Contents
 - [Fare Check](#fare-check)
 - [Notifications](#notifications)
@@ -19,7 +22,9 @@ Auto-Southwest Check-In supports both global configuration and account/reservati
 
 ## Fare Check
 Default: true \
-Type: Boolean
+Type: Boolean \
+Environment Variable: `AUTO_SOUTHWEST_CHECK_IN_CHECK_FARES`
+> Using the environment variable will override the applicable setting in `config.json`.
 
 In addition to automatically checking in, check for price drops on an interval
 (see [Retrieval Interval](#retrieval-interval)). If a lower fare is found, the user will be notified.
@@ -34,7 +39,10 @@ In addition to automatically checking in, check for price drops on an interval
 ## Notifications
 ### Notification URLs
 Default: [] \
-Type: String or List
+Type: String or List \
+Environment Variable: `AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_URL`
+> When using the environment variable, you may only specify a single URL.
+> If you are also using `config.json`, it will append the URL as long as it's not a duplicate.
 
 Users can be notified on successful and failed check-ins. This is done through the [Apprise library][0].
 To start, first gather the service URL you want to send notifications to (information on how to create
@@ -57,7 +65,9 @@ If you have more than one service you want to send notifications to, you can put
 
 ### Notification Level
 Default: 1 \
-Type: Integer
+Type: Integer \
+Environment Variable: `AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_LEVEL`
+> Using the environment variable will override the applicable setting in `config.json`.
 
 You can also select the level of notifications you want to receive.
 ```json
@@ -76,7 +86,9 @@ $ python3 southwest.py --test-notifications
 
 ## Browser Path
 Default: The path to your Chrome or Chromium browser (if installed) \
-Type: String
+Type: String \
+Environment Variable: `AUTO_SOUTHWEST_CHECK_IN_BROWSER_PATH`
+> Using the environment variable will override the applicable setting in `config.json`.
 
 If you use another Chromium-based browser besides Google Chrome or Chromium (such as Brave), you need to specify the path to
 the browser executable.
@@ -90,7 +102,9 @@ the browser executable.
 
 ## Retrieval Interval
 Default: 24 hours \
-Type: Integer
+Type: Integer \
+Environment Variable: `AUTO_SOUTHWEST_CHECK_IN_RETRIEVAL_INTERVAL`
+> Using the environment variable will override the applicable setting in `config.json`.
 
 You can choose how often the script checks for lower fares on scheduled flights (in hours). Additionally, this
 interval will also determine how often the script checks for new flights if login credentials are provided. To
@@ -108,7 +122,11 @@ account and reservation.
 
 ### Accounts
 Default: [] \
-Type: List
+Type: List \
+Environment Variables:
+ - `AUTO_SOUTHWEST_CHECK_IN_USERNAME`
+ - `AUTO_SOUTHWEST_CHECK_IN_PASSWORD`
+> When using the environment variables, you may only specify a single set of credentials.
 
 You can add more accounts to the script, allowing you to run multiple accounts at the same time and/or not
 provide a username and password as arguments.
@@ -123,7 +141,12 @@ provide a username and password as arguments.
 
 ### Reservations
 Default: [] \
-Type: List
+Type: List \
+Environment Variables:
+ - `AUTO_SOUTHWEST_CHECK_IN_CONFIRMATION_NUMBER`
+ - `AUTO_SOUTHWEST_CHECK_IN_FIRST_NAME`
+ - `AUTO_SOUTHWEST_CHECK_IN_LAST_NAME`
+> When using the environment variables, you may only specify a single reservation.
 
 You can also add more reservations to the script, allowing you check in to multiple reservations in the same instance
 and/or not provide reservation information as arguments.

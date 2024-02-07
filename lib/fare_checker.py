@@ -85,7 +85,7 @@ class FareChecker:
 
     def _get_change_flight_page(self, flight: Flight) -> Tuple[JSON, List[JSON]]:
         # First, get the reservation information
-        logger.debug("Fetching reservation information")
+        logger.debug("Retrieving reservation information")
         info = {
             "first-name": self.reservation_monitor.first_name,
             "last-name": self.reservation_monitor.last_name,

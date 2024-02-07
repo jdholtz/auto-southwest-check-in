@@ -1,3 +1,5 @@
+from typing import Any
+
 import pytest
 from pytest_mock import MockerFixture
 from requests_mock.mocker import Mocker as RequestMocker
@@ -52,3 +54,43 @@ def test_make_request_handles_malformed_URLs(requests_mock: RequestMocker) -> No
     mock_post = requests_mock.get(utils.BASE_URL + "test/test2", status_code=200, text="{}")
     utils.make_request("GET", "/test//test2", {}, {})
     assert mock_post.last_request.url == utils.BASE_URL + "test/test2"
+
+
+@pytest.mark.parametrize(
+    "value, expected",
+    [
+        (True, True),
+        (False, False),
+        ("true", True),
+        ("false", False),
+        ("True", True),
+        ("False", False),
+        ("TRUE", True),
+        ("FALSE", False),
+        ("t", True),
+        ("f", False),
+        ("T", True),
+        ("F", False),
+        ("yes", True),
+        ("no", False),
+        ("Yes", True),
+        ("No", False),
+        ("YES", True),
+        ("NO", False),
+        ("y", True),
+        ("n", False),
+        ("Y", True),
+        ("N", False),
+        ("1", True),
+        ("0", False),
+    ],
+)
+def test_is_truthy(value: Any, expected: bool) -> None:
+    assert utils.is_truthy(value) == expected
+
+
+def test_is_truthy_raises_exception_on_invalid_type() -> None:
+    with pytest.raises(ValueError) as excinfo:
+        utils.is_truthy("test")
+
+    assert "Invalid truthy value" in str(excinfo.value)
