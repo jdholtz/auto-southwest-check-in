@@ -16,6 +16,11 @@ if possible
 ### Bug Fixes
 - Fix failed logins not reporting the correct error
 ([#189](https://github.com/jdholtz/auto-southwest-check-in/issues/189))
+- Handle flight departure time changes *mostly* correctly
+    - If a flight is rescheduled within the retrieval interval (default is 24 hours) of the check-in, the flight is still
+    not handled correctly. See [#199](https://github.com/jdholtz/auto-southwest-check-in/issues/199)
+- Don't notify check-ins for lap child passengers
+([#205](https://github.com/jdholtz/auto-southwest-check-in/pull/205) by [@pcarn](https://github.com/pcarn))
 
 ### Upgrading
 - Upgrade the dependencies to the latest versions by running `pip install -r requirements.txt`
