@@ -4,9 +4,14 @@ If there is no "Upgrading" header for that version, no post-upgrade actions need
 
 
 ## Upcoming
+**Note**: It seems that Southwest has been refactoring their API, so updating to this
+version is necessary for the script to adapt to these changes (and expect more potential issues!).
+
 ### Bug Fixes
 - Fix passwords not being input correctly into Southwest's login page
 ([#223](https://github.com/jdholtz/auto-southwest-check-in/issues/223))
+- Fix an index error during fare checking that resulted in either a crash or monitoring of the wrong flight
+([#224](https://github.com/jdholtz/auto-southwest-check-in/issues/224))
 
 
 ## 7.2 (2024-02-07)

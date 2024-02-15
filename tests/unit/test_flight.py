@@ -122,7 +122,7 @@ class TestFlight:
         assert utc_flight_time == datetime(1999, 12, 31, 18, 29)
 
     @pytest.mark.parametrize(
-        ["numbers", "expected_num"], [(["100"], "100"), (["100", "101"], "100/101")]
+        ["numbers", "expected_num"], [(["100"], "100"), (["100", "101"], "100\u200b/\u200b101")]
     )
     def test_get_flight_number_creates_flight_number_correctly(
         self, numbers: List[str], expected_num: str

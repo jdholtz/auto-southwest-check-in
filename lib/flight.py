@@ -64,6 +64,6 @@ class Flight:
     def _get_flight_number(self, flights: JSON) -> str:
         flight_number = ""
         for flight in flights:
-            flight_number += flight["number"] + "/"
+            flight_number += flight["number"] + "\u200b/\u200b"
 
-        return flight_number.rstrip("/")
+        return flight_number.rstrip("\u200b/\u200b")
