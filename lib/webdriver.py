@@ -6,7 +6,6 @@ import re
 import time
 from typing import TYPE_CHECKING, Any, Dict, List
 
-from requests.compat import quote_plus
 from seleniumbase import Driver
 from seleniumbase.fixtures import page_actions as seleniumbase_actions
 
@@ -85,8 +84,7 @@ class WebDriver:
         driver.type('input[name="userNameOrAccountNumber"]', account_monitor.username)
 
         # Use quote_plus to workaround a x-www-form-urlencoded encoding bug on the mobile site
-        password = quote_plus(account_monitor.password)
-        driver.type('input[name="password"]', f"{password}\n")
+        driver.type('input[name="password"]', f"{account_monitor.password}\n")
 
         # Wait for the necessary information to be set
         self._wait_for_attribute("headers_set")

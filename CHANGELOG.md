@@ -3,6 +3,12 @@ When upgrading to a new version, make sure to follow the directions under the "U
 If there is no "Upgrading" header for that version, no post-upgrade actions need to be performed.
 
 
+## Upcoming
+### Bug Fixes
+- Fix passwords not being input correctly into Southwest's login page
+([#223](https://github.com/jdholtz/auto-southwest-check-in/issues/223))
+
+
 ## 7.2 (2024-02-07)
 **Note**: Due to [#201](https://github.com/jdholtz/auto-southwest-check-in/issues/201), the Docker image is currently
 failing to log in to accounts and check in to flights. The workaround for now is to run the script locally with Python,

@@ -25,10 +25,7 @@ def mock_chrome(mocker: MockerFixture) -> mock.Mock:
 
 @pytest.fixture
 def mock_account_monitor(mocker: MockerFixture) -> mock.Mock:
-    mock_monitor = mocker.patch("lib.reservation_monitor.AccountMonitor")
-    mock_monitor.username = "test_user"
-    mock_monitor.password = "test_password"
-    return mock_monitor
+    return mocker.patch("lib.reservation_monitor.AccountMonitor")
 
 
 class TestWebDriver:
