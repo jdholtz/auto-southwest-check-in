@@ -52,7 +52,7 @@ jobs:
           tags: |
             ${{ secrets.DOCKER_HUB_USERNAME }}/auto-southwest-check-in:${{ github.event.release.tag_name }}
             ${{ secrets.DOCKER_HUB_USERNAME }}/auto-southwest-check-in:latest
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64,linux/arm64,linux/arm/v7
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -65,6 +65,6 @@ jobs:
           push: true
           tags: |
             ${{ secrets.DOCKER_HUB_USERNAME }}/auto-southwest-check-in:develop
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64,linux/arm64,linux/arm/v7
           cache-from: type=gha
           cache-to: type=gha,mode=max
