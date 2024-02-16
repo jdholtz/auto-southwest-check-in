@@ -98,15 +98,24 @@ class ReservationMonitor:
             # and continue
             try:
                 fare_checker.check_flight_price(flight)
-                self.notification_handler.healthchecks_success("Successful fare check, confirmation number=" + flight.confirmation_number)
+                self.notification_handler.healthchecks_success(
+                    f"Successful fare check, confirmation number={flight.confirmation_number}"
+                )
             except RequestError as err:
-                self.notification_handler.healthchecks_fail("Failed fare check, confirmation number=" + flight.confirmation_number)
                 logger.error("Requesting error during fare check. %s. Skipping...", err)
+                self.notification_handler.healthchecks_fail(
+                    f"Failed fare check, confirmation number={flight.confirmation_number}"
+                )
             except FlightChangeError as err:
                 logger.debug("%s. Skipping fare check", err)
+                self.notification_handler.healthchecks_success(
+                    f"Successful fare check, confirmation number={flight.confirmation_number}"
+                )
             except Exception as err:
-                self.notification_handler.healthchecks_fail("Failed fare check, confirmation number=" + flight.confirmation_number)
                 logger.exception("Unexpected error during fare check: %s", repr(err))
+                self.notification_handler.healthchecks_fail(
+                    f"Failed fare check, confirmation number={flight.confirmation_number}"
+                )
 
     def _smart_sleep(self, previous_time: datetime) -> None:
         """

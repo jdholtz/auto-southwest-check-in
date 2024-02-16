@@ -27,6 +27,9 @@ class Config:
         self.notification_level = NotificationLevel.INFO
         self.notification_urls = []
         self.retrieval_interval = 24 * 60 * 60
+
+        # Account and reservation-specific config (parsed in _parse_config, but not merged into
+        # the global configuration).
         self.healthchecks_url = None
 
     def create(self, config_json: JSON, global_config: "GlobalConfig") -> None:
@@ -39,8 +42,8 @@ class Config:
         configuration first. If specific options are set for an account
         or reservation, those will override the global configuration.
         """
-        self.check_fares = global_config.check_fares
         self.browser_path = global_config.browser_path
+        self.check_fares = global_config.check_fares
         self.notification_level = global_config.notification_level
         self.notification_urls.extend(global_config.notification_urls)
         self.retrieval_interval = global_config.retrieval_interval

@@ -119,11 +119,11 @@ class NotificationHandler:
         logger.debug("Sending lower fare notification...")
         self.send_notification(message, NotificationLevel.INFO)
 
-    def healthchecks_success(self, data: Any) -> None:
+    def healthchecks_success(self, data: str) -> None:
         if self.reservation_monitor.config.healthchecks_url is not None:
             requests.post(self.reservation_monitor.config.healthchecks_url, data=data)
 
-    def healthchecks_fail(self, data: Any) -> None:
+    def healthchecks_fail(self, data: str) -> None:
         if self.reservation_monitor.config.healthchecks_url is not None:
             requests.post(self.reservation_monitor.config.healthchecks_url + "/fail", data=data)
 
