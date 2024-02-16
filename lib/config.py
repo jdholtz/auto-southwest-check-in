@@ -28,6 +28,10 @@ class Config:
         self.notification_urls = []
         self.retrieval_interval = 24 * 60 * 60
 
+        # Account and reservation-specific config (parsed in _parse_config, but not merged into
+        # the global configuration).
+        self.healthchecks_url = None
+
     def create(self, config_json: JSON, global_config: "GlobalConfig") -> None:
         self._merge_globals(global_config)
         self._parse_config(config_json)
@@ -38,8 +42,8 @@ class Config:
         configuration first. If specific options are set for an account
         or reservation, those will override the global configuration.
         """
-        self.check_fares = global_config.check_fares
         self.browser_path = global_config.browser_path
+        self.check_fares = global_config.check_fares
         self.notification_level = global_config.notification_level
         self.notification_urls.extend(global_config.notification_urls)
         self.retrieval_interval = global_config.retrieval_interval
@@ -55,6 +59,14 @@ class Config:
 
             if not isinstance(self.check_fares, bool):
                 raise ConfigError("'check_fares' must be a boolean")
+
+        if "healthchecks_url" in config:
+            self.healthchecks_url = config["healthchecks_url"]
+
+            if not isinstance(self.healthchecks_url, str):
+                raise ConfigError("'healthchecks_url' must be a string")
+
+            logger.debug("A Healthchecks URL has been provided")
 
         if "notification_level" in config:
             notification_level = config["notification_level"]

@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Dict, List
 
 import apprise
+import requests
 
 from .flight import Flight
 from .log import get_logger
@@ -117,6 +118,14 @@ class NotificationHandler:
         )
         logger.debug("Sending lower fare notification...")
         self.send_notification(message, NotificationLevel.INFO)
+
+    def healthchecks_success(self, data: str) -> None:
+        if self.reservation_monitor.config.healthchecks_url is not None:
+            requests.post(self.reservation_monitor.config.healthchecks_url, data=data)
+
+    def healthchecks_fail(self, data: str) -> None:
+        if self.reservation_monitor.config.healthchecks_url is not None:
+            requests.post(self.reservation_monitor.config.healthchecks_url + "/fail", data=data)
 
     def _get_account_name(self) -> str:
         return f"{self.reservation_monitor.first_name} {self.reservation_monitor.last_name}"

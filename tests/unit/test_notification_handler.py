@@ -131,6 +131,26 @@ class TestNotificationHandler:
         self.handler.lower_fare(mock_flight, "")
         assert mock_send_notification.call_args[0][1] == NotificationLevel.INFO
 
+    @pytest.mark.parametrize(["url", "expected_calls"], [("http://healthchecks", 1), (None, 0)])
+    def test_healthchecks_success_pings_url_only_if_configured(
+        self, mocker: MockerFixture, url: str, expected_calls: int
+    ) -> None:
+        mock_post = mocker.patch("requests.post")
+        self.handler.reservation_monitor.config.healthchecks_url = url
+
+        self.handler.healthchecks_success("healthchecks success")
+        assert mock_post.call_count == expected_calls
+
+    @pytest.mark.parametrize(["url", "expected_calls"], [("http://healthchecks", 1), (None, 0)])
+    def test_healthchecks_fail_pings_url_only_if_configured(
+        self, mocker: MockerFixture, url: str, expected_calls: int
+    ) -> None:
+        mock_post = mocker.patch("requests.post")
+        self.handler.reservation_monitor.config.healthchecks_url = url
+
+        self.handler.healthchecks_fail("healthchecks fail")
+        assert mock_post.call_count == expected_calls
+
     def test_get_account_name_returns_the_correct_name(self) -> None:
         self.handler.reservation_monitor.first_name = "John"
         self.handler.reservation_monitor.last_name = "Doe"

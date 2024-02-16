@@ -5,8 +5,8 @@ file can be found at [config.example.json](config.example.json)
 Auto-Southwest Check-In supports both global configuration and account/reservation-specific configuration. See
 [Accounts and Reservations](#accounts-and-reservations) for more information.
 
-**Note**: Many configuration items may also be configured via environment variables (except for account and 
-reservation specific configurations).
+**Note**: Many configuration items may also be configured via environment variables (except for account and
+reservation-specific configurations).
 
 ## Table of Contents
 - [Fare Check](#fare-check)
@@ -19,6 +19,7 @@ reservation specific configurations).
 - [Accounts and Reservations](#accounts-and-reservations)
     * [Accounts](#accounts)
     * [Reservations](#reservations)
+- [Healthchecks URL](#healthchecks-url)
 
 ## Fare Check
 Default: true \
@@ -159,18 +160,18 @@ and/or not provide reservation information as arguments.
 }
 ```
 
-
 ### Account and Reservation-specific configuration
 Setting specific configuration values for an account or reservation allows you to fully customize how you want them to be
 monitored by the script. Here is a list of configuration values that can be applied to an individual account or reservation:
 - [Fare Check](#fare-check)
+- [Healthchecks URL](#healthchecks-url)
 - [Notification URLS](#notification-urls)
 - [Notification Level](#notification-level)
 - [Retrieval Interval](#retrieval-interval)
 
 Not all options have to be specified for each account or reservation. If an option is not specified, the top-level value is used
-(or the default value if no top-level value is specified either). Any accounts or reservations specified through the command line
-will use all of the top-level values.
+(or the default value if no top-level value is specified either) with exception to the Healthchecks URL. Any accounts or reservations
+specified through the command line will use all of the top-level values.
 
 An important note about notification URLs: An account or reservation with specific notification URLs will send notifications to those
 URLs as well as URLs specified globally.
@@ -205,6 +206,26 @@ In this example, the script will send notifications attached to this reservation
 }
 ```
 
+## Healthchecks URL
+Default: No URL \
+Type: String
+
+Monitor successful and failed fare checks using a [Healthchecks.io](https://healthchecks.io/) URL. When a fare check
+fails, the `/fail` endpoint of your Healthchecks URL will be pinged to notify you of the failure.
+
+This configuration option can only be applied within reservation and account configurations (specifying it at the top-level
+will have no effect). Due to this, no environment variable is provided as a replacement for this configuration option.
+```json
+{
+    "accounts": [
+        {
+            "username": "user1",
+            "password": "pass1",
+            "healthchecks_url": "https://hc-ping.com/uuid"
+        }
+    ]
+}
+```
 
 
 [0]: https://github.com/caronc/apprise
