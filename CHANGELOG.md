@@ -16,6 +16,9 @@ version is necessary for the script to adapt to these changes (and expect more p
 - Fix an index error during fare checking that resulted in either a crash or monitoring of the wrong flight
 ([#224](https://github.com/jdholtz/auto-southwest-check-in/issues/224))
 
+### Upgrading
+- Upgrade the dependencies to the latest versions by running `pip install -r requirements.txt`
+
 
 ## 7.2 (2024-02-07)
 **Note**: Due to [#201](https://github.com/jdholtz/auto-southwest-check-in/issues/201), the Docker image is currently

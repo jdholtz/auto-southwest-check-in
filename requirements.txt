@@ -1,5 +1,4 @@
-apprise==1.7.1
-certifi==2023.11.17
-pytz==2023.3.post1  # Remove when this script only supports Python 3.9+
+apprise==1.7.2
+pytz==2024.1  # Remove when this script only supports Python 3.9+
 requests==2.31.0
-seleniumbase==4.22.5
+seleniumbase==4.23.4
