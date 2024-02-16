@@ -15,6 +15,8 @@ version is necessary for the script to adapt to these changes (and expect more p
 ([#223](https://github.com/jdholtz/auto-southwest-check-in/issues/223))
 - Fix an index error during fare checking that resulted in either a crash or monitoring of the wrong flight
 ([#224](https://github.com/jdholtz/auto-southwest-check-in/issues/224))
+- Fix pop-ups on the Southwest website from interfering with logging in
+([#226](https://github.com/jdholtz/auto-southwest-check-in/issues/226))
 
 ### Upgrading
 - Upgrade the dependencies to the latest versions by running `pip install -r requirements.txt`
