@@ -4,52 +4,16 @@ from __future__ import annotations
 
 import multiprocessing
 import sys
-from typing import TYPE_CHECKING, List
+from typing import List
 
 from lib import log
 
-if TYPE_CHECKING:
-    from lib.config import GlobalConfig
-
-__version__ = "v7.2"
-
-__doc__ = """
-Schedule a check-in:
-    python3 southwest.py [options] CONFIRMATION_NUMBER FIRST_NAME LAST_NAME
-
-Log into your account:
-    python3 southwest.py [options] USERNAME PASSWORD
-
-Options:
-    --test-notifications Test the notification URLs configuration and exit
-    -v, --verbose        Display debug messages
-    -h, --help           Display this help and exit
-    -V, --version        Display version information and exit
-
-For more information, check out https://github.com/jdholtz/auto-southwest-check-in#readme"""
+from .config import GlobalConfig, ReservationConfig
+from .reservation_monitor import AccountMonitor, ReservationMonitor
 
 LOG_FILE = "logs/auto-southwest-check-in.log"
 
 logger = log.get_logger(__name__)
-
-
-def print_version() -> None:
-    print("Auto-Southwest Check-In " + __version__)
-
-
-def print_usage() -> None:
-    print_version()
-    print(__doc__)
-
-
-def check_flags(arguments: List[str]) -> None:
-    """Checks for version and help flags and exits the script on success"""
-    if "--version" in arguments or "-V" in arguments:
-        print_version()
-        sys.exit()
-    elif "--help" in arguments or "-h" in arguments:
-        print_usage()
-        sys.exit()
 
 
 def get_notification_urls(config: GlobalConfig) -> List[str]:
@@ -74,10 +38,6 @@ def get_notification_urls(config: GlobalConfig) -> List[str]:
 def test_notifications(config: GlobalConfig) -> None:
     notification_urls = get_notification_urls(config)
 
-    # pylint:disable=import-outside-toplevel
-    from .config import ReservationConfig
-    from .reservation_monitor import ReservationMonitor
-
     new_config = ReservationConfig()
     new_config.notification_urls = notification_urls
     reservation_monitor = ReservationMonitor(new_config)
@@ -87,18 +47,12 @@ def test_notifications(config: GlobalConfig) -> None:
 
 
 def set_up_accounts(config: GlobalConfig, lock: multiprocessing.Lock) -> None:
-    # pylint:disable=import-outside-toplevel
-    from .reservation_monitor import AccountMonitor
-
     for account in config.accounts:
         account_monitor = AccountMonitor(account, lock)
         account_monitor.start()
 
 
 def set_up_reservations(config: GlobalConfig, lock: multiprocessing.Lock) -> None:
-    # pylint:disable=import-outside-toplevel
-    from .reservation_monitor import ReservationMonitor
-
     for reservation in config.reservations:
         reservation_monitor = ReservationMonitor(reservation, lock)
         reservation_monitor.start()
@@ -109,13 +63,7 @@ def set_up_check_in(arguments: List[str]) -> None:
     Initialize reservation and account monitoring based on the configuration
     and arguments passed in
     """
-    logger.debug("Auto-Southwest Check-In %s", __version__)
     logger.debug("Called with %d arguments", len(arguments))
-
-    # Imported here to avoid needing dependencies to retrieve the script's
-    # version or usage
-    # pylint:disable=import-outside-toplevel
-    from .config import GlobalConfig
 
     config = GlobalConfig()
     config.initialize()
@@ -152,13 +100,12 @@ def set_up_check_in(arguments: List[str]) -> None:
         process.join()
 
 
-def main(arguments: List[str]) -> None:
-    flags_to_remove = ["-v", "--verbose"]
-
-    check_flags(arguments)
+def main(arguments: List[str], version: str) -> None:
     log.init_main_logging()
+    logger.debug("Auto-Southwest Check-In %s", version)
 
     # Remove flags now that they are not needed (and will mess up parsing)
+    flags_to_remove = ["-v", "--verbose"]
     arguments = [x for x in arguments if x not in flags_to_remove]
 
     try:

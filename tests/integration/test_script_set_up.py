@@ -7,6 +7,7 @@ from typing import Iterator
 import pytest
 from pytest_mock import MockerFixture
 
+import southwest
 from lib import main
 
 
@@ -32,19 +33,19 @@ def mock_read_config(mocker: MockerFixture) -> None:
 @pytest.mark.parametrize("flag", ["-V", "--version"])
 def test_version_is_printed(flag: str, capsys: pytest.CaptureFixture[str]) -> None:
     with pytest.raises(SystemExit):
-        main.main([flag])
+        southwest.init([flag])
 
-    assert main.__version__ in capsys.readouterr().out
+    assert southwest.__version__ in capsys.readouterr().out
 
 
 @pytest.mark.parametrize("flag", ["-h", "--help"])
 def test_help_is_printed(flag: str, capsys: pytest.CaptureFixture[str]) -> None:
     with pytest.raises(SystemExit):
-        main.main([flag])
+        southwest.init([flag])
 
     output = capsys.readouterr().out
-    assert main.__version__ in output
-    assert main.__doc__ in output
+    assert southwest.__version__ in output
+    assert southwest.__doc__ in output
 
 
 def test_notifications_are_tested(mocker: MockerFixture) -> None:
@@ -72,7 +73,7 @@ def test_notifications_are_tested(mocker: MockerFixture) -> None:
     mock_apprise = mocker.patch("apprise.Apprise")
 
     with pytest.raises(SystemExit):
-        main.main(["--test-notifications"])
+        main.main(["--test-notifications"], "test_version")
 
     mock_apprise.assert_called_once()
 
@@ -96,7 +97,7 @@ def test_account_from_command_line_with_verbose(
     # southwest.py prepended to it in real use)
     mocker.patch("sys.argv", ["test_file"] + args)
 
-    main.main(args)
+    main.main(args, "test_version")
 
     mock_process.start.assert_called_once()
     mock_process.join.assert_called_once()
@@ -115,7 +116,7 @@ def test_reservation_from_command_line_without_verbose(
     # southwest.py prepended to it in real use)
     mocker.patch("sys.argv", ["test_file"] + args)
 
-    main.main(args)
+    main.main(args, "test_version")
 
     mock_process.start.assert_called_once()
     mock_process.join.assert_called_once()
@@ -135,7 +136,7 @@ def test_accounts_and_reservations_from_config(mocker: MockerFixture) -> None:
     mock_process = mocker.patch("multiprocessing.Process").return_value
     mocker.patch("multiprocessing.active_children", return_value=[mock_process, mock_process])
 
-    main.main([])
+    main.main([], "test_version")
 
     assert mock_process.start.call_count == 2
     assert mock_process.join.call_count == 2
@@ -143,4 +144,4 @@ def test_accounts_and_reservations_from_config(mocker: MockerFixture) -> None:
 
 def test_error_on_invalid_arguments() -> None:
     with pytest.raises(SystemExit):
-        main.main(["most", "definitely", "invalid", "arguments"])
+        main.main(["most", "definitely", "invalid", "arguments"], "test_version")
