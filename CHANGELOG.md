@@ -9,6 +9,9 @@ version is necessary for the script to adapt to these changes (and expect more p
 
 ### New Features
 - An official ARMv7 Docker image is now supported ([#77](https://github.com/jdholtz/auto-southwest-check-in/issues/77))
+- Healthchecks.io integration is added to monitor for successes and failures during fare checking
+([#203](https://github.com/jdholtz/auto-southwest-check-in/pull/203) by [@StevenMassaro](https://github.com/StevenMassaro))
+    - For details on how to set this integration up, see the [configuration documentation](CONFIGURATION.md#healthchecks-url)
 
 ### Bug Fixes
 - Fix passwords not being input correctly into Southwest's login page

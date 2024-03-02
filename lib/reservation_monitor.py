@@ -2,10 +2,10 @@ import multiprocessing
 import sys
 import time
 from datetime import datetime
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, Union
 
 from .checkin_scheduler import CheckInScheduler
-from .config import AccountConfig, Config
+from .config import AccountConfig, ReservationConfig
 from .fare_checker import FareChecker
 from .log import get_logger
 from .notification_handler import NotificationHandler
@@ -23,7 +23,9 @@ class ReservationMonitor:
     check-ins, flight changes or cancellations, and lower flight fares.
     """
 
-    def __init__(self, config: Config, lock: multiprocessing.Lock = None) -> None:
+    def __init__(
+        self, config: Union[AccountConfig, ReservationConfig], lock: multiprocessing.Lock = None
+    ) -> None:
         self.first_name = config.first_name
         self.last_name = config.last_name
 

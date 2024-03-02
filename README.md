@@ -34,7 +34,7 @@ cd auto-southwest-check-in
 ```
 Then, install the needed packages for the script
 ```shell
-pip install -r requirements.txt
+pip3 install -r requirements.txt
 ```
 You may want to install the requirements in a [Python virtual environment][3] to ensure they don't conflict
 with other Python projects on your system.
