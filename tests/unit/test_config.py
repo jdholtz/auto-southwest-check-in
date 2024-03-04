@@ -35,6 +35,7 @@ class TestConfig:
                 "browser_path": "test/browser_path",
                 "check_fares": True,
                 "healthchecks_url": "global_healthchecks",
+                "notification_24_hour_time": True,
                 "notification_level": 1,
                 "notification_urls": "url1",
                 "retrieval_interval": 20,
@@ -46,6 +47,7 @@ class TestConfig:
                 "browser_path": "test/browser_path2",
                 "check_fares": False,
                 "healthchecks_url": "test_healthchecks",
+                "notification_24_hour_time": False,
                 "notification_level": 2,
                 "notification_urls": ["url2"],
                 "retrieval_interval": 10,
@@ -55,6 +57,7 @@ class TestConfig:
         test_config._merge_globals(global_config)
 
         assert test_config.check_fares == global_config.check_fares
+        assert test_config.notification_24_hour_time == global_config.notification_24_hour_time
         assert test_config.notification_level == global_config.notification_level
         assert test_config.notification_urls == ["url2", "url1"]
         assert test_config.retrieval_interval == global_config.retrieval_interval
@@ -67,6 +70,7 @@ class TestConfig:
         [
             {"check_fares": "invalid"},
             {"healthchecks_url": 0},
+            {"notification_24_hour_time": "invalid"},
             {"notification_level": "invalid"},
             {"notification_level": 3},
             {"notification_urls": None},
@@ -85,6 +89,7 @@ class TestConfig:
             {
                 "check_fares": False,
                 "healthchecks_url": "test_healthchecks",
+                "notification_24_hour_time": False,
                 "notification_level": 2,
                 "notification_urls": "test_url",
                 "retrieval_interval": 30,
@@ -93,6 +98,7 @@ class TestConfig:
 
         assert test_config.check_fares is False
         assert test_config.healthchecks_url == "test_healthchecks"
+        assert test_config.notification_24_hour_time is False
         assert test_config.notification_level == NotificationLevel.ERROR
         assert test_config.notification_urls == ["test_url"]
         assert test_config.retrieval_interval == 30 * 60 * 60
@@ -105,6 +111,7 @@ class TestConfig:
 
         assert test_config.check_fares == expected_config.check_fares
         assert test_config.healthchecks_url == expected_config.healthchecks_url
+        assert test_config.notification_24_hour_time == expected_config.notification_24_hour_time
         assert test_config.notification_urls == expected_config.notification_urls
         assert test_config.notification_level == expected_config.notification_level
         assert test_config.retrieval_interval == expected_config.retrieval_interval
@@ -206,6 +213,35 @@ class TestGlobalConfig:
 
     def test_read_env_vars_check_fares_invalid(self, mocker: MockerFixture) -> None:
         mocker.patch.dict("os.environ", {"AUTO_SOUTHWEST_CHECK_IN_CHECK_FARES": "invalid"})
+        test_config = GlobalConfig()
+        with pytest.raises(ConfigError):
+            test_config._read_env_vars({})
+
+    def test_read_env_vars_notification_24_hr_time_successful(self, mocker: MockerFixture) -> None:
+        mocker.patch.dict(
+            "os.environ", {"AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_24_HOUR_TIME": "true"}
+        )
+        test_config = GlobalConfig()
+        config_content = test_config._read_env_vars({})
+
+        assert config_content == {"notification_24_hour_time": True}
+
+    def test_read_env_vars_notification_24_hr_time_override_json_config(
+        self, mocker: MockerFixture
+    ) -> None:
+        mocker.patch.dict(
+            "os.environ", {"AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_24_HOUR_TIME": "true"}
+        )
+        test_config = GlobalConfig()
+        base_config = {"notification_24_hour_time": False}
+        config_content = test_config._read_env_vars(base_config)
+
+        assert config_content == {"notification_24_hour_time": True}
+
+    def test_read_env_vars_notification_24_hr_time_invalid(self, mocker: MockerFixture) -> None:
+        mocker.patch.dict(
+            "os.environ", {"AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_24_HOUR_TIME": "invalid"}
+        )
         test_config = GlobalConfig()
         with pytest.raises(ConfigError):
             test_config._read_env_vars({})

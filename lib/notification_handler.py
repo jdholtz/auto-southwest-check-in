@@ -44,14 +44,16 @@ class NotificationHandler:
             return
 
         is_international = False
+        twenty_four_hr_time = self.reservation_monitor.config.notification_24_hour_time
         flight_schedule_message = (
             "Successfully scheduled the following flights to check in for "
             f"{self._get_account_name()}:\n"
         )
         for flight in flights:
+            flight_time = flight.get_display_time(twenty_four_hr_time)
             flight_schedule_message += (
                 f"Flight from {flight.departure_airport} to {flight.destination_airport} at "
-                f"{flight.departure_time} UTC\n"
+                f"{flight_time}\n"
             )
             if flight.is_international:
                 is_international = True

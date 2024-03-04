@@ -24,6 +24,7 @@ class Config:
         # Default values are set
         self.browser_path = None
         self.check_fares = True
+        self.notification_24_hour_time = False
         self.notification_level = NotificationLevel.INFO
         self.notification_urls = []
         self.retrieval_interval = 24 * 60 * 60
@@ -44,6 +45,7 @@ class Config:
         """
         self.browser_path = global_config.browser_path
         self.check_fares = global_config.check_fares
+        self.notification_24_hour_time = global_config.notification_24_hour_time
         self.notification_level = global_config.notification_level
         self.notification_urls.extend(global_config.notification_urls)
         self.retrieval_interval = global_config.retrieval_interval
@@ -67,6 +69,13 @@ class Config:
                 raise ConfigError("'healthchecks_url' must be a string")
 
             logger.debug("A Healthchecks URL has been provided")
+
+        if "notification_24_hour_time" in config:
+            self.notification_24_hour_time = config["notification_24_hour_time"]
+            logger.debug("Setting notification 24 hour time to %s", self.notification_24_hour_time)
+
+            if not isinstance(self.notification_24_hour_time, bool):
+                raise ConfigError("'notification_24_hour_time' must be a boolean")
 
         if "notification_level" in config:
             notification_level = config["notification_level"]
@@ -158,7 +167,7 @@ class GlobalConfig(Config):
 
         return config
 
-    # pylint: disable=too-many-branches
+    # pylint: disable=too-many-branches,too-many-statements,too-many-locals
     def _read_env_vars(self, config: JSON) -> JSON:
         logger.debug("Reading configuration from environment variables")
         # Check Fares
@@ -168,6 +177,16 @@ class GlobalConfig(Config):
                 config["check_fares"] = is_truthy(check_fares)
             except ValueError as err:
                 raise ConfigError("Error parsing 'AUTO_SOUTHWEST_CHECK_IN_CHECK_FARES'") from err
+
+        # Notification 24-hour time
+        notification_24_hour_time = os.getenv("AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_24_HOUR_TIME")
+        if notification_24_hour_time:
+            try:
+                config["notification_24_hour_time"] = is_truthy(notification_24_hour_time)
+            except ValueError as err:
+                raise ConfigError(
+                    "Error parsing 'AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_24_HOUR_TIME'"
+                ) from err
 
         # Notification URL
         notification_url = os.getenv("AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_URL")
