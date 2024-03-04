@@ -70,6 +70,26 @@ class Config:
 
             logger.debug("A Healthchecks URL has been provided")
 
+        if "retrieval_interval" in config:
+            self.retrieval_interval = config["retrieval_interval"]
+            logger.debug("Setting retrieval interval to %s hours", self.retrieval_interval)
+
+            if not isinstance(self.retrieval_interval, int):
+                raise ConfigError("'retrieval_interval' must be an integer")
+
+            if self.retrieval_interval < 0:
+                logger.warning(
+                    "Setting 'retrieval_interval' to 0 hours as %s hours is too low",
+                    self.retrieval_interval,
+                )
+                self.retrieval_interval = 0
+
+            # Convert hours to seconds
+            self.retrieval_interval *= 3600
+
+        self._parse_notification_config(config)
+
+    def _parse_notification_config(self, config: JSON) -> None:
         if "notification_24_hour_time" in config:
             self.notification_24_hour_time = config["notification_24_hour_time"]
             logger.debug("Setting notification 24 hour time to %s", self.notification_24_hour_time)
@@ -100,23 +120,6 @@ class Config:
 
             self.notification_urls.extend(notification_urls)
             logger.debug("Using %d notification services", len(self.notification_urls))
-
-        if "retrieval_interval" in config:
-            self.retrieval_interval = config["retrieval_interval"]
-            logger.debug("Setting retrieval interval to %s hours", self.retrieval_interval)
-
-            if not isinstance(self.retrieval_interval, int):
-                raise ConfigError("'retrieval_interval' must be an integer")
-
-            if self.retrieval_interval < 0:
-                logger.warning(
-                    "Setting 'retrieval_interval' to 0 hours as %s hours is too low",
-                    self.retrieval_interval,
-                )
-                self.retrieval_interval = 0
-
-            # Convert hours to seconds
-            self.retrieval_interval *= 3600
 
 
 class GlobalConfig(Config):
@@ -167,9 +170,9 @@ class GlobalConfig(Config):
 
         return config
 
-    # pylint: disable=too-many-branches,too-many-statements,too-many-locals
     def _read_env_vars(self, config: JSON) -> JSON:
         logger.debug("Reading configuration from environment variables")
+
         # Check Fares
         check_fares = os.getenv("AUTO_SOUTHWEST_CHECK_IN_CHECK_FARES")
         if check_fares:
@@ -177,37 +180,6 @@ class GlobalConfig(Config):
                 config["check_fares"] = is_truthy(check_fares)
             except ValueError as err:
                 raise ConfigError("Error parsing 'AUTO_SOUTHWEST_CHECK_IN_CHECK_FARES'") from err
-
-        # Notification 24-hour time
-        notification_24_hour_time = os.getenv("AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_24_HOUR_TIME")
-        if notification_24_hour_time:
-            try:
-                config["notification_24_hour_time"] = is_truthy(notification_24_hour_time)
-            except ValueError as err:
-                raise ConfigError(
-                    "Error parsing 'AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_24_HOUR_TIME'"
-                ) from err
-
-        # Notification URL
-        notification_url = os.getenv("AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_URL")
-        if notification_url:
-            config.setdefault("notification_urls", [])
-            if isinstance(config["notification_urls"], str):
-                config["notification_urls"] = [config["notification_urls"]]
-            if not isinstance(config["notification_urls"], list):
-                raise ConfigError("'notification_urls' must be a string or a list")
-            if notification_url not in config["notification_urls"]:
-                config["notification_urls"].append(notification_url)
-
-        # Notification Level
-        notification_level = os.getenv("AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_LEVEL")
-        if notification_level:
-            try:
-                config["notification_level"] = int(notification_level)
-            except ValueError as err:
-                raise ConfigError(
-                    "'AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_LEVEL' must be an integer"
-                ) from err
 
         # Browser Path
         browser_path = os.getenv("AUTO_SOUTHWEST_CHECK_IN_BROWSER_PATH")
@@ -244,6 +216,41 @@ class GlobalConfig(Config):
             }
             config.setdefault("reservations", [])
             config["reservations"].append(new_reservation)
+
+        config = self._read_notification_env_vars(config)
+        return config
+
+    def _read_notification_env_vars(self, config: JSON) -> JSON:
+        # Notification 24-hour time
+        notification_24_hour_time = os.getenv("AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_24_HOUR_TIME")
+        if notification_24_hour_time:
+            try:
+                config["notification_24_hour_time"] = is_truthy(notification_24_hour_time)
+            except ValueError as err:
+                raise ConfigError(
+                    "Error parsing 'AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_24_HOUR_TIME'"
+                ) from err
+
+        # Notification URL
+        notification_url = os.getenv("AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_URL")
+        if notification_url:
+            config.setdefault("notification_urls", [])
+            if isinstance(config["notification_urls"], str):
+                config["notification_urls"] = [config["notification_urls"]]
+            if not isinstance(config["notification_urls"], list):
+                raise ConfigError("'notification_urls' must be a string or a list")
+            if notification_url not in config["notification_urls"]:
+                config["notification_urls"].append(notification_url)
+
+        # Notification Level
+        notification_level = os.getenv("AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_LEVEL")
+        if notification_level:
+            try:
+                config["notification_level"] = int(notification_level)
+            except ValueError as err:
+                raise ConfigError(
+                    "'AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_LEVEL' must be an integer"
+                ) from err
 
         return config
 
