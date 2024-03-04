@@ -12,6 +12,10 @@ version is necessary for the script to adapt to these changes (and expect more p
 - Healthchecks.io integration is added to monitor for successes and failures during fare checking
 ([#203](https://github.com/jdholtz/auto-southwest-check-in/pull/203) by [@StevenMassaro](https://github.com/StevenMassaro))
     - For details on how to set this integration up, see the [configuration documentation](CONFIGURATION.md#healthchecks-url)
+- Flight times are now displayed by the local 12-hour time in notifications
+([#227](https://github.com/jdholtz/auto-southwest-check-in/discussions/227))
+    - Times can be changed to 24-hour format using the [notification_24_hour_time](CONFIGURATION.md#notification-24-hour-time)
+    configuration option
 
 ### Bug Fixes
 - Fix passwords not being input correctly into Southwest's login page

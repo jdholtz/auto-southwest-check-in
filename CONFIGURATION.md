@@ -13,6 +13,7 @@ reservation-specific configurations).
 - [Notifications](#notifications)
     * [Notification URLS](#notification-urls)
     * [Notification Level](#notification-level)
+    * [Notification 24 Hour Time](#notification-24-hour-time)
     * [Test The Notifications](#test-the-notifications)
 - [Browser Path](#browser-path)
 - [Retrieval Interval](#retrieval-interval)
@@ -78,6 +79,19 @@ You can also select the level of notifications you want to receive.
 ```
 Level 1 means you receive successful scheduling and check-in messages, lower fare messages, and all messages in later levels.\
 Level 2 means you receive only error messages (failed scheduling and check-ins).
+
+### Notification 24 Hour Time
+Default: false \
+Type: Boolean \
+Environment Variable: `AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_24_HOUR_TIME`
+> Using the environment variable will override the applicable setting in `config.json`.
+
+Display flight times in notifications and console messages in 24-hour format instead of 12-hour format.
+```json
+{
+  "notification_24_hour_time": true
+}
+```
 
 ### Test The Notifications
 To test if the notification URLs work, you can run the following command
