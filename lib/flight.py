@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict
@@ -42,7 +43,12 @@ class Flight:
         )
 
     def get_display_time(self, twenty_four_hr_time: bool) -> str:
-        time_format = "%H:%M" if twenty_four_hr_time else "%-I:%M %p"
+        if twenty_four_hr_time:
+            time_format = "%H:%M"
+        else:
+            # The '#' removes leading zeros in Windows and '-' in Linux/Mac
+            time_format = "%#I:%M %p" if os.name == "nt" else "%-I:%M %p"
+
         date_format = f"%Y-%m-%d {time_format} %Z"
         return datetime.strftime(self._local_departure_time, date_format)
 
