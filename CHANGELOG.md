@@ -3,9 +3,13 @@ When upgrading to a new version, make sure to follow the directions under the "U
 If there is no "Upgrading" header for that version, no post-upgrade actions need to be performed.
 
 
-## Upcoming
+## 7.3 (2024-03-04)
 **Note**: It seems that Southwest has been refactoring their API, so updating to this
 version is necessary for the script to adapt to these changes (and expect more potential issues!).
+
+**Note 2**: Due to [#230](https://github.com/jdholtz/auto-southwest-check-in/issues/230) and
+[#201](https://github.com/jdholtz/auto-southwest-check-in/issues/201), you may still run into issues when
+running this script in Docker (although, some people have ran into this issue outside of Docker as well).
 
 ### New Features
 - An official ARMv7 Docker image is now supported ([#77](https://github.com/jdholtz/auto-southwest-check-in/issues/77))
