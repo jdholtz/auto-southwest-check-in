@@ -52,7 +52,7 @@ class NotificationHandler:
         for flight in flights:
             flight_time = flight.get_display_time(twenty_four_hr_time)
             flight_schedule_message += (
-                f"Flight from {flight.departure_airport} to {flight.destination_airport} at "
+                f"Flight from {flight.departure_airport} to {flight.destination_airport} on "
                 f"{flight_time}\n"
             )
             if flight.is_international:
@@ -113,10 +113,14 @@ class NotificationHandler:
         self.send_notification(error_message, NotificationLevel.ERROR)
 
     def lower_fare(self, flight: Flight, price_info: str) -> None:
+        twenty_four_hr_time = self.reservation_monitor.config.notification_24_hour_time
+        flight_time = flight.get_display_time(twenty_four_hr_time)
+
         message = (
             f"Found lower fare of {price_info} for flight {flight.confirmation_number} "
-            f"from '{flight.departure_airport}' to '{flight.destination_airport}' for "
-            f"{self._get_account_name()}!\nManage your reservation here: {MANAGE_RESERVATION_URL}\n"
+            f"from '{flight.departure_airport}' to '{flight.destination_airport}' on {flight_time} "
+            f"for {self._get_account_name()}!\nManage your reservation here: "
+            f"{MANAGE_RESERVATION_URL}\n"
         )
         logger.debug("Sending lower fare notification...")
         self.send_notification(message, NotificationLevel.INFO)
