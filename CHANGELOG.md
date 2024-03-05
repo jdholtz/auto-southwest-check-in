@@ -24,6 +24,7 @@ version is necessary for the script to adapt to these changes (and expect more p
 ([#224](https://github.com/jdholtz/auto-southwest-check-in/issues/224))
 - Fix pop-ups on the Southwest website from interfering with logging in
 ([#226](https://github.com/jdholtz/auto-southwest-check-in/issues/226))
+- Fix an issue with script logging not working in some cases on Windows
 
 ### Upgrading
 - Upgrade the dependencies to the latest versions by running `pip install -r requirements.txt`

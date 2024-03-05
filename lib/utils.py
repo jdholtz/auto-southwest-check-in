@@ -1,16 +1,17 @@
 import json
-import logging
 import time
 from enum import IntEnum
 from typing import Any, Dict, Union
 
 import requests
 
+from .log import get_logger
+
 # Type alias for JSON
 JSON = Dict[str, Any]
 
 BASE_URL = "https://mobile.southwest.com/api/"
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def make_request(method: str, site: str, headers: JSON, info: JSON, max_attempts=20) -> JSON:
