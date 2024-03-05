@@ -72,17 +72,17 @@ def set_up_check_in(arguments: List[str]) -> None:
         test_notifications(config)
         sys.exit()
     elif len(arguments) == 2:
+        logger.debug("Adding account through CLI arguments")
         account = {"username": arguments[0], "password": arguments[1]}
         config.create_account_config([account])
-        logger.debug("Account added through CLI arguments")
     elif len(arguments) == 3:
+        logger.debug("Adding reservation through CLI arguments")
         reservation = {
             "confirmationNumber": arguments[0],
             "firstName": arguments[1],
             "lastName": arguments[2],
         }
         config.create_reservation_config([reservation])
-        logger.debug("Reservation added through CLI arguments")
     elif len(arguments) > 3:
         logger.error("Invalid arguments. For more information, try '--help'")
         sys.exit(2)
