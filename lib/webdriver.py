@@ -20,7 +20,10 @@ BASE_URL = "https://mobile.southwest.com"
 LOGIN_URL = BASE_URL + "/api/security/v4/security/token"
 TRIPS_URL = BASE_URL + "/api/mobile-misc/v1/mobile-misc/page/upcoming-trips"
 CHECKIN_URL = BASE_URL + "/check-in"
-CHECKIN_HEADERS_URL = BASE_URL + "/api/chase/v2/chase/offers"
+HEADERS_URLS = [
+    BASE_URL + "/api/chase/v2/chase/offers",
+    BASE_URL + "/api/mobile-air-booking/v1/mobile-air-booking/feature/shopping-details",
+]
 
 # Southwest's code when logging in with the incorrect information
 INVALID_CREDENTIALS_CODE = 400518024
@@ -133,7 +136,7 @@ class WebDriver:
         in the checkin_scheduler.
         """
         request = data["params"]["request"]
-        if request["url"] == CHECKIN_HEADERS_URL:
+        if request["url"] in HEADERS_URLS and not self.headers_set:
             self.checkin_scheduler.headers = self._get_needed_headers(request["headers"])
             self.headers_set = True
 

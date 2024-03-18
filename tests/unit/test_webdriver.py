@@ -6,13 +6,7 @@ import pytest
 from pytest_mock import MockerFixture
 
 from lib.utils import LoginError
-from lib.webdriver import (
-    CHECKIN_HEADERS_URL,
-    INVALID_CREDENTIALS_CODE,
-    LOGIN_URL,
-    TRIPS_URL,
-    WebDriver,
-)
+from lib.webdriver import HEADERS_URLS, INVALID_CREDENTIALS_CODE, LOGIN_URL, TRIPS_URL, WebDriver
 
 # This needs to be accessed to be tested
 # pylint: disable=protected-access
@@ -82,17 +76,29 @@ class TestWebDriver:
 
         assert mock_chrome.call_args.kwargs.get("driver_version") == "keep"
 
-    def test_headers_listener_sets_headers_when_correct_url(self, mocker: MockerFixture) -> None:
+    @pytest.mark.parametrize("url", HEADERS_URLS)
+    def test_headers_listener_sets_headers_when_correct_url(
+        self, mocker: MockerFixture, url: str
+    ) -> None:
         mocker.patch.object(self.driver, "_get_needed_headers", return_value={"test": "headers"})
-        data = {"params": {"request": {"url": CHECKIN_HEADERS_URL, "headers": {}}}}
+        data = {"params": {"request": {"url": url, "headers": {}}}}
 
         self.driver._headers_listener(data)
 
         assert self.driver.headers_set
         assert self.driver.checkin_scheduler.headers == {"test": "headers"}
 
+    def test_headers_listener_does_not_set_headers_when_headers_already_set(self) -> None:
+        data = {
+            "params": {"request": {"url": HEADERS_URLS[0], "headers": {"User-Agent": "Chrome"}}}
+        }
+        self.driver.headers_set = True
+        self.driver._headers_listener(data)
+
+        assert self.driver.checkin_scheduler.headers == {}
+
     def test_headers_listener_does_not_set_headers_when_wrong_url(self) -> None:
-        data = {"params": {"request": {"url": "fake_url", "headers": {}}}}
+        data = {"params": {"request": {"url": "fake_url", "headers": {"User-Agent": "Chrome"}}}}
         self.driver._headers_listener(data)
 
         assert not self.driver.headers_set

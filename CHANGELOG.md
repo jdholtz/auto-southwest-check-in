@@ -2,6 +2,10 @@
 When upgrading to a new version, make sure to follow the directions under the "Upgrading" header of the corresponding version.
 If there is no "Upgrading" header for that version, no post-upgrade actions need to be performed.
 
+## Upcoming
+### Bug Fixes
+- Fix another case where the script would wait for headers to be set forever
+
 
 ## 7.3 (2024-03-04)
 **Note**: It seems that Southwest has been refactoring their API, so updating to this
