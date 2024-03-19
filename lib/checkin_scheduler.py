@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import timedelta
 from typing import TYPE_CHECKING, Any, Dict, List
 
 from .checkin_handler import CheckInHandler
@@ -61,6 +62,7 @@ class CheckInScheduler:
         for flight_info in reservation_info:
             if flight_info["departureStatus"] != "DEPARTED":
                 flight = Flight(flight_info, confirmation_number)
+                self._set_same_day_flight(flight, flights)
                 flights.append(flight)
 
         return flights
@@ -89,6 +91,13 @@ class CheckInScheduler:
         logger.debug("Successfully retrieved reservation information")
         reservation_info = response["viewReservationViewPage"]["bounds"]
         return reservation_info
+
+    def _set_same_day_flight(self, flight: Flight, previous_flights: List[Flight]) -> None:
+        for prev_flight in previous_flights:
+            if flight.departure_time - prev_flight.departure_time <= timedelta(hours=24):
+                logger.debug("Flight is on the same day")
+                flight.is_same_day = True
+                break
 
     def _get_new_flights(self, flights: List[Flight]) -> List[Flight]:
         """Retrieve a list of all flights that are not already scheduled for check-in"""

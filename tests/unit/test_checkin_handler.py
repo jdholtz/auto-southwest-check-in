@@ -5,7 +5,7 @@ from unittest import mock
 import pytest
 from pytest_mock import MockerFixture
 
-from lib.checkin_handler import CheckInHandler
+from lib.checkin_handler import MAX_CHECK_IN_ATTEMPTS, CheckInHandler
 from lib.utils import RequestError
 
 # This needs to be accessed to be tested
@@ -13,8 +13,10 @@ from lib.utils import RequestError
 
 
 class TestCheckInHandler:
+    """Contains common tests between the CheckInHandler and the SameDayCheckInHandler"""
+
     @pytest.fixture(autouse=True)
-    def _set_up_checkin_handler(self, mocker: MockerFixture) -> None:
+    def _set_up_handler(self, mocker: MockerFixture) -> None:
         test_flight = mocker.patch("lib.checkin_handler.Flight")
         mock_checkin_scheduler = mocker.patch("lib.checkin_scheduler.CheckInScheduler")
         mock_lock = mocker.patch("multiprocessing.Lock")
@@ -125,7 +127,7 @@ class TestCheckInHandler:
     def test_check_in_sends_error_notification_when_check_in_fails(
         self, mocker: MockerFixture
     ) -> None:
-        mocker.patch("lib.checkin_handler.make_request", side_effect=RequestError("", ""))
+        mocker.patch.object(CheckInHandler, "_attempt_check_in", side_effect=RequestError("", ""))
         mock_notification_handler = mocker.patch("lib.notification_handler.NotificationHandler")
 
         self.handler.notification_handler = mock_notification_handler
@@ -136,12 +138,9 @@ class TestCheckInHandler:
     def test_check_in_sends_success_notification_on_successful_check_in(
         self, mocker: MockerFixture
     ) -> None:
-        get_response = {
-            "checkInViewReservationPage": {"_links": {"checkIn": {"href": "", "body": ""}}}
-        }
         post_response = {"checkInConfirmationPage": "Checked In!"}
         mock_notification_handler = mocker.patch("lib.notification_handler.NotificationHandler")
-        mocker.patch("lib.checkin_handler.make_request", side_effect=[get_response, post_response])
+        mocker.patch.object(CheckInHandler, "_attempt_check_in", return_value=post_response)
 
         self.handler.notification_handler = mock_notification_handler
         self.handler._check_in()
@@ -149,3 +148,55 @@ class TestCheckInHandler:
         mock_notification_handler.successful_checkin.assert_called_once_with(
             "Checked In!", self.handler.flight
         )
+
+    def test_attempt_check_in_succeeds_first_time_when_flight_is_not_same_day(
+        self, mocker: MockerFixture
+    ) -> None:
+        post_response = {"checkInConfirmationPage": {"flights": ["flight1"]}}
+        mock_check_in_to_flight = mocker.patch.object(
+            CheckInHandler, "_check_in_to_flight", return_value=post_response
+        )
+
+        self.handler.flight.is_same_day = False
+        reservation = self.handler._attempt_check_in()
+
+        mock_check_in_to_flight.assert_called_once()
+        assert reservation == post_response
+
+    def test_submit_check_in_succeeds_after_multiple_attempts(self, mocker: MockerFixture) -> None:
+        first_post_response = {"checkInConfirmationPage": {"flights": ["flight1"]}}
+        second_post_response = {"checkInConfirmationPage": {"flights": ["flight1", "flight2"]}}
+        mocker.patch.object(
+            CheckInHandler,
+            "_check_in_to_flight",
+            side_effect=[first_post_response, second_post_response],
+        )
+        mock_sleep = mocker.patch("time.sleep")
+
+        self.handler.flight.is_same_day = True
+        reservation = self.handler._attempt_check_in()
+
+        assert reservation == second_post_response
+        mock_sleep.assert_called_once()
+
+    def test_submit_check_in_fails_when_max_attempts_reached(self, mocker: MockerFixture) -> None:
+        post_response = {"checkInConfirmationPage": {"flights": ["flight1"]}}
+        mock_check_in_to_flight = mocker.patch.object(
+            CheckInHandler, "_check_in_to_flight", return_value=post_response
+        )
+        mocker.patch("time.sleep")
+
+        self.handler.flight.is_same_day = True
+        with pytest.raises(RequestError):
+            self.handler._attempt_check_in()
+
+        assert mock_check_in_to_flight.call_count == MAX_CHECK_IN_ATTEMPTS
+
+    def test_check_in_to_flight_sends_get_then_post_request(self, mocker: MockerFixture) -> None:
+        get_response = {
+            "checkInViewReservationPage": {"_links": {"checkIn": {"href": "", "body": ""}}}
+        }
+        post_response = {"checkInConfirmationPage": "Checked In!"}
+        mocker.patch("lib.checkin_handler.make_request", side_effect=[get_response, post_response])
+
+        assert self.handler._check_in_to_flight() == post_response

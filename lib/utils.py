@@ -46,7 +46,7 @@ def make_request(method: str, site: str, headers: JSON, info: JSON, max_attempts
 
 # Make a custom exception when a request fails
 class RequestError(Exception):
-    def __init__(self, message: str, response_body: str) -> None:
+    def __init__(self, message: str, response_body: str = "") -> None:
         super().__init__(message)
 
         try:

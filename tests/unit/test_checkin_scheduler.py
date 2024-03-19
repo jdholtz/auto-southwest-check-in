@@ -1,4 +1,5 @@
 import json
+from datetime import datetime, timedelta
 from typing import List
 from unittest import mock
 
@@ -67,9 +68,11 @@ class TestCheckInScheduler:
             CheckInScheduler, "_get_reservation_info", return_value=reservation_info
         )
         mocker.patch("lib.checkin_scheduler.Flight")
+        mock_set_same_day_flight = mocker.patch.object(CheckInScheduler, "_set_same_day_flight")
 
         flights = self.scheduler._get_flights("flight1")
         assert len(flights) == 2
+        assert mock_set_same_day_flight.call_count == len(flights)
 
     def test_get_flights_does_not_retrieve_departed_flights(self, mocker: MockerFixture) -> None:
         reservation_info = [{"departureStatus": "DEPARTED"}]
@@ -139,6 +142,18 @@ class TestCheckInScheduler:
 
         mock_failed_reservation_retrieval.assert_not_called()
         assert reservation_info == []
+
+    @pytest.mark.parametrize(["hour_diff", "same_day"], [(23, True), (24, True), (25, False)])
+    def test_set_same_day_flight_sets_flight_as_same_day_correctly(
+        self, hour_diff: int, same_day: bool, test_flights: List[Flight]
+    ) -> None:
+        prev_flight, new_flight = test_flights
+        prev_flight.departure_time = datetime.utcnow()
+        new_flight.departure_time = prev_flight.departure_time + timedelta(hours=hour_diff)
+
+        self.scheduler._set_same_day_flight(new_flight, [prev_flight])
+
+        assert new_flight.is_same_day == same_day
 
     def test_get_new_flights_gets_flights_not_already_scheduled(
         self, test_flights: List[Flight]

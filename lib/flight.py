@@ -25,6 +25,7 @@ class Flight:
         self.departure_airport = flight_info["departureAirport"]["name"]
         self.destination_airport = flight_info["arrivalAirport"]["name"]
         self.flight_number = self._get_flight_number(flight_info["flights"])
+        self.is_same_day = False
 
         # Track to notify the user of filling out their passport information.
         # Southwest only fills the country's value for international flights
