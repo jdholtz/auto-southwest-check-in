@@ -25,10 +25,7 @@ def mock_chrome(mocker: MockerFixture) -> mock.Mock:
 
 @pytest.fixture
 def mock_account_monitor(mocker: MockerFixture) -> mock.Mock:
-    mock_monitor = mocker.patch("lib.reservation_monitor.AccountMonitor")
-    mock_monitor.username = "test_user"
-    mock_monitor.password = "test_password"
-    return mock_monitor
+    return mocker.patch("lib.reservation_monitor.AccountMonitor")
 
 
 class TestWebDriver:
@@ -166,8 +163,19 @@ class TestWebDriver:
         self, mocker: MockerFixture, mock_chrome: mock.Mock
     ) -> None:
         mocker.patch("seleniumbase.fixtures.page_actions.wait_for_element_not_visible")
+        mocker.patch.object(mock_chrome, "is_element_visible", return_value=False)
         self.driver._click_login_button(mock_chrome)
         mock_chrome.click.assert_not_called()
+
+    def test_click_login_button_does_not_click_when_popup_appears(
+        self, mocker: MockerFixture, mock_chrome: mock.Mock
+    ) -> None:
+        mock_wait_for_element = mocker.patch(
+            "seleniumbase.fixtures.page_actions.wait_for_element_not_visible"
+        )
+        mocker.patch.object(mock_chrome, "is_element_visible", return_value=True)
+        self.driver._click_login_button(mock_chrome)
+        mock_wait_for_element.assert_called_once()
 
     def test_click_login_button_clicks_when_form_fails_to_submit(
         self, mocker: MockerFixture, mock_chrome: mock.Mock
@@ -176,6 +184,7 @@ class TestWebDriver:
             "seleniumbase.fixtures.page_actions.wait_for_element_not_visible",
             side_effect=[None, Exception],
         )
+        mocker.patch.object(mock_chrome, "is_element_visible", return_value=False)
         self.driver._click_login_button(mock_chrome)
         mock_chrome.click.assert_called_once()
 

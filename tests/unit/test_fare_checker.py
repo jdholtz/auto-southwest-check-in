@@ -18,7 +18,7 @@ JSON = Dict[str, Any]
 
 @pytest.fixture
 def test_flight(mocker: MockerFixture) -> Flight:
-    mocker.patch.object(Flight, "_get_flight_time")
+    mocker.patch.object(Flight, "_set_flight_time")
     flight_info = {
         "departureAirport": {"name": None},
         "arrivalAirport": {"name": None, "country": None},
@@ -240,7 +240,12 @@ class TestFareChecker:
 
     @pytest.mark.parametrize(
         "reservation",
-        [{"greyBoxMessage": None}, {"greyBoxMessage": {}}, {"greyBoxMessage": {"body": ""}}],
+        [
+            {"greyBoxMessage": None},
+            {"greyBoxMessage": {}},
+            {"greyBoxMessage": {"body": None}},
+            {"greyBoxMessage": {"body": ""}},
+        ],
     )
     def test_check_for_companion_passes_when_no_companion_exists(self, reservation: JSON) -> None:
         # It will throw an exception if the test does not pass

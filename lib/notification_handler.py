@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Dict, List
 
 import apprise
+import requests
 
 from .flight import Flight
 from .log import get_logger
@@ -43,14 +44,16 @@ class NotificationHandler:
             return
 
         is_international = False
+        twenty_four_hr_time = self.reservation_monitor.config.notification_24_hour_time
         flight_schedule_message = (
             "Successfully scheduled the following flights to check in for "
             f"{self._get_account_name()}:\n"
         )
         for flight in flights:
+            flight_time = flight.get_display_time(twenty_four_hr_time)
             flight_schedule_message += (
                 f"Flight from {flight.departure_airport} to {flight.destination_airport} at "
-                f"{flight.departure_time} UTC\n"
+                f"{flight_time}\n"
             )
             if flight.is_international:
                 is_international = True
@@ -91,10 +94,11 @@ class NotificationHandler:
 
         for flight_info in boarding_pass["flights"]:
             for passenger in flight_info["passengers"]:
-                success_message += (
-                    f"{passenger['name']} got "
-                    f"{passenger['boardingGroup']}{passenger['boardingPosition']}!\n"
-                )
+                if passenger["boardingGroup"] is not None:
+                    success_message += (
+                        f"{passenger['name']} got "
+                        f"{passenger['boardingGroup']}{passenger['boardingPosition']}!\n"
+                    )
 
         logger.debug("Sending successful check-in notification...")
         self.send_notification(success_message, NotificationLevel.INFO)
@@ -116,6 +120,14 @@ class NotificationHandler:
         )
         logger.debug("Sending lower fare notification...")
         self.send_notification(message, NotificationLevel.INFO)
+
+    def healthchecks_success(self, data: str) -> None:
+        if self.reservation_monitor.config.healthchecks_url is not None:
+            requests.post(self.reservation_monitor.config.healthchecks_url, data=data)
+
+    def healthchecks_fail(self, data: str) -> None:
+        if self.reservation_monitor.config.healthchecks_url is not None:
+            requests.post(self.reservation_monitor.config.healthchecks_url + "/fail", data=data)
 
     def _get_account_name(self) -> str:
         return f"{self.reservation_monitor.first_name} {self.reservation_monitor.last_name}"

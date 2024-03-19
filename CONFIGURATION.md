@@ -5,21 +5,28 @@ file can be found at [config.example.json](config.example.json)
 Auto-Southwest Check-In supports both global configuration and account/reservation-specific configuration. See
 [Accounts and Reservations](#accounts-and-reservations) for more information.
 
+**Note**: Many configuration items may also be configured via environment variables (except for account and
+reservation-specific configurations).
+
 ## Table of Contents
 - [Fare Check](#fare-check)
 - [Notifications](#notifications)
     * [Notification URLS](#notification-urls)
     * [Notification Level](#notification-level)
+    * [Notification 24 Hour Time](#notification-24-hour-time)
     * [Test The Notifications](#test-the-notifications)
 - [Browser Path](#browser-path)
 - [Retrieval Interval](#retrieval-interval)
 - [Accounts and Reservations](#accounts-and-reservations)
     * [Accounts](#accounts)
     * [Reservations](#reservations)
+- [Healthchecks URL](#healthchecks-url)
 
 ## Fare Check
 Default: true \
-Type: Boolean
+Type: Boolean \
+Environment Variable: `AUTO_SOUTHWEST_CHECK_IN_CHECK_FARES`
+> Using the environment variable will override the applicable setting in `config.json`.
 
 In addition to automatically checking in, check for price drops on an interval
 (see [Retrieval Interval](#retrieval-interval)). If a lower fare is found, the user will be notified.
@@ -34,7 +41,10 @@ In addition to automatically checking in, check for price drops on an interval
 ## Notifications
 ### Notification URLs
 Default: [] \
-Type: String or List
+Type: String or List \
+Environment Variable: `AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_URL`
+> When using the environment variable, you may only specify a single URL.
+> If you are also using `config.json`, it will append the URL as long as it's not a duplicate.
 
 Users can be notified on successful and failed check-ins. This is done through the [Apprise library][0].
 To start, first gather the service URL you want to send notifications to (information on how to create
@@ -57,7 +67,9 @@ If you have more than one service you want to send notifications to, you can put
 
 ### Notification Level
 Default: 1 \
-Type: Integer
+Type: Integer \
+Environment Variable: `AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_LEVEL`
+> Using the environment variable will override the applicable setting in `config.json`.
 
 You can also select the level of notifications you want to receive.
 ```json
@@ -68,6 +80,19 @@ You can also select the level of notifications you want to receive.
 Level 1 means you receive successful scheduling and check-in messages, lower fare messages, and all messages in later levels.\
 Level 2 means you receive only error messages (failed scheduling and check-ins).
 
+### Notification 24 Hour Time
+Default: false \
+Type: Boolean \
+Environment Variable: `AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_24_HOUR_TIME`
+> Using the environment variable will override the applicable setting in `config.json`.
+
+Display flight times in notifications and console messages in 24-hour format instead of 12-hour format.
+```json
+{
+  "notification_24_hour_time": true
+}
+```
+
 ### Test The Notifications
 To test if the notification URLs work, you can run the following command
 ```shell
@@ -76,7 +101,9 @@ $ python3 southwest.py --test-notifications
 
 ## Browser Path
 Default: The path to your Chrome or Chromium browser (if installed) \
-Type: String
+Type: String \
+Environment Variable: `AUTO_SOUTHWEST_CHECK_IN_BROWSER_PATH`
+> Using the environment variable will override the applicable setting in `config.json`.
 
 If you use another Chromium-based browser besides Google Chrome or Chromium (such as Brave), you need to specify the path to
 the browser executable.
@@ -90,7 +117,9 @@ the browser executable.
 
 ## Retrieval Interval
 Default: 24 hours \
-Type: Integer
+Type: Integer \
+Environment Variable: `AUTO_SOUTHWEST_CHECK_IN_RETRIEVAL_INTERVAL`
+> Using the environment variable will override the applicable setting in `config.json`.
 
 You can choose how often the script checks for lower fares on scheduled flights (in hours). Additionally, this
 interval will also determine how often the script checks for new flights if login credentials are provided. To
@@ -108,7 +137,11 @@ account and reservation.
 
 ### Accounts
 Default: [] \
-Type: List
+Type: List \
+Environment Variables:
+ - `AUTO_SOUTHWEST_CHECK_IN_USERNAME`
+ - `AUTO_SOUTHWEST_CHECK_IN_PASSWORD`
+> When using the environment variables, you may only specify a single set of credentials.
 
 You can add more accounts to the script, allowing you to run multiple accounts at the same time and/or not
 provide a username and password as arguments.
@@ -123,7 +156,12 @@ provide a username and password as arguments.
 
 ### Reservations
 Default: [] \
-Type: List
+Type: List \
+Environment Variables:
+ - `AUTO_SOUTHWEST_CHECK_IN_CONFIRMATION_NUMBER`
+ - `AUTO_SOUTHWEST_CHECK_IN_FIRST_NAME`
+ - `AUTO_SOUTHWEST_CHECK_IN_LAST_NAME`
+> When using the environment variables, you may only specify a single reservation.
 
 You can also add more reservations to the script, allowing you check in to multiple reservations in the same instance
 and/or not provide reservation information as arguments.
@@ -136,18 +174,18 @@ and/or not provide reservation information as arguments.
 }
 ```
 
-
 ### Account and Reservation-specific configuration
 Setting specific configuration values for an account or reservation allows you to fully customize how you want them to be
 monitored by the script. Here is a list of configuration values that can be applied to an individual account or reservation:
 - [Fare Check](#fare-check)
+- [Healthchecks URL](#healthchecks-url)
 - [Notification URLS](#notification-urls)
 - [Notification Level](#notification-level)
 - [Retrieval Interval](#retrieval-interval)
 
 Not all options have to be specified for each account or reservation. If an option is not specified, the top-level value is used
-(or the default value if no top-level value is specified either). Any accounts or reservations specified through the command line
-will use all of the top-level values.
+(or the default value if no top-level value is specified either) with exception to the Healthchecks URL. Any accounts or reservations
+specified through the command line will use all of the top-level values.
 
 An important note about notification URLs: An account or reservation with specific notification URLs will send notifications to those
 URLs as well as URLs specified globally.
@@ -182,6 +220,26 @@ In this example, the script will send notifications attached to this reservation
 }
 ```
 
+## Healthchecks URL
+Default: No URL \
+Type: String
+
+Monitor successful and failed fare checks using a [Healthchecks.io](https://healthchecks.io/) URL. When a fare check
+fails, the `/fail` endpoint of your Healthchecks URL will be pinged to notify you of the failure.
+
+This configuration option can only be applied within reservation and account configurations (specifying it at the top-level
+will have no effect). Due to this, no environment variable is provided as a replacement for this configuration option.
+```json
+{
+    "accounts": [
+        {
+            "username": "user1",
+            "password": "pass1",
+            "healthchecks_url": "https://hc-ping.com/uuid"
+        }
+    ]
+}
+```
 
 
 [0]: https://github.com/caronc/apprise

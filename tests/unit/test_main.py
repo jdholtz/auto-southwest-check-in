@@ -16,52 +16,6 @@ def mock_config(mocker: MockerFixture) -> None:
     mocker.patch("lib.config.GlobalConfig._read_config")
 
 
-def test_print_version_prints_script_version(capsys: pytest.CaptureFixture[str]) -> None:
-    main.print_version()
-    assert main.__version__ in capsys.readouterr().out
-
-
-def test_print_usage_prints_script_usage(capsys: pytest.CaptureFixture[str]) -> None:
-    main.print_usage()
-    output = capsys.readouterr().out
-    assert main.__version__ in output
-    assert main.__doc__ in output
-
-
-@pytest.mark.parametrize("flag", ["-V", "--version"])
-def test_check_flags_prints_version_when_version_flag_is_passed(
-    mocker: MockerFixture,
-    flag: str,
-) -> None:
-    mock_print_version = mocker.patch("lib.main.print_version")
-
-    with pytest.raises(SystemExit):
-        main.check_flags([flag])
-
-    mock_print_version.assert_called_once()
-
-
-@pytest.mark.parametrize("arguments", [["-h"], ["--help"]])
-def test_check_flags_prints_usage_when_help_flag_is_passed(
-    mocker: MockerFixture,
-    arguments: List[str],
-) -> None:
-    mock_print_usage = mocker.patch("lib.main.print_usage")
-
-    with pytest.raises(SystemExit):
-        main.check_flags(arguments)
-
-    mock_print_usage.assert_called_once()
-
-
-def test_check_flags_does_not_exit_when_flags_are_not_matched(
-    mocker: MockerFixture,
-) -> None:
-    mock_exit = mocker.patch("sys.exit")
-    main.check_flags(["--invalid-flag"])
-    mock_exit.assert_not_called()
-
-
 def test_get_notification_urls_gets_all_urls() -> None:
     config = GlobalConfig()
     config.accounts = [AccountConfig()]
@@ -149,13 +103,11 @@ def test_set_up_check_in_sends_error_message_when_arguments_are_invalid(
 
 
 def test_main_sets_up_the_script(mocker: MockerFixture) -> None:
-    mock_check_flags = mocker.patch("lib.main.check_flags")
     mock_init_main_logging = mocker.patch("lib.log.init_main_logging")
     mock_set_up_check_in = mocker.patch("lib.main.set_up_check_in")
     arguments = ["test", "arguments", "--verbose", "-v"]
 
-    main.main(arguments)
-    mock_check_flags.assert_called_once_with(arguments)
+    main.main(arguments, "test_version")
     mock_init_main_logging.assert_called_once()
 
     # Ensure the '--verbose' and '-v' flags are removed
@@ -163,9 +115,8 @@ def test_main_sets_up_the_script(mocker: MockerFixture) -> None:
 
 
 def test_main_exits_on_keyboard_interrupt(mocker: MockerFixture) -> None:
-    mocker.patch("lib.main.check_flags")
     mocker.patch("lib.log.init_main_logging")
     mocker.patch.object(main, "set_up_check_in", side_effect=KeyboardInterrupt)
 
     with pytest.raises(SystemExit):
-        main.main([])
+        main.main([], "test_version")

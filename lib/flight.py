@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict
@@ -23,7 +24,6 @@ class Flight:
         self.confirmation_number = confirmation_number
         self.departure_airport = flight_info["departureAirport"]["name"]
         self.destination_airport = flight_info["arrivalAirport"]["name"]
-        self.departure_time = self._get_flight_time(flight_info)
         self.flight_number = self._get_flight_number(flight_info["flights"])
         self.is_same_day = False
 
@@ -31,17 +31,33 @@ class Flight:
         # Southwest only fills the country's value for international flights
         self.is_international = flight_info["arrivalAirport"]["country"] is not None
 
+        self._local_departure_time = None
+        self.departure_time = None
+        self._set_flight_time(flight_info)
+
     def __eq__(self, other: object) -> bool:
         # Define how two flights are equal to each other
-        return isinstance(other, Flight) and self.flight_number == other.flight_number
+        return (
+            isinstance(other, Flight)
+            and self.flight_number == other.flight_number
+            and self.departure_time == other.departure_time
+        )
 
-    def _get_flight_time(self, flight: JSON) -> datetime:
+    def get_display_time(self, twenty_four_hr_time: bool) -> str:
+        if twenty_four_hr_time:
+            time_format = "%H:%M"
+        else:
+            # The '#' removes leading zeros in Windows and '-' in Linux/Mac
+            time_format = "%#I:%M %p" if os.name == "nt" else "%-I:%M %p"
+
+        date_format = f"%Y-%m-%d {time_format} %Z"
+        return datetime.strftime(self._local_departure_time, date_format)
+
+    def _set_flight_time(self, flight: JSON) -> None:
         flight_date = f"{flight['departureDate']} {flight['departureTime']}"
         departure_airport_code = flight["departureAirport"]["code"]
         airport_timezone = self._get_airport_timezone(departure_airport_code)
-        flight_time = self._convert_to_utc(flight_date, airport_timezone)
-
-        return flight_time
+        self.departure_time = self._convert_to_utc(flight_date, airport_timezone)
 
     def _get_airport_timezone(self, airport_code: str) -> Any:
         project_dir = Path(__file__).parents[1]
@@ -53,14 +69,14 @@ class Flight:
 
     def _convert_to_utc(self, flight_date: str, airport_timezone: Any) -> datetime:
         flight_date = datetime.strptime(flight_date, "%Y-%m-%d %H:%M")
-        flight_time = airport_timezone.localize(flight_date)
-        utc_time = flight_time.astimezone(pytz.utc).replace(tzinfo=None)
+        self._local_departure_time = airport_timezone.localize(flight_date)
 
+        utc_time = self._local_departure_time.astimezone(pytz.utc).replace(tzinfo=None)
         return utc_time
 
     def _get_flight_number(self, flights: JSON) -> str:
         flight_number = ""
         for flight in flights:
-            flight_number += flight["number"] + "/"
+            flight_number += flight["number"] + "\u200b/\u200b"
 
-        return flight_number.rstrip("/")
+        return flight_number.rstrip("\u200b/\u200b")

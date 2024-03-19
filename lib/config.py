@@ -1,10 +1,11 @@
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Any, Dict, List
 
 from .log import get_logger
-from .utils import NotificationLevel
+from .utils import NotificationLevel, is_truthy
 
 # Type alias for JSON
 JSON = Dict[str, Any]
@@ -23,9 +24,14 @@ class Config:
         # Default values are set
         self.browser_path = None
         self.check_fares = True
+        self.notification_24_hour_time = False
         self.notification_level = NotificationLevel.INFO
         self.notification_urls = []
         self.retrieval_interval = 24 * 60 * 60
+
+        # Account and reservation-specific config (parsed in _parse_config, but not merged into
+        # the global configuration).
+        self.healthchecks_url = None
 
     def create(self, config_json: JSON, global_config: "GlobalConfig") -> None:
         self._merge_globals(global_config)
@@ -37,8 +43,9 @@ class Config:
         configuration first. If specific options are set for an account
         or reservation, those will override the global configuration.
         """
-        self.check_fares = global_config.check_fares
         self.browser_path = global_config.browser_path
+        self.check_fares = global_config.check_fares
+        self.notification_24_hour_time = global_config.notification_24_hour_time
         self.notification_level = global_config.notification_level
         self.notification_urls.extend(global_config.notification_urls)
         self.retrieval_interval = global_config.retrieval_interval
@@ -54,6 +61,41 @@ class Config:
 
             if not isinstance(self.check_fares, bool):
                 raise ConfigError("'check_fares' must be a boolean")
+
+        if "healthchecks_url" in config:
+            self.healthchecks_url = config["healthchecks_url"]
+
+            if not isinstance(self.healthchecks_url, str):
+                raise ConfigError("'healthchecks_url' must be a string")
+
+            logger.debug("A Healthchecks URL has been provided")
+
+        if "retrieval_interval" in config:
+            self.retrieval_interval = config["retrieval_interval"]
+            logger.debug("Setting retrieval interval to %s hours", self.retrieval_interval)
+
+            if not isinstance(self.retrieval_interval, int):
+                raise ConfigError("'retrieval_interval' must be an integer")
+
+            if self.retrieval_interval < 0:
+                logger.warning(
+                    "Setting 'retrieval_interval' to 0 hours as %s hours is too low",
+                    self.retrieval_interval,
+                )
+                self.retrieval_interval = 0
+
+            # Convert hours to seconds
+            self.retrieval_interval *= 3600
+
+        self._parse_notification_config(config)
+
+    def _parse_notification_config(self, config: JSON) -> None:
+        if "notification_24_hour_time" in config:
+            self.notification_24_hour_time = config["notification_24_hour_time"]
+            logger.debug("Setting notification 24 hour time to %s", self.notification_24_hour_time)
+
+            if not isinstance(self.notification_24_hour_time, bool):
+                raise ConfigError("'notification_24_hour_time' must be a boolean")
 
         if "notification_level" in config:
             notification_level = config["notification_level"]
@@ -79,23 +121,6 @@ class Config:
             self.notification_urls.extend(notification_urls)
             logger.debug("Using %d notification services", len(self.notification_urls))
 
-        if "retrieval_interval" in config:
-            self.retrieval_interval = config["retrieval_interval"]
-            logger.debug("Setting retrieval interval to %s hours", self.retrieval_interval)
-
-            if not isinstance(self.retrieval_interval, int):
-                raise ConfigError("'retrieval_interval' must be an integer")
-
-            if self.retrieval_interval < 0:
-                logger.warning(
-                    "Setting 'retrieval_interval' to 0 hours as %s hours is too low",
-                    self.retrieval_interval,
-                )
-                self.retrieval_interval = 0
-
-            # Convert hours to seconds
-            self.retrieval_interval *= 3600
-
 
 class GlobalConfig(Config):
     def __init__(self) -> None:
@@ -108,6 +133,7 @@ class GlobalConfig(Config):
 
         try:
             config = self._read_config()
+            config = self._read_env_vars(config)
             self._parse_config(config)
         except (ConfigError, json.decoder.JSONDecodeError) as err:
             print("Error in configuration file:")
@@ -141,6 +167,90 @@ class GlobalConfig(Config):
 
         if not isinstance(config, dict):
             raise ConfigError("Configuration must be a JSON dictionary")
+
+        return config
+
+    def _read_env_vars(self, config: JSON) -> JSON:
+        logger.debug("Reading configuration from environment variables")
+
+        # Check Fares
+        check_fares = os.getenv("AUTO_SOUTHWEST_CHECK_IN_CHECK_FARES")
+        if check_fares:
+            try:
+                config["check_fares"] = is_truthy(check_fares)
+            except ValueError as err:
+                raise ConfigError("Error parsing 'AUTO_SOUTHWEST_CHECK_IN_CHECK_FARES'") from err
+
+        # Browser Path
+        browser_path = os.getenv("AUTO_SOUTHWEST_CHECK_IN_BROWSER_PATH")
+        if browser_path:
+            config["browser_path"] = browser_path
+
+        # Retrieval Interval
+        retrieval_interval = os.getenv("AUTO_SOUTHWEST_CHECK_IN_RETRIEVAL_INTERVAL")
+        if retrieval_interval:
+            try:
+                config["retrieval_interval"] = int(retrieval_interval)
+            except ValueError as err:
+                raise ConfigError(
+                    "'AUTO_SOUTHWEST_CHECK_IN_RETRIEVAL_INTERVAL' must be an integer"
+                ) from err
+
+        # Account credentials
+        username = os.getenv("AUTO_SOUTHWEST_CHECK_IN_USERNAME")
+        password = os.getenv("AUTO_SOUTHWEST_CHECK_IN_PASSWORD")
+        if username and password:
+            new_credentials = {"username": username, "password": password}
+            config.setdefault("accounts", [])
+            config["accounts"].append(new_credentials)
+
+        # Reservation information
+        confirmation_number = os.getenv("AUTO_SOUTHWEST_CHECK_IN_CONFIRMATION_NUMBER")
+        first_name = os.getenv("AUTO_SOUTHWEST_CHECK_IN_FIRST_NAME")
+        last_name = os.getenv("AUTO_SOUTHWEST_CHECK_IN_LAST_NAME")
+        if confirmation_number and first_name and last_name:
+            new_reservation = {
+                "confirmationNumber": confirmation_number,
+                "firstName": first_name,
+                "lastName": last_name,
+            }
+            config.setdefault("reservations", [])
+            config["reservations"].append(new_reservation)
+
+        config = self._read_notification_env_vars(config)
+        return config
+
+    def _read_notification_env_vars(self, config: JSON) -> JSON:
+        # Notification 24-hour time
+        notification_24_hour_time = os.getenv("AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_24_HOUR_TIME")
+        if notification_24_hour_time:
+            try:
+                config["notification_24_hour_time"] = is_truthy(notification_24_hour_time)
+            except ValueError as err:
+                raise ConfigError(
+                    "Error parsing 'AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_24_HOUR_TIME'"
+                ) from err
+
+        # Notification URL
+        notification_url = os.getenv("AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_URL")
+        if notification_url:
+            config.setdefault("notification_urls", [])
+            if isinstance(config["notification_urls"], str):
+                config["notification_urls"] = [config["notification_urls"]]
+            if not isinstance(config["notification_urls"], list):
+                raise ConfigError("'notification_urls' must be a string or a list")
+            if notification_url not in config["notification_urls"]:
+                config["notification_urls"].append(notification_url)
+
+        # Notification Level
+        notification_level = os.getenv("AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_LEVEL")
+        if notification_level:
+            try:
+                config["notification_level"] = int(notification_level)
+            except ValueError as err:
+                raise ConfigError(
+                    "'AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_LEVEL' must be an integer"
+                ) from err
 
         return config
 

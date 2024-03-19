@@ -93,6 +93,30 @@ class TestNotificationHandler:
         )
         assert mock_send_notification.call_args[0][1] == NotificationLevel.INFO
 
+    def test_does_not_include_notification_for_lap_child(self, mocker: MockerFixture) -> None:
+        """
+        A lap child does not get a boarding position, and does not need a notification
+        """
+        mock_send_notification = mocker.patch.object(NotificationHandler, "send_notification")
+        mock_flight = mocker.patch("lib.notification_handler.Flight")
+
+        self.handler.successful_checkin(
+            {
+                "flights": [
+                    {
+                        "passengers": [
+                            {"name": "John", "boardingGroup": "A", "boardingPosition": "1"},
+                            {"name": "Lap Child", "boardingGroup": None, "boardingPosition": None},
+                        ]
+                    }
+                ]
+            },
+            mock_flight,
+        )
+        assert "John got A1!" in mock_send_notification.call_args[0][0]
+        assert "Lap Child got NoneNone!" not in mock_send_notification.call_args[0][0]
+        assert mock_send_notification.call_args[0][1] == NotificationLevel.INFO
+
     def test_failed_checkin_sends_error_notification(self, mocker: MockerFixture) -> None:
         mock_send_notification = mocker.patch.object(NotificationHandler, "send_notification")
         mock_flight = mocker.patch("lib.notification_handler.Flight")
@@ -106,6 +130,26 @@ class TestNotificationHandler:
 
         self.handler.lower_fare(mock_flight, "")
         assert mock_send_notification.call_args[0][1] == NotificationLevel.INFO
+
+    @pytest.mark.parametrize(["url", "expected_calls"], [("http://healthchecks", 1), (None, 0)])
+    def test_healthchecks_success_pings_url_only_if_configured(
+        self, mocker: MockerFixture, url: str, expected_calls: int
+    ) -> None:
+        mock_post = mocker.patch("requests.post")
+        self.handler.reservation_monitor.config.healthchecks_url = url
+
+        self.handler.healthchecks_success("healthchecks success")
+        assert mock_post.call_count == expected_calls
+
+    @pytest.mark.parametrize(["url", "expected_calls"], [("http://healthchecks", 1), (None, 0)])
+    def test_healthchecks_fail_pings_url_only_if_configured(
+        self, mocker: MockerFixture, url: str, expected_calls: int
+    ) -> None:
+        mock_post = mocker.patch("requests.post")
+        self.handler.reservation_monitor.config.healthchecks_url = url
+
+        self.handler.healthchecks_fail("healthchecks fail")
+        assert mock_post.call_count == expected_calls
 
     def test_get_account_name_returns_the_correct_name(self) -> None:
         self.handler.reservation_monitor.first_name = "John"

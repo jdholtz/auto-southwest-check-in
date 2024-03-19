@@ -133,10 +133,11 @@ class TestReservationMonitor:
         mock_fare_checker.assert_not_called()
 
     def test_check_flight_fares_checks_fares_on_all_flights(self, mocker: MockerFixture) -> None:
+        test_flight = mocker.patch("lib.checkin_handler.Flight")
         mock_check_flight_price = mocker.patch.object(FareChecker, "check_flight_price")
 
         self.monitor.config.check_fares = True
-        self.monitor.checkin_scheduler.flights = ["test_flight1", "test_flight2"]
+        self.monitor.checkin_scheduler.flights = [test_flight, test_flight]
         self.monitor._check_flight_fares()
 
         assert mock_check_flight_price.call_count == len(self.monitor.checkin_scheduler.flights)
@@ -145,12 +146,13 @@ class TestReservationMonitor:
     def test_check_flight_fares_catches_error_when_checking_fares(
         self, mocker: MockerFixture, exception: Exception
     ) -> None:
+        test_flight = mocker.patch("lib.checkin_handler.Flight")
         mock_check_flight_price = mocker.patch.object(
-            FareChecker, "check_flight_price", side_effect=["", exception]
+            FareChecker, "check_flight_price", side_effect=[None, exception]
         )
 
         self.monitor.config.check_fares = True
-        self.monitor.checkin_scheduler.flights = ["test_flight1", "test_flight2"]
+        self.monitor.checkin_scheduler.flights = [test_flight, test_flight]
         self.monitor._check_flight_fares()
 
         assert mock_check_flight_price.call_count == len(self.monitor.checkin_scheduler.flights)

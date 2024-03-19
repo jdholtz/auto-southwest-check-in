@@ -6,7 +6,6 @@ import re
 import time
 from typing import TYPE_CHECKING, Any, Dict, List
 
-from requests.compat import quote_plus
 from seleniumbase import Driver
 from seleniumbase.fixtures import page_actions as seleniumbase_actions
 
@@ -81,12 +80,16 @@ class WebDriver:
 
         # Log in to retrieve the account's reservations and needed headers for later requests
         seleniumbase_actions.wait_for_element_not_visible(driver, ".dimmer")
+
+        # If a popup came up with an error, click "OK" to remove it.
+        # See https://github.com/jdholtz/auto-southwest-check-in/issues/226
+        driver.click_if_visible(".button-popup.confirm-button")
+
         driver.click(".login-button--box")
         driver.type('input[name="userNameOrAccountNumber"]', account_monitor.username)
 
         # Use quote_plus to workaround a x-www-form-urlencoded encoding bug on the mobile site
-        password = quote_plus(account_monitor.password)
-        driver.type('input[name="password"]', f"{password}\n")
+        driver.type('input[name="password"]', f"{account_monitor.password}\n")
 
         # Wait for the necessary information to be set
         self._wait_for_attribute("headers_set")
@@ -178,8 +181,12 @@ class WebDriver:
         again, if necessary.
         """
         seleniumbase_actions.wait_for_element_not_visible(driver, ".dimmer")
-        login_button = "button#login-btn"
+        if driver.is_element_visible("div.popup"):
+            # Don't attempt to click the login button again if the submission form went through,
+            # yet there was an error
+            return
 
+        login_button = "button#login-btn"
         try:
             seleniumbase_actions.wait_for_element_not_visible(driver, login_button, timeout=5)
         except Exception:

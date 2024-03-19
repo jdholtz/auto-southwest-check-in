@@ -41,7 +41,7 @@ CHANGE_FLIGHT_PAGE = {
                 "originalDate": "2021-12-06",
                 "toAirportCode": "SYD",
                 "fromAirportCode": "LAX",
-                "flight": "100/101",
+                "flight": "100\u200b/\u200b101",
             }
         ],
     }
@@ -58,9 +58,9 @@ FLIGHT_CARDS = [
             }
         ],
     },
-    {"flightNumbers": "98/99"},
+    {"flightNumbers": "98\u200b/\u200b99"},
     {
-        "flightNumbers": "100/101",
+        "flightNumbers": "100\u200b/\u200b101",
         "fares": [
             {"_meta": {"fareProductId": "TEST"}},
             {
