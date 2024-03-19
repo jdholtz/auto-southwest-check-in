@@ -1,0 +1,4 @@
+{
+    "image": "mcr.microsoft.com/devcontainers/universal:2",
+    "postCreateCommand": "sudo apt-get update -y && wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb && sudo apt install ./google-chrome-stable_current_amd64.deb -y && pip install -r requirements.txt -r tests/requirements.txt"
+}
