@@ -11,6 +11,7 @@ on:
     # These paths are files in the git repository from
     # .dockerignore (except the Docker files)
     paths-ignore:
+      - ".devcontainer/**"
       - ".editorconfig"
       - ".github/**"
       - "!.github/workflows/docker.yml" # Still run on changes to this file
