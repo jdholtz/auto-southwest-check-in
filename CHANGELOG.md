@@ -3,7 +3,14 @@ When upgrading to a new version, make sure to follow the directions under the "U
 If there is no "Upgrading" header for that version, no post-upgrade actions need to be performed.
 
 ## Upcoming
+### New Features
+- A [development container](https://docs.github.com/en/codespaces/setting-up-your-project-for-codespaces/adding-a-dev-container-configuration/introduction-to-dev-containers)
+configuration was added to make it easier for contributors to use GitHub Codespaces for the project
+([#240](https://github.com/jdholtz/auto-southwest-check-in/pull/240) by [@ankit-jha](https://github.com/ankit-jha))
+
 ### Bug Fixes
+- Same-day flights are now correctly checked in
+([#241](https://github.com/jdholtz/auto-southwest-check-in/pull/241))
 - Fix another case where the script would wait for headers to be set forever
 
 
