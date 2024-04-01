@@ -13,6 +13,9 @@ configuration was added to make it easier for contributors to use GitHub Codespa
 ([#241](https://github.com/jdholtz/auto-southwest-check-in/pull/241))
 - Fix another case where the script would wait for headers to be set forever
 
+### Upgrading
+- Upgrade the dependencies to the latest versions by running `pip install -r requirements.txt`
+
 
 ## 7.3 (2024-03-04)
 **Note**: It seems that Southwest has been refactoring their API, so updating to this

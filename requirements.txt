@@ -1,4 +1,4 @@
-apprise==1.7.3
+apprise==1.7.5
 pytz==2024.1  # Remove when this script only supports Python 3.9+
 requests==2.31.0
-seleniumbase==4.24.3
+seleniumbase==4.25.0
