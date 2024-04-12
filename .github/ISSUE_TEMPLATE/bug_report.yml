@@ -41,7 +41,8 @@ body:
     attributes:
       label: Relevant logs and program output
       description: |
-        Please paste relevant output or logs here. Additionally, the log file can be attached to this issue (found at `logs/auto-southwest-check-in.log`)
+        Please paste relevant output or logs here. Additionally, the log file can be attached to this issue (found at `logs/auto-southwest-check-in.log`).
+        If you are having issues with the browser, you can run the script with the `--debug-screenshots` argument and attach the images to this issue.
       placeholder: This will be automatically formatted into code, so no need for backticks.
       render: sh
   - type: textarea

@@ -1,4 +1,5 @@
 import os
+import sys
 from typing import Any, Dict
 from unittest import mock
 
@@ -29,6 +30,22 @@ class TestWebDriver:
         mock_checkin_scheduler.headers = {}
         # pylint: disable=attribute-defined-outside-init
         self.driver = WebDriver(mock_checkin_scheduler)
+
+    @pytest.mark.parametrize(
+        ["arg", "take_screenshots"], [("--debug-screenshots", True), ("--no-screenshots", False)]
+    )
+    def test_should_take_screenshots_detects_debug_screenshots_argument(
+        self, arg: str, take_screenshots: bool
+    ) -> None:
+        sys.argv = ["", arg]
+        assert self.driver._should_take_screenshots() == take_screenshots
+
+    def test_take_debug_screenshot_takes_shot_in_debug_mode(self, mock_chrome: mock.Mock) -> None:
+        self.driver.debug_screenshots = True
+        self.driver._take_debug_screenshot(mock_chrome, "test-shot.png")
+
+        mock_chrome.save_screenshot.assert_called_once()
+        assert "test-shot.png" in mock_chrome.save_screenshot.call_args[0][0]
 
     def test_set_headers_correctly_sets_needed_headers(
         self, mocker: MockerFixture, mock_chrome: mock.Mock

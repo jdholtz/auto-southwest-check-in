@@ -3,9 +3,9 @@ import logging.handlers
 import multiprocessing
 import os
 import sys
-from pathlib import Path
 
-LOG_FILE = "logs/auto-southwest-check-in.log"
+LOGS_DIRECTORY = "logs"
+LOG_FILE = "auto-southwest-check-in.log"
 LOG_LEVEL = logging.INFO
 
 
@@ -26,7 +26,7 @@ def init_main_logging() -> None:
 def init_logging(logger: logging.Logger) -> None:
     """Sets the configuration for the provided logger"""
     # Make the logging directory if it doesn't exist
-    os.makedirs(Path(LOG_FILE).parent, exist_ok=True)
+    os.makedirs(LOGS_DIRECTORY, exist_ok=True)
 
     logger.setLevel(logging.DEBUG)  # The minimum level for every handler
 
@@ -35,8 +35,9 @@ def init_logging(logger: logging.Logger) -> None:
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
+    log_file_path = os.path.join(LOGS_DIRECTORY, LOG_FILE)
     file_handler = logging.handlers.RotatingFileHandler(
-        LOG_FILE, maxBytes=2 * 1024 * 1024, backupCount=4
+        log_file_path, maxBytes=2 * 1024 * 1024, backupCount=4
     )
     file_handler.setLevel(logging.DEBUG)
     file_handler.setFormatter(formatter)

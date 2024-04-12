@@ -105,7 +105,7 @@ def main(arguments: List[str], version: str) -> None:
     logger.debug("Auto-Southwest Check-In %s", version)
 
     # Remove flags now that they are not needed (and will mess up parsing)
-    flags_to_remove = ["-v", "--verbose"]
+    flags_to_remove = ["--debug-screenshots", "-v", "--verbose"]
     arguments = [x for x in arguments if x not in flags_to_remove]
 
     try:

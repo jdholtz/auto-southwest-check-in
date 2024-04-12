@@ -3,13 +3,14 @@ from __future__ import annotations
 import json
 import os
 import re
+import sys
 import time
 from typing import TYPE_CHECKING, Any, Dict, List
 
 from seleniumbase import Driver
 from seleniumbase.fixtures import page_actions as seleniumbase_actions
 
-from .log import get_logger
+from .log import LOGS_DIRECTORY, get_logger
 from .utils import LoginError
 
 if TYPE_CHECKING:
@@ -52,11 +53,30 @@ class WebDriver:
     def __init__(self, checkin_scheduler: CheckInScheduler) -> None:
         self.checkin_scheduler = checkin_scheduler
         self.headers_set = False
+        self.debug_screenshots = self._should_take_screenshots()
 
         # For account login
         self.login_request_id = None
         self.login_status_code = None
         self.trips_request_id = None
+
+    def _should_take_screenshots(self) -> bool:
+        """
+        Determines if the webdriver should take screenshots for debugging based on the CLI arguments
+        of the script. Similarly to setting verbose logs, this cannot be kept track of easily in a
+        global variable due to the script's use of multiprocessing.
+        """
+        arguments = sys.argv[1:]
+        if "--debug-screenshots" in arguments:
+            logger.debug("Taking debug screenshots")
+            return True
+
+        return False
+
+    def _take_debug_screenshot(self, driver: Driver, name: str) -> None:
+        """Take a screenshot of the browser and save the image as 'name' in LOGS_DIRECTORY"""
+        if self.debug_screenshots:
+            driver.save_screenshot(os.path.join(LOGS_DIRECTORY, name))
 
     def set_headers(self) -> None:
         """
@@ -64,9 +84,11 @@ class WebDriver:
         during the initial request, those headers are set in the CheckIn Scheduler.
         """
         driver = self._get_driver()
+        self._take_debug_screenshot(driver, "pre_headers.png")
         logger.debug("Waiting for valid headers")
         # Once this attribute is set, the headers have been set in the checkin_scheduler
         self._wait_for_attribute("headers_set")
+        self._take_debug_screenshot(driver, "post_headers.png")
 
         driver.quit()
 
@@ -83,6 +105,7 @@ class WebDriver:
 
         # Log in to retrieve the account's reservations and needed headers for later requests
         seleniumbase_actions.wait_for_element_not_visible(driver, ".dimmer")
+        self._take_debug_screenshot(driver, "pre_login.png")
 
         # If a popup came up with an error, click "OK" to remove it.
         # See https://github.com/jdholtz/auto-southwest-check-in/issues/226
@@ -97,6 +120,7 @@ class WebDriver:
         # Wait for the necessary information to be set
         self._wait_for_attribute("headers_set")
         self._wait_for_login(driver, account_monitor)
+        self._take_debug_screenshot(driver, "post_login.png")
 
         # The upcoming trips page is also loaded when we log in, so we might as well grab it
         # instead of requesting again later

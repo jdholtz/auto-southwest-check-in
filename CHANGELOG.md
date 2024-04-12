@@ -7,6 +7,9 @@ If there is no "Upgrading" header for that version, no post-upgrade actions need
 - A [development container](https://docs.github.com/en/codespaces/setting-up-your-project-for-codespaces/adding-a-dev-container-configuration/introduction-to-dev-containers)
 configuration was added to make it easier for contributors to use GitHub Codespaces for the project
 ([#240](https://github.com/jdholtz/auto-southwest-check-in/pull/240) by [@ankit-jha](https://github.com/ankit-jha))
+- Screenshots of the browser can now be taken at different stages in the script by running the script with the
+`--debug-screenshots` argument
+    - The screenshots are stored in the `logs/` directory
 
 ### Bug Fixes
 - Same-day flights are now correctly checked in

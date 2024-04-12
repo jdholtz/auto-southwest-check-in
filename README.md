@@ -129,7 +129,8 @@ For information on how to set up the configuration, see [Configuration.md](CONFI
 
 ## Troubleshooting
 To troubleshoot a problem, run the script with the `--verbose` flag. This will display debug messages so you can
-get a better overview of the problem.
+get a better overview of the problem. You can also run the script with the `--debug-screenshots` flag which will
+take screenshots of the browser (stored in the logs/ directory) so you can see it at different stages in the script.
 
 If you run into any issues, please file it via [GitHub Issues][6]. Please attach any relevant logs (found in
 `logs/auto-southwest-check-in.log`) to the issue. The logs should not have any personal information but check to make
