@@ -54,8 +54,7 @@ jobs:
             ${{ secrets.DOCKER_HUB_USERNAME }}/auto-southwest-check-in:${{ github.event.release.tag_name }}
             ${{ secrets.DOCKER_HUB_USERNAME }}/auto-southwest-check-in:latest
           platforms: linux/amd64,linux/arm64,linux/arm/v7
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          # Don't use the cache for release images to ensure everything is up to date
 
       # Develop branch push, which builds :develop
       - name: Build and push :develop
