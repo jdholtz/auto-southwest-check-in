@@ -160,7 +160,7 @@ checking in a companion.
 <summary>Will This Script Also Check in the Companion Attached to My Reservation?</summary>
 
 Unfortunately, this is not possible due to how Southwest's companion system works. To ensure your companion is also checked in,
-you can set up their reservation or account separately in the configuration file.
+you can add their reservation or account separately in the configuration file.
 </details>
 
 <details>
