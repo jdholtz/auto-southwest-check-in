@@ -148,10 +148,10 @@ class CheckInHandler:
         succeed after one attempt for non-same-day flights, but is necessary for
         same-day flights.
 
-        Since the check-in is started early, the submission will go through for the
-        previous flight, but the flight attached to this handler will not have been
-        checked in yet. Therefore, this function keeps attempting to check in until
-        both flights have checked in.
+        For same-day flights: since the check-in is started early, the submission will
+        go through for the previous flight, but the flight attached to this handler will
+        not have been checked in yet. Therefore, this function keeps attempting to check
+        in until both flights have checked in.
         """
         logger.debug("Submitting check-in with a POST request")
         expected_flights = 2 if self.flight.is_same_day else 1
