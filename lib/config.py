@@ -174,21 +174,18 @@ class GlobalConfig(Config):
         logger.debug("Reading configuration from environment variables")
 
         # Check Fares
-        check_fares = os.getenv("AUTO_SOUTHWEST_CHECK_IN_CHECK_FARES")
-        if check_fares:
+        if check_fares := os.getenv("AUTO_SOUTHWEST_CHECK_IN_CHECK_FARES"):
             try:
                 config["check_fares"] = is_truthy(check_fares)
             except ValueError as err:
                 raise ConfigError("Error parsing 'AUTO_SOUTHWEST_CHECK_IN_CHECK_FARES'") from err
 
         # Browser Path
-        browser_path = os.getenv("AUTO_SOUTHWEST_CHECK_IN_BROWSER_PATH")
-        if browser_path:
+        if browser_path := os.getenv("AUTO_SOUTHWEST_CHECK_IN_BROWSER_PATH"):
             config["browser_path"] = browser_path
 
         # Retrieval Interval
-        retrieval_interval = os.getenv("AUTO_SOUTHWEST_CHECK_IN_RETRIEVAL_INTERVAL")
-        if retrieval_interval:
+        if retrieval_interval := os.getenv("AUTO_SOUTHWEST_CHECK_IN_RETRIEVAL_INTERVAL"):
             try:
                 config["retrieval_interval"] = int(retrieval_interval)
             except ValueError as err:
@@ -222,8 +219,9 @@ class GlobalConfig(Config):
 
     def _read_notification_env_vars(self, config: JSON) -> JSON:
         # Notification 24-hour time
-        notification_24_hour_time = os.getenv("AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_24_HOUR_TIME")
-        if notification_24_hour_time:
+        if notification_24_hour_time := os.getenv(
+            "AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_24_HOUR_TIME"
+        ):
             try:
                 config["notification_24_hour_time"] = is_truthy(notification_24_hour_time)
             except ValueError as err:
@@ -232,8 +230,7 @@ class GlobalConfig(Config):
                 ) from err
 
         # Notification URL
-        notification_url = os.getenv("AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_URL")
-        if notification_url:
+        if notification_url := os.getenv("AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_URL"):
             config.setdefault("notification_urls", [])
             if isinstance(config["notification_urls"], str):
                 config["notification_urls"] = [config["notification_urls"]]
@@ -243,8 +240,7 @@ class GlobalConfig(Config):
                 config["notification_urls"].append(notification_url)
 
         # Notification Level
-        notification_level = os.getenv("AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_LEVEL")
-        if notification_level:
+        if notification_level := os.getenv("AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_LEVEL"):
             try:
                 config["notification_level"] = int(notification_level)
             except ValueError as err:
