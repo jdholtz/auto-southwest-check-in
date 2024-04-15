@@ -1,3 +1,4 @@
+import json
 from typing import Any
 
 import pytest
@@ -17,6 +18,24 @@ def test_make_request_raises_exception_on_failure(
         utils.make_request("POST", "test", {}, {}, max_attempts=5)
 
     assert mock_sleep.call_count == 5
+
+
+def test_make_request_stops_early_when_reservation_not_found(
+    mocker: MockerFixture, requests_mock: RequestMocker
+) -> None:
+    response_body = {"code": utils.RESERVATION_NOT_FOUND_CODE}
+    requests_mock.get(
+        utils.BASE_URL + "test",
+        status_code=400,
+        text=json.dumps(response_body),
+        reason="Bad Request",
+    )
+    mock_sleep = mocker.patch("time.sleep")
+
+    with pytest.raises(utils.RequestError):
+        utils.make_request("GET", "test", {}, {})
+
+    assert mock_sleep.call_count == 0
 
 
 def test_make_request_correctly_posts_data(requests_mock: RequestMocker) -> None:

@@ -13,11 +13,12 @@ JSON = Dict[str, Any]
 BASE_URL = "https://mobile.southwest.com/api/"
 logger = get_logger(__name__)
 
+RESERVATION_NOT_FOUND_CODE = 400620389
+
 
 def make_request(method: str, site: str, headers: JSON, info: JSON, max_attempts=20) -> JSON:
     # Ensure the URL is not malformed
     site = site.replace("//", "/").lstrip("/")
-
     url = BASE_URL + site
 
     # In the case that your server and the Southwest server aren't in sync,
@@ -33,13 +34,19 @@ def make_request(method: str, site: str, headers: JSON, info: JSON, max_attempts
             logger.debug("Successfully made request after %d attempts", attempts)
             return response.json()
 
+        response_body = response.content.decode()
+        error = RequestError(None, response_body)
+        if error.southwest_code == RESERVATION_NOT_FOUND_CODE:
+            # Don't keep requesting if the reservation was not found
+            logger.debug("Reservation not found")
+            break
+
         attempts += 1
         time.sleep(0.5)
 
     error_msg = response.reason + " " + str(response.status_code)
-    logger.debug("Failed to make request after %d attempts: %s", max_attempts, error_msg)
+    logger.debug("Failed to make request after %d attempts: %s", attempts, error_msg)
 
-    response_body = response.content.decode()
     logger.debug("Response body: %s", response_body)
     raise RequestError(error_msg, response_body)
 
