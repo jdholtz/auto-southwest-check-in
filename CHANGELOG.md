@@ -2,7 +2,7 @@
 When upgrading to a new version, make sure to follow the directions under the "Upgrading" header of the corresponding version.
 If there is no "Upgrading" header for that version, no post-upgrade actions need to be performed.
 
-## Upcoming
+## 7.4 (2024-04-14)
 ### New Features
 - A [development container](https://docs.github.com/en/codespaces/setting-up-your-project-for-codespaces/adding-a-dev-container-configuration/introduction-to-dev-containers)
 configuration was added to make it easier for contributors to use GitHub Codespaces for the project
