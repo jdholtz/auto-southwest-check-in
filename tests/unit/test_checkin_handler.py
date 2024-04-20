@@ -79,15 +79,19 @@ class TestCheckInHandler:
         self, mocker: MockerFixture
     ) -> None:
         mock_sleep = mocker.patch("time.sleep")
-        self.handler._wait_for_check_in(datetime(1999, 12, 31))
+        mocker.patch(
+            "lib.checkin_handler.get_current_time", return_value=datetime(1999, 12, 31, 18, 30)
+        )
+        self.handler._wait_for_check_in(datetime(1999, 12, 31, 18))
         mock_sleep.assert_not_called()
 
     def test_wait_for_check_in_sleeps_once_when_check_in_is_less_than_thirty_minutes_away(
         self, mocker: MockerFixture
     ) -> None:
         mock_sleep = mocker.patch("time.sleep")
-        mock_datetime = mocker.patch("lib.checkin_handler.datetime")
-        mock_datetime.utcnow.return_value = datetime(1999, 12, 31, 18, 29, 59)
+        mocker.patch(
+            "lib.checkin_handler.get_current_time", return_value=datetime(1999, 12, 31, 18, 29, 59)
+        )
 
         self.handler._wait_for_check_in(datetime(1999, 12, 31, 18, 59, 59))
 
@@ -102,11 +106,13 @@ class TestCheckInHandler:
     ) -> None:
         mock_sleep = mocker.patch("time.sleep")
         mock_refresh_headers = self.handler.checkin_scheduler.refresh_headers
-        mock_datetime = mocker.patch("lib.checkin_handler.datetime")
-        mock_datetime.utcnow.side_effect = [
-            datetime(1999, 12, 31, 18, 29, 59),
-            datetime(1999, 12, 31, 23, 19, 59),
-        ]
+        mocker.patch(
+            "lib.checkin_handler.get_current_time",
+            side_effect=[
+                datetime(1999, 12, 31, 18, 29, 59),
+                datetime(1999, 12, 31, 23, 19, 59),
+            ],
+        )
 
         self.handler._wait_for_check_in(datetime(1999, 12, 31, 23, 49, 59))
 

@@ -5,6 +5,7 @@ are set, errors are handled, and integration with the webdriver works.
 
 import copy
 import json
+from datetime import datetime
 from multiprocessing import Lock
 from unittest import mock
 
@@ -59,6 +60,7 @@ def test_flight_is_scheduled_checks_in_and_departs(
     tz_data = {"LAX": "America/Los_Angeles"}
 
     mocker.patch("pathlib.Path.read_text", return_value=json.dumps(tz_data))
+    mocker.patch("lib.reservation_monitor.get_current_time", return_value=datetime(1999, 12, 31))
     mock_process = mocker.patch("lib.checkin_handler.Process").return_value
     mock_new_flights_notification = mocker.patch(
         "lib.notification_handler.NotificationHandler.new_flights"
@@ -135,6 +137,7 @@ def test_account_schedules_new_flights(requests_mock: RequestMocker, mocker: Moc
     tz_data = {"LAX": "America/Los_Angeles", "SYD": "Australia/Sydney"}
     mocker.patch("pathlib.Path.read_text", return_value=json.dumps(tz_data))
 
+    mocker.patch("lib.reservation_monitor.get_current_time", return_value=datetime(1999, 12, 31))
     mocker.patch("lib.webdriver.seleniumbase_actions.wait_for_element_not_visible")
     mock_process = mocker.patch("lib.checkin_handler.Process").return_value
     # Raise a StopIteration to prevent an infinite loop

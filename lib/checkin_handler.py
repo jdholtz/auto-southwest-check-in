@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any, Dict
 
 from .flight import Flight
 from .log import get_logger
-from .utils import RequestError, make_request
+from .utils import RequestError, get_current_time, make_request
 
 if TYPE_CHECKING:
     from .checkin_scheduler import CheckInScheduler
@@ -82,7 +82,7 @@ class CheckInHandler:
             pass
 
     def _wait_for_check_in(self, checkin_time: datetime) -> None:
-        current_time = datetime.utcnow()
+        current_time = get_current_time()
         if checkin_time <= current_time:
             logger.debug("Check-in time has passed. Going straight to check-in")
             return
@@ -104,7 +104,7 @@ class CheckInHandler:
 
             logger.debug("Lock released")
 
-        current_time = datetime.utcnow()
+        current_time = get_current_time()
         sleep_time = (checkin_time - current_time).total_seconds()
         logger.debug("Sleeping until check-in: %d seconds...", sleep_time)
         time.sleep(sleep_time)

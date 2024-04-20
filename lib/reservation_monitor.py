@@ -9,7 +9,7 @@ from .config import AccountConfig, ReservationConfig
 from .fare_checker import FareChecker
 from .log import get_logger
 from .notification_handler import NotificationHandler
-from .utils import FlightChangeError, LoginError, RequestError
+from .utils import FlightChangeError, LoginError, RequestError, get_current_time
 from .webdriver import WebDriver
 
 TOO_MANY_REQUESTS_CODE = 429
@@ -57,7 +57,7 @@ class ReservationMonitor:
         reservation = {"confirmationNumber": self.config.confirmation_number}
 
         while True:
-            time_before = datetime.utcnow()
+            time_before = get_current_time()
 
             logger.debug("Acquiring lock...")
             with self.lock:
@@ -124,7 +124,7 @@ class ReservationMonitor:
         Account for the time it took to do recurring tasks so the sleep interval
         is the exact time provided in the configuration file.
         """
-        current_time = datetime.utcnow()
+        current_time = get_current_time()
         time_taken = (current_time - previous_time).total_seconds()
         sleep_time = self.config.retrieval_interval - time_taken
         logger.debug("Sleeping for %d seconds", sleep_time)
@@ -163,7 +163,7 @@ class AccountMonitor(ReservationMonitor):
         Check for newly booked reservations for the account every X hours (retrieval interval).
         """
         while True:
-            time_before = datetime.utcnow()
+            time_before = get_current_time()
 
             logger.debug("Acquiring lock...")
             with self.lock:
