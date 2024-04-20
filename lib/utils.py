@@ -1,8 +1,11 @@
 import json
+import socket
 import time
+from datetime import datetime, timezone
 from enum import IntEnum
 from typing import Any, Dict, Union
 
+import ntplib
 import requests
 
 from .log import get_logger
@@ -49,6 +52,25 @@ def make_request(method: str, site: str, headers: JSON, info: JSON, max_attempts
 
     logger.debug("Response body: %s", response_body)
     raise RequestError(error_msg, response_body)
+
+
+def get_current_time() -> datetime:
+    """
+    Fetch the current time from an NTP server. Times are sometimes off on computers running the
+    script and since check-ins rely on exact times, this ensures check-ins are done at the correct
+    time. Falls back to local time if the request to the NTP server fails.
+
+    Times are returned in UTC.
+    """
+    c = ntplib.NTPClient()
+
+    try:
+        response = c.request("us.pool.ntp.org", version=3)
+    except socket.gaierror:
+        logger.debug("Error requesting time from NTP server. Using local time")
+        return datetime.utcnow()
+
+    return datetime.fromtimestamp(response.tx_time, timezone.utc).replace(tzinfo=None)
 
 
 # Make a custom exception when a request fails

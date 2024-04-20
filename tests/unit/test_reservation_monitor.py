@@ -29,9 +29,12 @@ def mock_lock(mocker: MockerFixture) -> None:
 )
 class TestReservationMonitor:
     @pytest.fixture(autouse=True)
-    def _set_up_monitor(self, mock_lock: mock.Mock) -> None:
+    def _set_up_monitor(self, mock_lock: mock.Mock, mocker: MockerFixture) -> None:
         # pylint: disable=attribute-defined-outside-init
         self.monitor = ReservationMonitor(ReservationConfig(), mock_lock)
+        mocker.patch(
+            "lib.reservation_monitor.get_current_time", return_value=datetime(1999, 12, 31)
+        )
 
     def test_start_starts_a_process(self, mocker: MockerFixture) -> None:
         mock_process_start = mocker.patch.object(multiprocessing.Process, "start")
@@ -159,8 +162,9 @@ class TestReservationMonitor:
 
     def test_smart_sleep_sleeps_for_correct_time(self, mocker: MockerFixture) -> None:
         mock_sleep = mocker.patch("time.sleep")
-        mock_datetime = mocker.patch("lib.reservation_monitor.datetime")
-        mock_datetime.utcnow.return_value = datetime(1999, 12, 31)
+        mocker.patch(
+            "lib.reservation_monitor.get_current_time", return_value=datetime(1999, 12, 31)
+        )
 
         self.monitor.config.retrieval_interval = 24 * 60 * 60
         self.monitor._smart_sleep(datetime(1999, 12, 30, 12))
@@ -187,9 +191,12 @@ class TestReservationMonitor:
 )
 class TestAccountMonitor:
     @pytest.fixture(autouse=True)
-    def _set_up_monitor(self, mock_lock: mock.Mock) -> None:
+    def _set_up_monitor(self, mock_lock: mock.Mock, mocker: MockerFixture) -> None:
         # pylint: disable=attribute-defined-outside-init
         self.monitor = AccountMonitor(AccountConfig(), mock_lock)
+        mocker.patch(
+            "lib.reservation_monitor.get_current_time", return_value=datetime(1999, 12, 31)
+        )
 
     def test_monitor_monitors_the_account_continuously(self, mocker: MockerFixture) -> None:
         # Since the monitor function runs in an infinite loop, throw an Exception
