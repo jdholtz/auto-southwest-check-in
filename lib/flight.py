@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict
 
@@ -71,7 +71,7 @@ class Flight:
         flight_date = datetime.strptime(flight_date, "%Y-%m-%d %H:%M")
         self._local_departure_time = airport_timezone.localize(flight_date)
 
-        utc_time = self._local_departure_time.astimezone(pytz.utc).replace(tzinfo=None)
+        utc_time = self._local_departure_time.astimezone(timezone.utc).replace(tzinfo=None)
         return utc_time
 
     def _get_flight_number(self, flights: JSON) -> str:

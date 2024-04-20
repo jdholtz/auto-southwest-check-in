@@ -37,11 +37,13 @@ def test_check_in(
     handler: CheckInHandler,
     same_day_flight: bool,
 ) -> None:
-    mock_datetime = mocker.patch("lib.checkin_handler.datetime")
-    mock_datetime.utcnow.side_effect = [
-        datetime(2021, 12, 5, 13, 40),
-        datetime(2021, 12, 5, 14, 20),
-    ]
+    mocker.patch(
+        "lib.checkin_handler.get_current_time",
+        side_effect=[
+            datetime(2021, 12, 5, 13, 40),
+            datetime(2021, 12, 5, 14, 20),
+        ],
+    )
     mock_sleep = mocker.patch("time.sleep")
 
     handler.first_name = "Garry"
