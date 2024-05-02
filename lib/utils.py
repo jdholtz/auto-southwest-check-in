@@ -73,7 +73,7 @@ def get_current_time() -> datetime:
 
     try:
         response = c.request(NTP_SERVER, version=3)
-    except socket.gaierror:
+    except (socket.gaierror, ntplib.NTPException):
         logger.debug("Error requesting time from NTP server. Using local time")
         return datetime.utcnow()
 
