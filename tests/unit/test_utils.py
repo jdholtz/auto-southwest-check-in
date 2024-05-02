@@ -86,8 +86,11 @@ def test_get_current_time_returns_a_datetime_from_ntp_server(mocker: MockerFixtu
     assert utils.get_current_time() == datetime(1999, 12, 31, 23, 59, 59)
 
 
-def test_get_current_time_returns_local_datetime_on_failed_request(mocker: MockerFixture) -> None:
-    mocker.patch("ntplib.NTPClient.request", side_effect=socket.gaierror)
+@pytest.mark.parametrize("exception", [socket.gaierror, ntplib.NTPException])
+def test_get_current_time_returns_local_datetime_on_failed_request(
+    mocker: MockerFixture, exception: Exception
+) -> None:
+    mocker.patch("ntplib.NTPClient.request", side_effect=exception)
     mock_datetime = mocker.patch("lib.utils.datetime")
     mock_datetime.utcnow.return_value = datetime(1999, 12, 31, 18, 59, 59)
 
