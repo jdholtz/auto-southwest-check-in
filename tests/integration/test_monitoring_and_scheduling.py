@@ -3,7 +3,6 @@ Tests the ReservationMonitor and CheckInScheduler to ensure flights are correctl
 are set, errors are handled, and integration with the webdriver works.
 """
 
-import copy
 import json
 from datetime import datetime
 from multiprocessing import Lock
@@ -60,7 +59,7 @@ def test_flight_is_scheduled_checks_in_and_departs(
     tz_data = {"LAX": "America/Los_Angeles"}
 
     mocker.patch("pathlib.Path.read_text", return_value=json.dumps(tz_data))
-    mocker.patch("lib.reservation_monitor.get_current_time", return_value=datetime(1999, 12, 31))
+    mocker.patch("lib.reservation_monitor.get_current_time", return_value=datetime(2020, 10, 5))
     mock_process = mocker.patch("lib.checkin_handler.Process").return_value
     mock_new_flights_notification = mocker.patch(
         "lib.notification_handler.NotificationHandler.new_flights"
@@ -91,7 +90,6 @@ def test_flight_is_scheduled_checks_in_and_departs(
                     "arrivalAirport": {"name": "test_inbound", "country": None},
                     "departureAirport": {"code": "LAX", "name": "test_outbound"},
                     "departureDate": "2020-10-13",
-                    "departureStatus": None,
                     "departureTime": "14:40",
                     "flights": [{"number": "100"}, {"number": "101"}],
                 },
@@ -99,13 +97,16 @@ def test_flight_is_scheduled_checks_in_and_departs(
         }
     }
 
-    reservation2 = copy.deepcopy(reservation1)
-    # Change to departed so the flight is removed
-    reservation2["viewReservationViewPage"]["bounds"][0]["departureStatus"] = "DEPARTED"
+    # Change the current time to be after the flight departs so it is removed (simulating
+    # a full round-trip flight)
+    mocker.patch(
+        "lib.checkin_scheduler.get_current_time",
+        side_effect=[datetime(2020, 10, 5, 18, 29), datetime(2020, 10, 14, 18, 29)],
+    )
 
     requests_mock.get(
         TEST_RESERVATION_URL,
-        [{"json": reservation1, "status_code": 200}, {"json": reservation2, "status_code": 200}],
+        [{"json": reservation1, "status_code": 200}, {"json": reservation1, "status_code": 200}],
     )
 
     monitor = ReservationMonitor(config.reservations[0], Lock())
@@ -137,13 +138,14 @@ def test_account_schedules_new_flights(requests_mock: RequestMocker, mocker: Moc
     tz_data = {"LAX": "America/Los_Angeles", "SYD": "Australia/Sydney"}
     mocker.patch("pathlib.Path.read_text", return_value=json.dumps(tz_data))
 
-    mocker.patch("lib.reservation_monitor.get_current_time", return_value=datetime(1999, 12, 31))
+    mocker.patch("lib.reservation_monitor.get_current_time", return_value=datetime(2020, 10, 10))
+    mocker.patch("lib.checkin_scheduler.get_current_time", return_value=datetime(2020, 10, 10))
     mocker.patch("lib.webdriver.seleniumbase_actions.wait_for_element_not_visible")
     mock_process = mocker.patch("lib.checkin_handler.Process").return_value
     # Raise a StopIteration to prevent an infinite loop
     mocker.patch("time.sleep", side_effect=[None, None, StopIteration])
 
-    # Will be checked in a separate integration test
+    # Is checked in a separate integration test
     mock_check_flight_price = mocker.patch("lib.fare_checker.FareChecker.check_flight_price")
 
     login_response = {
@@ -196,7 +198,6 @@ def test_account_schedules_new_flights(requests_mock: RequestMocker, mocker: Moc
                     "arrivalAirport": {"name": "test_inbound", "country": None},
                     "departureAirport": {"code": "LAX", "name": "test_outbound"},
                     "departureDate": "2020-10-13",
-                    "departureStatus": None,
                     "departureTime": "14:40",
                     "flights": [{"number": "100"}],
                 },
@@ -204,7 +205,6 @@ def test_account_schedules_new_flights(requests_mock: RequestMocker, mocker: Moc
                     "arrivalAirport": {"name": "test_outbound", "country": None},
                     "departureAirport": {"code": "SYD", "name": "test_inbound"},
                     "departureDate": "2020-10-16",
-                    "departureStatus": None,
                     "departureTime": "07:20",
                     "flights": [{"number": "101"}],
                 },
