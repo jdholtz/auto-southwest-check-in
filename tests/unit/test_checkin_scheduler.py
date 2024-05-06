@@ -1,4 +1,5 @@
 import json
+from datetime import UTC as datetime_utc
 from datetime import datetime, timedelta
 from typing import List
 from unittest import mock
@@ -61,24 +62,34 @@ class TestCheckInScheduler:
         mock_webdriver_set_headers.assert_called_once()
 
     def test_get_flights_retrieves_all_flights_under_reservation(
-        self, mocker: MockerFixture
+        self, mocker: MockerFixture, test_flights: List[Flight]
     ) -> None:
-        reservation_info = [{"departureStatus": "WAITING"}, {"departureStatus": "WAITING"}]
-        mocker.patch.object(
-            CheckInScheduler, "_get_reservation_info", return_value=reservation_info
-        )
-        mocker.patch("lib.checkin_scheduler.Flight")
+        mocker.patch.object(CheckInScheduler, "_get_reservation_info", return_value=[{}, {}])
         mock_set_same_day_flight = mocker.patch.object(CheckInScheduler, "_set_same_day_flight")
+
+        # Set the departing times to be after the current time
+        test_flights[0].departure_time = datetime(1999, 12, 30, 18, 29)
+        test_flights[1].departure_time = datetime(1999, 12, 31, 20, 29)
+        mocker.patch("lib.checkin_scheduler.Flight", side_effect=test_flights)
+
+        current_time = datetime(1999, 12, 30, 18, 20)
+        mocker.patch("lib.checkin_scheduler.get_current_time", return_value=current_time)
 
         flights = self.scheduler._get_flights("flight1")
         assert len(flights) == 2
         assert mock_set_same_day_flight.call_count == len(flights)
 
-    def test_get_flights_does_not_retrieve_departed_flights(self, mocker: MockerFixture) -> None:
-        reservation_info = [{"departureStatus": "DEPARTED"}]
-        mocker.patch.object(
-            CheckInScheduler, "_get_reservation_info", return_value=reservation_info
-        )
+    def test_get_flights_does_not_retrieve_departed_flights(
+        self, mocker: MockerFixture, test_flights: List[Flight]
+    ) -> None:
+        mocker.patch.object(CheckInScheduler, "_get_reservation_info", return_value=[{}, {}])
+
+        # Set the departing time to be before the current time. Only uses the first flight
+        test_flights[0].departure_time = datetime(1999, 12, 30, 18, 29)
+        mocker.patch("lib.checkin_scheduler.Flight", return_value=test_flights[0])
+
+        current_time = datetime(1999, 12, 30, 19, 29)
+        mocker.patch("lib.checkin_scheduler.get_current_time", return_value=current_time)
 
         flights = self.scheduler._get_flights("flight1")
         assert len(flights) == 0
@@ -148,7 +159,7 @@ class TestCheckInScheduler:
         self, hour_diff: int, same_day: bool, test_flights: List[Flight]
     ) -> None:
         prev_flight, new_flight = test_flights
-        prev_flight.departure_time = datetime.utcnow()
+        prev_flight.departure_time = datetime.now(datetime_utc)
         new_flight.departure_time = prev_flight.departure_time + timedelta(hours=hour_diff)
 
         self.scheduler._set_same_day_flight(new_flight, [prev_flight])

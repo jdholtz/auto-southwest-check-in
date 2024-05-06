@@ -1,6 +1,7 @@
 import json
 import socket
 import time
+from datetime import UTC as datetime_utc
 from datetime import datetime, timezone
 from enum import IntEnum
 from typing import Any, Dict, Union
@@ -31,8 +32,9 @@ def make_request(method: str, site: str, headers: JSON, info: JSON, max_attempts
     site = site.replace("//", "/").lstrip("/")
     url = BASE_URL + site
 
-    attempts = 1
-    while attempts <= max_attempts:
+    attempts = 0
+    while attempts < max_attempts:
+        attempts += 1
         if method == "POST":
             response = requests.post(url, headers=headers, json=info)
         else:
@@ -51,7 +53,6 @@ def make_request(method: str, site: str, headers: JSON, info: JSON, max_attempts
             logger.debug("Reservation not found")
             break
 
-        attempts += 1
         time.sleep(0.5)
 
     error_msg = response.reason + " " + str(response.status_code)
@@ -75,7 +76,7 @@ def get_current_time() -> datetime:
         response = c.request(NTP_SERVER, version=3)
     except (socket.gaierror, ntplib.NTPException):
         logger.debug("Error requesting time from NTP server. Using local time")
-        return datetime.utcnow()
+        return datetime.now(datetime_utc)
 
     return datetime.fromtimestamp(response.tx_time, timezone.utc).replace(tzinfo=None)
 

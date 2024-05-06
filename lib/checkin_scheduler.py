@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any, Dict, List
 from .checkin_handler import CheckInHandler
 from .flight import Flight
 from .log import get_logger
-from .utils import RequestError, make_request
+from .utils import RequestError, get_current_time, make_request
 from .webdriver import WebDriver
 
 if TYPE_CHECKING:
@@ -57,11 +57,12 @@ class CheckInScheduler:
         reservation_info = self._get_reservation_info(confirmation_number)
         logger.debug("%d flights found under current reservation", len(reservation_info))
 
+        current_utc_time = get_current_time()
         flights = []
         # If multiple flights are under the same confirmation number, it will schedule all checkins
         for flight_info in reservation_info:
-            if flight_info["departureStatus"] != "DEPARTED":
-                flight = Flight(flight_info, confirmation_number)
+            flight = Flight(flight_info, confirmation_number)
+            if flight.departure_time > current_utc_time:
                 self._set_same_day_flight(flight, flights)
                 flights.append(flight)
 
