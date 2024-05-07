@@ -195,7 +195,10 @@ class TestCheckInScheduler:
         self, mocker: MockerFixture, test_flights: List[Flight]
     ) -> None:
         test_flights[0].flight_number = "101"
+
         mock_stop_check_in = mocker.patch.object(CheckInHandler, "stop_check_in")
+        mocker.patch.object(Flight, "get_display_time")
+
         self.scheduler.flights = test_flights
         self.scheduler.checkin_handlers = [
             CheckInHandler(self.scheduler, test_flights[0], None),
