@@ -8,6 +8,9 @@ If there is no "Upgrading" header for that version, no post-upgrade actions need
 - Times are now fetched from an NTP server when possible ([#235](https://github.com/jdholtz/auto-southwest-check-in/issues/235))
     - This mitigates issues with the time being off on computers running the script, which may cause failed check-ins
 
+### Bug Fixes
+- Fix some cases in which departed flights still attempt to check in ([#257](https://github.com/jdholtz/auto-southwest-check-in/issues/257))
+
 ### Upgrading
 - Upgrade the dependencies to the latest versions by running `pip install -r requirements.txt`
     - [ntplib](https://pypi.org/project/ntplib/) is a now a dependency
