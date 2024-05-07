@@ -125,13 +125,16 @@ class CheckInScheduler:
         """Remove all scheduled flights that are not in the current flight list"""
         logger.debug("%d flights are currently scheduled. Removing old flights", len(self.flights))
 
+        twenty_four_hr_time = self.reservation_monitor.config.notification_24_hour_time
+
         # Copy the list because it can potentially change inside the loop
         for flight in self.flights[:]:
             if flight not in flights:
                 flight_idx = self.flights.index(flight)
+                flight_time = flight.get_display_time(twenty_four_hr_time)
                 print(
-                    f"Flight from {flight.departure_airport} to {flight.destination_airport} at "
-                    f"{flight.departure_time} UTC is no longer scheduled. Stopping its check-in\n"
+                    f"Flight from {flight.departure_airport} to {flight.destination_airport} on "
+                    f"{flight_time} is no longer scheduled. Stopping its check-in\n"
                 )  # Don't log as it has sensitive information
 
                 self.checkin_handlers[flight_idx].stop_check_in()
