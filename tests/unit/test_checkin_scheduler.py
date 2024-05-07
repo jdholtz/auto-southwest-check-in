@@ -1,6 +1,5 @@
 import json
-from datetime import UTC as datetime_utc
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List
 from unittest import mock
 
@@ -159,7 +158,7 @@ class TestCheckInScheduler:
         self, hour_diff: int, same_day: bool, test_flights: List[Flight]
     ) -> None:
         prev_flight, new_flight = test_flights
-        prev_flight.departure_time = datetime.now(datetime_utc)
+        prev_flight.departure_time = datetime.now(timezone.utc)
         new_flight.departure_time = prev_flight.departure_time + timedelta(hours=hour_diff)
 
         self.scheduler._set_same_day_flight(new_flight, [prev_flight])
