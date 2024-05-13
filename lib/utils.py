@@ -72,7 +72,8 @@ def get_current_time() -> datetime:
     c = ntplib.NTPClient()
 
     try:
-        response = c.request(NTP_SERVER, version=3)
+        # Set a longer timeout to make the request more reliable
+        response = c.request(NTP_SERVER, version=3, timeout=10)
     except (socket.gaierror, ntplib.NTPException):
         logger.debug("Error requesting time from NTP server. Using local time")
         return datetime.now(timezone.utc)
