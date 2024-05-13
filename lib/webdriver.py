@@ -130,7 +130,7 @@ class WebDriver:
         return reservations
 
     def _get_driver(self) -> Driver:
-        logger.debug("Starting webdriver for current session")
+        logger.debug("Starting webdriver for current session (this may take a few minutes)")
         browser_path = self.checkin_scheduler.reservation_monitor.config.browser_path
 
         driver_version = "mlatest"
@@ -150,7 +150,7 @@ class WebDriver:
 
         driver.add_cdp_listener("Network.requestWillBeSent", self._headers_listener)
 
-        logger.debug("Loading Southwest Check-In page")
+        logger.debug("Loading Southwest check-in page (this may take a few minutes)")
         driver.get(CHECKIN_URL)
         return driver
 
