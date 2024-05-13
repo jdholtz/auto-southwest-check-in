@@ -181,11 +181,15 @@ Credit to [@greennayr](https://github.com/greennayr) for the answer to this ques
 </details>
 
 <details>
-<summary>Script Is Stuck on 'Starting webdriver for current session' When Running in Docker. How Can I Fix It?</summary>
+<summary>The Script Is Stuck on 'Starting webdriver for current session' or 'Loading Southwest Check-In page'. How Can I Fix It?</summary>
 
-The current workaround is to run the Docker container with the `--privileged` flag
+Depending on your network speed or your compute power, it may take 3 to 5 minutes to start the browser and load the Southwest website.
+If you are still running into this issue after waiting for 8+ minutes, please file an [issue][6] (see below if you are running Docker).
+
+
+If you are running the script with Docker, the current workaround is to run the Docker container with the `--privileged` flag
 (see [the comment on #96](https://github.com/jdholtz/auto-southwest-check-in/issues/96#issuecomment-1587779388)). However, this
-is not a very good solution. If anyone figures out a better solution, please let me know and I can make the change.
+is not a very good solution. If anyone figures out a better solution, please let me know.
 </details>
 
 
