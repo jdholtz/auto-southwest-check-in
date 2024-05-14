@@ -8,6 +8,10 @@ If there is no "Upgrading" header for that version, no post-upgrade actions need
 - Times are now fetched from an NTP server when possible ([#235](https://github.com/jdholtz/auto-southwest-check-in/issues/235))
     - This mitigates issues with the time being off on computers running the script, which may cause failed check-ins
 
+### Improvements
+- Indicators were added in some log messages and the Readme for when the script may take a while while using the browser
+([#237](https://github.com/jdholtz/auto-southwest-check-in/issues/237))
+
 ### Bug Fixes
 - Fix some cases in which departed flights still attempt to check in ([#257](https://github.com/jdholtz/auto-southwest-check-in/issues/257))
 
