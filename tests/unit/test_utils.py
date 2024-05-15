@@ -1,6 +1,6 @@
 import json
 import socket
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 import ntplib
@@ -92,7 +92,7 @@ def test_get_current_time_returns_local_datetime_on_failed_request(
 ) -> None:
     mocker.patch("ntplib.NTPClient.request", side_effect=exception)
     mock_datetime = mocker.patch("lib.utils.datetime")
-    mock_datetime.now.return_value = datetime(1999, 12, 31, 18, 59, 59)
+    mock_datetime.now.return_value = datetime(1999, 12, 31, 18, 59, 59, tzinfo=timezone.utc)
 
     assert utils.get_current_time() == datetime(1999, 12, 31, 18, 59, 59)
 
