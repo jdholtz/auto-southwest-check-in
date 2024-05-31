@@ -246,20 +246,9 @@ class WebDriver:
 
     def _get_needed_headers(self, request_headers: JSON) -> JSON:
         headers = {}
-        provided_headers = {
-            "EE30zvQLWf-a": "BFcbo8GKyQoF5Hhzc-OaY=P7cltFq1RZcxQad9SciabmhGRr5nbdjsvOHeq00REGMmMCm6Y65O2ClE-IdPNyylpvxEIj=Pu0aRcK1yJU2WSsBMg5Su3J87YAIhXFBm92ps2Af17AqTLy7HwPuBVr_TUhLMb19xfi=Yaax-szeqpeJ_08y4OifE=_shVfezhVQGUrPxrpXCw2B5LFc6F5bYXHocAbLEuC_FxUbp4N9TjCG=BgeCGthW39EKFrHc9LsD5vWmqQ28sUTYV2KFmdKV6zH9Mim5928Wrv5uqVcdunRF6JvaJWbp8ZP3CCEdR8H5x6zfl6n0x9LK4VTwit1lL8GXf1sne4n-RM9oyt==6XA8irPxGRT62_8mQxnIAeovS0QgM_UBxVytsby-lcP8Sy51wy9cUP8wjbnCzsVxjFAKz47S7DOp7bhpvfWOpMcu_DLvO1w8hvF1=uzlB72mi-QTDq3zjWUb1LGr7=irxg6UbY1BubSPVmtV_l-V7hQOToAe9AYNDfGqeEANdGpoqVSyaGc-PEYAxBMQ8A7ysLeNvhlN_ZfWUUcjYHbpJMQH=TAsb6f6nuReFPyLLFcQ5gipYp8a9PBvGY=_HdnqrdcWnB_VMQ2rI9jCGRllvR2iVYrdccRMLsHJTpHS49tiDEDnhyyZO-EnZ7tXVQqvw8wZARdQKjh4zjv3R5IBUrQWvAZ2nPQcEd9WJtjH9=001FmvGPxR7UhPD2nxsIoG72tQ4_IYlnYvI-NZbg1ynU352ls7QqfW=edu6QY6SFb3bnEX8tF0eUaAhN2rIvBPmWfcxjZdPMbzj3mTw8zYvNNT1G3DvVbNrC4FgESxdT5=zjaTd27oDw=axgUXO5d4vFF9jp9sM39fI-R0oUEMh_wQzgWzGYbl5cHzy0lEaU5z8lyHfuBvHlIn8KKs0qVA6BESNYYE=U7rpFbsRJuzBSrgXK0cXj_GwmXflvT9WvNaT=7Q7fZcz6YAGY5nBiGsUgpl9X0erG=NNjN-2i0m7KblQ5iWAAUV9N3WSUALZ9BZeP0WXwAb7_DeC1P2WpYZDJCzGUMelK7m0jEIG_xF59Fo0RaJz=1-8B5Uq=Rx42n=Aao35KJCbHSei6DEv3WHyy00x=o5gQJzKx-Bcw73=rY4=bfwZ76uqndE5fCg7Dil_6-gGbmE6VvEcvAQN=epV22zhlhAtXtz8Mj7MLoKalgEtqM5LMOgQDHHAMo-9GT3pSzMNEFS86JZGMWdi5tBry=LQI9y335H5WYmxE1omh6wz9pDoagRfjx7uv08CEyBhwpXRzgCyJnCZJpMlys_hTpuN_a0izx2ml_IKV0HW=aECjKTEsmA-A4ps6D_=8jMxJLGa3qVNrY8V194RhA7qSt_57OupmD7RJd_3eSd_Tb4fjAt7inRQ4l_84Tl=bJW1tEHd-wuavOA7boNgwMaTaZ_T8qa_o3RuwcVNG7wLdhg_=TwSFy_yQx5o_3-spAH05glbl9cHPIR1rFW5m0fdeNAy9GLxgtbEYtb-1v-BbYKlasUejYfA6Vs_VvpGU-Q6=XP8i7A1QIZTCjOUxK85SxvrHlxcvyjeTRLdWlfz5qouxmYrKHqfltB5RvghSBBfQx4yTpiCoJU2zEcKbHh-XsJb4tOPmL61Alg2RIF62_zj4zguQo6mrd1P2T_nVcx5U-u9azopZs6AwqgThRmiUY1U=_lQv3gXOEQvKa6vaLStMiLTmIqem",
-            "EE30zvQLWf-b": "9itzgj",
-            "EE30zvQLWf-c": "AOBMPsePAQAAZaU9mOfybjfx1mBTu4mxSkpq0YqV9jhACUvyk6HBx-c6Z5MJ",
-            "EE30zvQLWf-d": "ABaAhIDBCKGFgQGAAYIQgISigaIAwBGAzvpizi_33wehwcfnOmeTCf_____K8KYjANRGJUSDKNY53mC9PBWb0eY",
-            "EE30zvQLWf-f": "A8LBQMePAQAAKu8x0Jq1eMaVfIQrh5jfqZApXNH9VwFaYUDaw5hHS_D5tVQlAUswJ0r6KwsEzIheCOfvosJeCA==",
-            "EE30zvQLWf-z": "q"
-        }
         for header in request_headers:
             if re.match(r"x-api-key|x-channel-id|user-agent|^[\w-]+?-\w$", header, re.I):
-                if header in provided_headers:
-                    headers[header] = provided_headers[header]
-                else:
-                    headers[header] = request_headers[header]
+                headers[header] = request_headers[header]
 
         return headers
 
