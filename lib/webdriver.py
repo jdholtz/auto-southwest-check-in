@@ -23,7 +23,7 @@ TRIPS_URL = BASE_URL + "/api/mobile-misc/v1/mobile-misc/page/upcoming-trips"
 CHECKIN_URL = BASE_URL + "/check-in"
 HEADERS_URLS = [
     BASE_URL + "/api/chase/v2/chase/offers",
-    BASE_URL + "/api/mobile-air-booking/v1/mobile-air-booking/feature/shopping-details",
+    BASE_URL + "/api/security/v4/security/userinfo",
 ]
 
 # Southwest's code when logging in with the incorrect information
