@@ -243,7 +243,7 @@ class WebDriver:
         return LoginError(reason, self.login_status_code)
 
     def _get_needed_headers(self, request_headers: JSON) -> JSON:
-        with open('utils/provided_headers.json') as file:
+        with open("utils/provided_headers.json") as file:
             provided_headers = random.choice(json.load(file))
 
         headers = {}
