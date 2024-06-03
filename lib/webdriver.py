@@ -5,7 +5,6 @@ import os
 import re
 import sys
 import time
-import random
 from typing import TYPE_CHECKING, Any, Dict, List
 
 from seleniumbase import Driver
@@ -22,7 +21,10 @@ BASE_URL = "https://mobile.southwest.com"
 LOGIN_URL = BASE_URL + "/api/security/v4/security/token"
 TRIPS_URL = BASE_URL + "/api/mobile-misc/v1/mobile-misc/page/upcoming-trips"
 CHECKIN_URL = BASE_URL + "/check-in"
-HEADERS_URLS = BASE_URL + "/api/chase/v2/chase/offers"
+HEADERS_URLS = [
+    BASE_URL + "/api/chase/v2/chase/offers",
+    BASE_URL + "/api/mobile-air-booking/v1/mobile-air-booking/feature/shopping-details",
+]
 
 # Southwest's code when logging in with the incorrect information
 INVALID_CREDENTIALS_CODE = 400518024
@@ -143,6 +145,7 @@ class WebDriver:
             headless=True,
             uc_cdp_events=True,
             undetectable=True,
+            is_mobile=True,
         )
         logger.debug("Using browser version: %s", driver.caps["browserVersion"])
 
@@ -243,16 +246,10 @@ class WebDriver:
         return LoginError(reason, self.login_status_code)
 
     def _get_needed_headers(self, request_headers: JSON) -> JSON:
-        with open("utils/provided_headers.json") as file:
-            provided_headers = random.choice(json.load(file))
-
         headers = {}
         for header in request_headers:
             if re.match(r"x-api-key|x-channel-id|user-agent|^[\w-]+?-\w$", header, re.I):
-                if header in provided_headers:
-                    headers[header] = provided_headers[header]
-                else:
-                    headers[header] = request_headers[header]
+                headers[header] = request_headers[header]
 
         return headers
 
