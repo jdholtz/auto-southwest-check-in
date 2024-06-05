@@ -142,7 +142,7 @@ class WebDriver:
         driver = Driver(
             binary_location=browser_path,
             driver_version=driver_version,
-            headless=True,
+            headless2=True,
             uc_cdp_events=True,
             undetectable=True,
             mobile=True
