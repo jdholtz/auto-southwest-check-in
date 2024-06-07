@@ -17,14 +17,14 @@ if TYPE_CHECKING:
     from .checkin_scheduler import CheckInScheduler
     from .reservation_monitor import AccountMonitor
 
+# Southwest's dummy record locator to fetch request headers
+RECORD_LOCATOR = "111111"
+
 BASE_URL = "https://mobile.southwest.com"
 LOGIN_URL = BASE_URL + "/api/security/v4/security/token"
 TRIPS_URL = BASE_URL + "/api/mobile-misc/v1/mobile-misc/page/upcoming-trips"
 CHECKIN_URL = BASE_URL + "/check-in"
-HEADERS_URLS = [
-    BASE_URL + "/api/chase/v2/chase/offers",
-    BASE_URL + "/api/mobile-air-booking/v1/mobile-air-booking/feature/shopping-details",
-]
+HEADERS_URLS = BASE_URL + "/api/mobile-air-operations/v1/mobile-air-operations/page/check-in/" + RECORD_LOCATOR
 
 # Southwest's code when logging in with the incorrect information
 INVALID_CREDENTIALS_CODE = 400518024
@@ -142,17 +142,20 @@ class WebDriver:
         driver = Driver(
             binary_location=browser_path,
             driver_version=driver_version,
-            headless2=True,
+            headless=True,
             uc_cdp_events=True,
-            undetectable=True,
-            mobile=True
+            undetectable=True
         )
         logger.debug("Using browser version: %s", driver.caps["browserVersion"])
 
         driver.add_cdp_listener("Network.requestWillBeSent", self._headers_listener)
 
         logger.debug("Loading Southwest Check-In page")
-        driver.get(CHECKIN_URL)
+        driver.open(CHECKIN_URL)
+        driver.type("input[name='recordLocator']", RECORD_LOCATOR)
+        driver.type("input[name='firstName']", "fname")
+        driver.type("input[name='lastName']", "lname")
+        driver.js_click("button[role='submit']")
         return driver
 
     def _headers_listener(self, data: JSON) -> None:
