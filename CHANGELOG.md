@@ -3,7 +3,7 @@ When upgrading to a new version, make sure to follow the directions under the "U
 If there is no "Upgrading" header for that version, no post-upgrade actions need to be performed.
 
 
-## Upcoming
+## 7.5 (2024-06-07)
 ### New Features
 - Times are now fetched from an NTP server when possible ([#235](https://github.com/jdholtz/auto-southwest-check-in/issues/235))
     - This mitigates issues with the time being off on computers running the script, which may cause failed check-ins
