@@ -11,6 +11,8 @@ If there is no "Upgrading" header for that version, no post-upgrade actions need
 ### Improvements
 - Indicators were added in some log messages and the Readme for when the script may take a while while using the browser
 ([#237](https://github.com/jdholtz/auto-southwest-check-in/issues/237))
+- When a lower fare notification is sent, the Southwest desktop URL will also be sent for convenience
+([#270](https://github.com/jdholtz/auto-southwest-check-in/pull/270) by [@natecodes](https://github.com/natecodes))
 
 ### Bug Fixes
 - Fix some cases in which departed flights still attempt to check in ([#257](https://github.com/jdholtz/auto-southwest-check-in/issues/257))
