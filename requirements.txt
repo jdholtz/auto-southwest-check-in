@@ -1,5 +1,5 @@
-apprise==1.7.6
+apprise==1.8.0
 ntplib==0.4.0
 pytz==2024.1  # Remove when this script only supports Python 3.9+
 requests==2.31.0
-seleniumbase==4.25.4
+seleniumbase==4.27.5

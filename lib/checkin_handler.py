@@ -157,16 +157,17 @@ class CheckInHandler:
 
         attempts = 0
         while attempts < MAX_CHECK_IN_ATTEMPTS:
+            attempts += 1
+
             reservation = self._check_in_to_flight()
             flights = reservation["checkInConfirmationPage"]["flights"]
             if len(flights) >= expected_flights:
-                logger.debug("Successfully checked in after %d attempts", attempts + 1)
+                logger.debug("Successfully checked in after %d attempts", attempts)
                 return reservation
 
             logger.debug(
                 "Same-day flight has not been checked in yet. Waiting 1 second and trying again"
             )
-            attempts += 1
             time.sleep(1)
 
         logger.debug("Same-day flight failed to check in after %d attempts", MAX_CHECK_IN_ATTEMPTS)
