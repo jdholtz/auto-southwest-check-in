@@ -13,7 +13,9 @@ if TYPE_CHECKING:
     from .reservation_monitor import ReservationMonitor
 
 MANUAL_CHECKIN_URL = "https://mobile.southwest.com/check-in"
-MANAGE_RESERVATION_URL = "https://mobile.southwest.com/view-reservation"
+MANAGE_RESERVATION_URL_MOBILE = "https://mobile.southwest.com/view-reservation"
+MANAGE_RESERVATION_URL_DESKTOP = "https://www.southwest.com/air/manage-reservation/"
+
 logger = get_logger(__name__)
 
 
@@ -120,7 +122,7 @@ class NotificationHandler:
             f"Found lower fare of {price_info} for flight {flight.confirmation_number} "
             f"from '{flight.departure_airport}' to '{flight.destination_airport}' on {flight_time} "
             f"for {self._get_account_name()}!\nManage your reservation here: "
-            f"{MANAGE_RESERVATION_URL}\n"
+            f"{MANAGE_RESERVATION_URL_MOBILE} or {MANAGE_RESERVATION_URL_DESKTOP}\n"
         )
         logger.debug("Sending lower fare notification...")
         self.send_notification(message, NotificationLevel.INFO)
