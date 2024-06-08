@@ -4,7 +4,7 @@
 import sys
 from typing import List
 
-__version__ = "v7.4"
+__version__ = "v7.5"
 
 __doc__ = """
 Schedule a check-in:
