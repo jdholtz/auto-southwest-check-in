@@ -5,6 +5,7 @@ import os
 import re
 import sys
 import time
+import random
 from typing import TYPE_CHECKING, Any, Dict, List
 
 from seleniumbase import Driver
@@ -17,17 +18,24 @@ if TYPE_CHECKING:
     from .checkin_scheduler import CheckInScheduler
     from .reservation_monitor import AccountMonitor
 
-# Southwest's dummy record locator to fetch request headers
-RECORD_LOCATOR = "111111"
 
 BASE_URL = "https://mobile.southwest.com"
 LOGIN_URL = BASE_URL + "/api/security/v4/security/token"
 TRIPS_URL = BASE_URL + "/api/mobile-misc/v1/mobile-misc/page/upcoming-trips"
-CHECKIN_URL = BASE_URL + "/check-in"
-HEADERS_URLS = BASE_URL + "/api/mobile-air-operations/v1/mobile-air-operations/page/check-in/" + RECORD_LOCATOR
+MY_ACCOUNT_URL = BASE_URL + "/loyalty/myaccount/"
+HEADERS_URLS = [
+    BASE_URL + "/api/loyalty-management/v2/loyalty-management/metadata",
+    BASE_URL + "/api/loyalty-management/v2/loyalty-management/accounts/self/future-car-reservations-secure",
+    BASE_URL + "/api/loyalty-management/v2/loyalty-management/accounts/self/promo-codes-secure"
+]
 
 # Southwest's code when logging in with the incorrect information
 INVALID_CREDENTIALS_CODE = 400518024
+
+# Excluded platforms that will not use set_mobile
+EXCLUDED_PLATFORMS = ["darwin", "win32"]
+
+SLEEP_DURATION = [7, 9, 12]
 
 JSON = Dict[str, Any]
 
@@ -101,6 +109,11 @@ class WebDriver:
         driver = self._get_driver()
         driver.add_cdp_listener("Network.responseReceived", self._login_listener)
 
+        driver.click("(//button[contains(@class,'closeButton')])[2]")
+
+        selected_duration = random.choice(SLEEP_DURATION)
+        time.sleep(selected_duration)
+
         logger.debug("Logging into account to get a list of reservations and valid headers")
 
         # Log in to retrieve the account's reservations and needed headers for later requests
@@ -112,10 +125,12 @@ class WebDriver:
         driver.click_if_visible(".button-popup.confirm-button")
 
         driver.click(".login-button--box")
+        time.sleep(1.5)
         driver.type('input[name="userNameOrAccountNumber"]', account_monitor.username)
 
         # Use quote_plus to workaround a x-www-form-urlencoded encoding bug on the mobile site
         driver.type('input[name="password"]', f"{account_monitor.password}\n")
+        time.sleep(1.5)
 
         # Wait for the necessary information to be set
         self._wait_for_attribute("headers_set")
@@ -139,23 +154,26 @@ class WebDriver:
             # is not downloaded as the Docker image already has the correct driver
             driver_version = "keep"
 
+        set_mobile = True
+        set_headless = False
+        if sys.platform in EXCLUDED_PLATFORMS:
+            set_mobile = False
+            set_headless = True
+
         driver = Driver(
             binary_location=browser_path,
             driver_version=driver_version,
-            headless=True,
             uc_cdp_events=True,
-            undetectable=True
+            undetectable=True,
+            headless=set_headless,
+            mobile=set_mobile
         )
         logger.debug("Using browser version: %s", driver.caps["browserVersion"])
 
         driver.add_cdp_listener("Network.requestWillBeSent", self._headers_listener)
 
-        logger.debug("Loading Southwest Check-In page")
-        driver.open(CHECKIN_URL)
-        driver.type("input[name='recordLocator']", RECORD_LOCATOR)
-        driver.type("input[name='firstName']", "fname")
-        driver.type("input[name='lastName']", "lname")
-        driver.js_click("button[role='submit']")
+        logger.debug("Loading Southwest My Account page")
+        driver.open(MY_ACCOUNT_URL)
         return driver
 
     def _headers_listener(self, data: JSON) -> None:
@@ -205,6 +223,8 @@ class WebDriver:
             raise error
 
         self._set_account_name(account_monitor, login_response)
+        
+        driver.click_if_visible("div.nav-item.my-account-nav-item")
 
     def _click_login_button(self, driver: Driver) -> None:
         """
