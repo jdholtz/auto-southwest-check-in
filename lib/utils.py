@@ -1,6 +1,7 @@
 import json
 import socket
 import time
+import random
 from datetime import datetime, timezone
 from enum import IntEnum
 from typing import Any, Dict, Union
@@ -19,6 +20,9 @@ logger = get_logger(__name__)
 
 RESERVATION_NOT_FOUND_CODE = 400620389
 
+
+def set_sleep_duration() -> None:
+    return random.uniform(2, 5)
 
 def make_request(method: str, site: str, headers: JSON, info: JSON, max_attempts=20) -> JSON:
     """
@@ -52,7 +56,9 @@ def make_request(method: str, site: str, headers: JSON, info: JSON, max_attempts
             logger.debug("Reservation not found")
             break
 
-        time.sleep(0.5)
+        attempts_sleep = set_sleep_duration()
+        logger.debug(f"Attempt {attempts}: Sleeping for {attempts_sleep:.2f} seconds")
+        time.sleep(attempts_sleep)
 
     error_msg = response.reason + " " + str(response.status_code)
     logger.debug("Failed to make request after %d attempts: %s", attempts, error_msg)

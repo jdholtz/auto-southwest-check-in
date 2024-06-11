@@ -5,6 +5,7 @@ import os
 import re
 import sys
 import time
+import random
 from typing import TYPE_CHECKING, Any, Dict, List
 
 from seleniumbase import Driver
@@ -20,14 +21,14 @@ if TYPE_CHECKING:
 BASE_URL = "https://mobile.southwest.com"
 LOGIN_URL = BASE_URL + "/api/security/v4/security/token"
 TRIPS_URL = BASE_URL + "/api/mobile-misc/v1/mobile-misc/page/upcoming-trips"
-CHECKIN_URL = BASE_URL + "/check-in"
-HEADERS_URLS = [
-    BASE_URL + "/api/chase/v2/chase/offers",
-    BASE_URL + "/api/mobile-air-booking/v1/mobile-air-booking/feature/shopping-details",
-]
+MY_ACCOUNT_URL = BASE_URL + "/loyalty/myaccount/"
+HEADERS_URL = BASE_URL + "/api/loyalty-management/v2/loyalty-management/metadata"
 
 # Southwest's code when logging in with the incorrect information
 INVALID_CREDENTIALS_CODE = 400518024
+
+# Excluded platforms that will not use set_mobile
+EXCLUDED_PLATFORMS = ["darwin", "win32"]
 
 JSON = Dict[str, Any]
 
@@ -59,6 +60,9 @@ class WebDriver:
         self.login_request_id = None
         self.login_status_code = None
         self.trips_request_id = None
+
+    def _set_sleep_duration(self) -> None:
+        return random.uniform(1, 3)
 
     def _should_take_screenshots(self) -> bool:
         """
@@ -101,6 +105,8 @@ class WebDriver:
         driver = self._get_driver()
         driver.add_cdp_listener("Network.responseReceived", self._login_listener)
 
+        driver.click("(//button[contains(@class,'closeButton')])[2]")
+
         logger.debug("Logging into account to get a list of reservations and valid headers")
 
         # Log in to retrieve the account's reservations and needed headers for later requests
@@ -112,9 +118,13 @@ class WebDriver:
         driver.click_if_visible(".button-popup.confirm-button")
 
         driver.click(".login-button--box")
+
+        login_sleep = self._set_sleep_duration()
+        time.sleep(login_sleep)
         driver.type('input[name="userNameOrAccountNumber"]', account_monitor.username)
 
         # Use quote_plus to workaround a x-www-form-urlencoded encoding bug on the mobile site
+        time.sleep(login_sleep)
         driver.type('input[name="password"]', f"{account_monitor.password}\n")
 
         # Wait for the necessary information to be set
@@ -130,7 +140,7 @@ class WebDriver:
         return reservations
 
     def _get_driver(self) -> Driver:
-        logger.debug("Starting webdriver for current session (this may take a few minutes)")
+        logger.debug("Starting webdriver for current session")
         browser_path = self.checkin_scheduler.reservation_monitor.config.browser_path
 
         driver_version = "mlatest"
@@ -139,19 +149,26 @@ class WebDriver:
             # is not downloaded as the Docker image already has the correct driver
             driver_version = "keep"
 
+        set_mobile = True
+        set_headless = False
+        if sys.platform in EXCLUDED_PLATFORMS:
+            set_mobile = False
+            set_headless = True
+
         driver = Driver(
             binary_location=browser_path,
             driver_version=driver_version,
-            headless=True,
             uc_cdp_events=True,
             undetectable=True,
+            headless=set_headless,
+            mobile=set_mobile
         )
         logger.debug("Using browser version: %s", driver.caps["browserVersion"])
 
         driver.add_cdp_listener("Network.requestWillBeSent", self._headers_listener)
 
-        logger.debug("Loading Southwest check-in page (this may take a few minutes)")
-        driver.get(CHECKIN_URL)
+        logger.debug("Loading Southwest my account page (this may take a moment)")
+        driver.open(MY_ACCOUNT_URL)
         return driver
 
     def _headers_listener(self, data: JSON) -> None:
@@ -160,7 +177,7 @@ class WebDriver:
         in the checkin_scheduler.
         """
         request = data["params"]["request"]
-        if request["url"] in HEADERS_URLS and not self.headers_set:
+        if request["url"] in HEADERS_URL and not self.headers_set:
             self.checkin_scheduler.headers = self._get_needed_headers(request["headers"])
             self.headers_set = True
 
@@ -201,6 +218,7 @@ class WebDriver:
             raise error
 
         self._set_account_name(account_monitor, login_response)
+        driver.click_if_visible("div.nav-item.my-account-nav-item")
 
     def _click_login_button(self, driver: Driver) -> None:
         """
@@ -247,8 +265,7 @@ class WebDriver:
     def _get_needed_headers(self, request_headers: JSON) -> JSON:
         headers = {}
         for header in request_headers:
-            if re.match(r"x-api-key|x-channel-id|user-agent|^[\w-]+?-\w$", header, re.I):
-                headers[header] = request_headers[header]
+            headers[header] = request_headers[header]
 
         return headers
 
