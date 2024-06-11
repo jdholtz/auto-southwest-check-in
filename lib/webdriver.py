@@ -18,7 +18,6 @@ if TYPE_CHECKING:
     from .checkin_scheduler import CheckInScheduler
     from .reservation_monitor import AccountMonitor
 
-
 BASE_URL = "https://mobile.southwest.com"
 LOGIN_URL = BASE_URL + "/api/security/v4/security/token"
 TRIPS_URL = BASE_URL + "/api/mobile-misc/v1/mobile-misc/page/upcoming-trips"
