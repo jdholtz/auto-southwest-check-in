@@ -22,7 +22,7 @@ RESERVATION_NOT_FOUND_CODE = 400620389
 
 
 def set_sleep_duration() -> None:
-    return random.uniform(2, 5)
+    return random.uniform(1, 6)
 
 def make_request(method: str, site: str, headers: JSON, info: JSON, max_attempts=20) -> JSON:
     """
