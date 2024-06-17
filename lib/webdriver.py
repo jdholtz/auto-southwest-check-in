@@ -21,7 +21,7 @@ LOGIN_URL = BASE_URL + "/api/security/v4/security/token"
 TRIPS_URL = BASE_URL + "/api/mobile-misc/v1/mobile-misc/page/upcoming-trips"
 MY_ACCOUNT_URL = BASE_URL + "/my-account"
 HEADERS_URL = [
-    BASE_URL + "/api/mobile-air-booking/v1/mobile-air-booking/feature/shopping-details"
+    BASE_URL + "/api/chase/v2/chase/offers"
 ]
 
 # Southwest's code when logging in with the incorrect information
@@ -131,10 +131,6 @@ class WebDriver:
     def _get_driver(self) -> Driver:
         logger.debug("Starting webdriver for current session")
         browser_path = self.checkin_scheduler.reservation_monitor.config.browser_path
-        user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36"
-
-        # List of platforms that should be excluded from certain driver arguments
-        excluded_platforms = ["darwin"]
 
         driver_version = "mlatest"
         if os.environ.get("AUTO_SOUTHWEST_CHECK_IN_DOCKER") == "1":
@@ -142,18 +138,14 @@ class WebDriver:
             # is not downloaded as the Docker image already has the correct driver
             driver_version = "keep"
 
-        common_params = {
-            'binary_location':browser_path,
-            'driver_version': driver_version,
-            'headless': True,
-            'uc_cdp_events': True,
-            'undetectable': True,
-            'guest_mode': True
-        }
-        if sys.platform in excluded_platforms:
-            driver = Driver(**common_params)
-        else:
-            driver = Driver(**common_params, mobile=False, agent=user_agent)
+        driver = Driver(
+            binary_location=browser_path,
+            driver_version=driver_version,
+            headless=True,
+            undetectable=True,
+            uc_cdp_events=True,
+            is_mobile=True
+        )
         logger.debug("Using browser version: %s", driver.caps["browserVersion"])
 
         driver.add_cdp_listener("Network.requestWillBeSent", self._headers_listener)

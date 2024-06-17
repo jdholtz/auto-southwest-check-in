@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-import time
-
 from typing import TYPE_CHECKING, Any, Dict, List, Tuple
 
 from .checkin_scheduler import VIEW_RESERVATION_URL
 from .flight import Flight
 from .log import get_logger
-from .utils import FlightChangeError, make_request, set_sleep_duration
+from .utils import FlightChangeError, make_request
 
 if TYPE_CHECKING:
     from .reservation_monitor import ReservationMonitor
@@ -82,7 +80,6 @@ class FareChecker:
         fare_type = fare_type_bounds[bound]["fareProductDetails"]["fareProductId"]
 
         logger.debug("Retrieving matching flights")
-        time.sleep(set_sleep_duration(1, 2))
         response = make_request("POST", site, self.headers, query, max_attempts=7, is_fare_checker=True)
         return response["changeShoppingPage"]["flights"][bound_page]["cards"], fare_type
 
@@ -94,7 +91,6 @@ class FareChecker:
             "last-name": self.reservation_monitor.last_name,
         }
         site = VIEW_RESERVATION_URL + flight.confirmation_number
-        time.sleep(set_sleep_duration(1, 2))
         response = make_request("GET", site, self.headers, info, max_attempts=7, is_fare_checker=True)
         reservation_info = response["viewReservationViewPage"]
         fare_type_bounds = reservation_info["bounds"]
@@ -112,7 +108,6 @@ class FareChecker:
             raise FlightChangeError("Flight cannot be changed online")
 
         site = BOOKING_URL + info["href"]
-        time.sleep(set_sleep_duration(1, 2))
         response = make_request("GET", site, self.headers, info["query"], max_attempts=7, is_fare_checker=True)
 
         return response["changeFlightPage"], fare_type_bounds
