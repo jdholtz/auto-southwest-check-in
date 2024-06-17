@@ -4,7 +4,6 @@ import json
 import os
 import sys
 import time
-import random
 from typing import TYPE_CHECKING, Any, Dict, List
 
 from seleniumbase import Driver

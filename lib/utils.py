@@ -24,7 +24,7 @@ RESERVATION_NOT_FOUND_CODE = 400620389
 def set_sleep_duration(min_duration: float, max_duration: float) -> float:
     return random.uniform(min_duration, max_duration)
 
-def make_request(method: str, site: str, headers: JSON, info: JSON, max_attempts=20, is_fare_checker: bool = False) -> JSON:
+def make_request(method: str, site: str, headers: JSON, info: JSON, max_attempts=20, is_fare_checker=False) -> JSON:
     """
     Makes a request to the Southwest servers. For increased reliability, the request is performed
     multiple times on failure. This request retrying is also necessary for check-ins, as check-in
