@@ -101,23 +101,37 @@ class ReservationMonitor:
             try:
                 fare_checker.check_flight_price(flight)
                 self.notification_handler.healthchecks_success(
-                    f"Successful fare check, confirmation number={flight.confirmation_number}"
+                    f"Successful fare check,\nconfirmation number = {flight.confirmation_number}"
                 )
             except RequestError as err:
                 logger.error("Requesting error during fare check. %s. Skipping...", err)
                 self.notification_handler.healthchecks_fail(
-                    f"Failed fare check, confirmation number={flight.confirmation_number}"
+                    f"Failed fare check,\nconfirmation number = {flight.confirmation_number}"
                 )
             except FlightChangeError as err:
                 logger.debug("%s. Skipping fare check", err)
                 self.notification_handler.healthchecks_success(
-                    f"Successful fare check, confirmation number={flight.confirmation_number}"
+                    f"Successful fare check,\nconfirmation number = {flight.confirmation_number}"
                 )
             except Exception as err:
                 logger.exception("Unexpected error during fare check: %s", repr(err))
                 self.notification_handler.healthchecks_fail(
-                    f"Failed fare check, confirmation number={flight.confirmation_number}"
+                    f"Failed fare check,\nconfirmation number = {flight.confirmation_number}"
                 )
+
+    def _sleep_message(self, hours, minutes, seconds):
+        if self.first_name is not None and self.last_name is not None:
+            name = f" for {self.first_name} {self.last_name}"
+        else:
+            name = ""
+        
+        if hours > 0:
+            print(f"Sleeping for {hours} hours and {minutes} minutes until the next check{name}\n")
+        else:
+            if seconds > 0:
+                print(f"Sleeping for {minutes} minutes and {seconds} seconds until the next check{name}\n")
+            else:
+                print(f"Sleeping for {minutes} minutes until the next check{name}\n")
 
     def _smart_sleep(self, previous_time: datetime) -> None:
         """
@@ -127,7 +141,11 @@ class ReservationMonitor:
         current_time = get_current_time()
         time_taken = (current_time - previous_time).total_seconds()
         sleep_time = self.config.retrieval_interval - time_taken
-        logger.debug("Sleeping for %d seconds", sleep_time)
+        hours = int(sleep_time // 3600)
+        minutes = int((sleep_time % 3600) // 60)
+        seconds = int(sleep_time % 60)
+        
+        self._sleep_message(hours, minutes, seconds)
         time.sleep(sleep_time)
 
     def _stop_checkins(self) -> None:

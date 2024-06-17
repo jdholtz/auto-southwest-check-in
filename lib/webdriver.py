@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import os
-import re
 import sys
 import time
 import random
@@ -21,12 +20,10 @@ if TYPE_CHECKING:
 BASE_URL = "https://mobile.southwest.com"
 LOGIN_URL = BASE_URL + "/api/security/v4/security/token"
 TRIPS_URL = BASE_URL + "/api/mobile-misc/v1/mobile-misc/page/upcoming-trips"
-RESERVATION_URL = BASE_URL + "/view-reservation"
-HEADERS_URLS = [
-    BASE_URL + "/api/mobile-air-booking/v1/mobile-air-booking/feature/shopping-details",
-    BASE_URL + "/api/chase/v2/chase/offers"
+MY_ACCOUNT_URL = BASE_URL + "/my-account"
+HEADERS_URL = [
+    BASE_URL + "/api/mobile-air-booking/v1/mobile-air-booking/feature/shopping-details"
 ]
-USER_AGENT = "Mozilla/5.0 (Wayland; Linux x86_64; Touch; Microsoft Corporation/Surface Pro 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36 Ubuntu/23.10 Edg/117.0.2045.40"
 
 # Southwest's code when logging in with the incorrect information
 INVALID_CREDENTIALS_CODE = 400518024
@@ -117,9 +114,12 @@ class WebDriver:
         driver.click_if_visible(".button-popup.confirm-button")
 
         driver.click(".login-button--box")
+        login_sleep = self._set_sleep_duration()
+        time.sleep(login_sleep)
         driver.type('input[name="userNameOrAccountNumber"]', account_monitor.username)
 
         # Use quote_plus to workaround a x-www-form-urlencoded encoding bug on the mobile site
+        time.sleep(login_sleep)
         driver.type('input[name="password"]', f"{account_monitor.password}\n")
 
         # Wait for the necessary information to be set
@@ -137,6 +137,10 @@ class WebDriver:
     def _get_driver(self) -> Driver:
         logger.debug("Starting webdriver for current session")
         browser_path = self.checkin_scheduler.reservation_monitor.config.browser_path
+        user_agent = "Mozilla/5.0 (Wayland; Linux x86_64; aarch64; Surface) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36 Ubuntu/23.04 Edg/114.0.1823.43"
+
+        # List of platforms that should be excluded from certain driver arguments
+        excluded_platforms = ["darwin"]
 
         driver_version = "mlatest"
         if os.environ.get("AUTO_SOUTHWEST_CHECK_IN_DOCKER") == "1":
@@ -144,21 +148,25 @@ class WebDriver:
             # is not downloaded as the Docker image already has the correct driver
             driver_version = "keep"
 
-        driver = Driver(
-            binary_location=browser_path,
-            driver_version=driver_version,
-            uc_cdp_events=True,
-            undetectable=True,
-            headless=True,
-            guest_mode=True,
-            agent=USER_AGENT
-        )
+        common_params = {
+            'binary_location':browser_path,
+            'driver_version': driver_version,
+            'headless': True,
+            'uc_cdp_events': True,
+            'undetectable': True,
+            'guest_mode': True
+        }
+        if sys.platform in excluded_platforms:
+            driver = Driver(**common_params)
+        else:
+            driver = Driver(**common_params, mobile=True, agent=user_agent)
         logger.debug("Using browser version: %s", driver.caps["browserVersion"])
 
         driver.add_cdp_listener("Network.requestWillBeSent", self._headers_listener)
 
-        logger.debug("Loading Southwest reservation page (this may take a moment)")
-        driver.open(RESERVATION_URL)
+        logger.debug("Loading Southwest my account page (this may take a moment)")
+        driver.open(MY_ACCOUNT_URL)
+        driver.click("(//button[contains(@class,'closeButton')])[2]")
         return driver
 
     def _headers_listener(self, data: JSON) -> None:
@@ -167,7 +175,7 @@ class WebDriver:
         in the checkin_scheduler.
         """
         request = data["params"]["request"]
-        if request["url"] in HEADERS_URLS and not self.headers_set:
+        if request["url"] in HEADERS_URL and not self.headers_set:
             self.checkin_scheduler.headers = self._get_needed_headers(request["headers"])
             self.headers_set = True
 
@@ -197,8 +205,6 @@ class WebDriver:
         Waits for the login request to go through and sets the account name appropriately.
         Handles login errors, if necessary.
         """
-        beforelogin_sleep = self._set_sleep_duration()
-        time.sleep(beforelogin_sleep)
         self._click_login_button(driver)
         self._wait_for_attribute("login_request_id")
         login_response = self._get_response_body(driver, self.login_request_id)
@@ -210,9 +216,7 @@ class WebDriver:
             raise error
 
         self._set_account_name(account_monitor, login_response)
-        afterlogin_sleep = self._set_sleep_duration()
-        time.sleep(afterlogin_sleep)
-        driver.click(".upcoming-trips-link")
+        driver.click("div.nav-item.my-account-nav-item")
 
     def _click_login_button(self, driver: Driver) -> None:
         """
@@ -259,8 +263,7 @@ class WebDriver:
     def _get_needed_headers(self, request_headers: JSON) -> JSON:
         headers = {}
         for header in request_headers:
-            if re.match(r"x-api-key|x-channel-id|user-agent|^[\w-]+?-\w$", header, re.I):
-                headers[header] = request_headers[header]
+            headers[header] = request_headers[header]
 
         return headers
 

@@ -15,7 +15,7 @@ from .log import get_logger
 JSON = Dict[str, Any]
 
 BASE_URL = "https://mobile.southwest.com/api/"
-NTP_SERVER = "us.pool.ntp.org"
+NTP_SERVER = "pool.ntp.org"
 logger = get_logger(__name__)
 
 RESERVATION_NOT_FOUND_CODE = 400620389
@@ -24,7 +24,7 @@ RESERVATION_NOT_FOUND_CODE = 400620389
 def set_sleep_duration() -> None:
     return random.uniform(1, 6)
 
-def make_request(method: str, site: str, headers: JSON, info: JSON, max_attempts=20) -> JSON:
+def make_request(method: str, site: str, headers: JSON, info: JSON, max_attempts=20, is_fare_checker: bool = False) -> JSON:
     """
     Makes a request to the Southwest servers. For increased reliability, the request is performed
     multiple times on failure. This request retrying is also necessary for check-ins, as check-in
@@ -56,8 +56,12 @@ def make_request(method: str, site: str, headers: JSON, info: JSON, max_attempts
             logger.debug("Reservation not found")
             break
 
-        attempts_sleep = set_sleep_duration()
-        logger.debug(f"Attempt {attempts}: Sleeping for {attempts_sleep:.2f} seconds")
+        if is_fare_checker:
+            attempts_sleep = set_sleep_duration()
+        else:
+            attempts_sleep = 0.5
+
+        logger.debug(f"Sleeping for {attempts_sleep:.2f} seconds after {attempts} attempts")
         time.sleep(attempts_sleep)
 
     error_msg = response.reason + " " + str(response.status_code)

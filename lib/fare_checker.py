@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import time
+import random
+
 from typing import TYPE_CHECKING, Any, Dict, List, Tuple
 
 from .checkin_scheduler import VIEW_RESERVATION_URL
@@ -18,6 +21,9 @@ logger = get_logger(__name__)
 
 
 class FareChecker:
+    def _set_sleep_duration(self) -> None:
+        return random.uniform(1, 2)
+
     def __init__(self, reservation_monitor: ReservationMonitor) -> None:
         self.reservation_monitor = reservation_monitor
         self.headers = reservation_monitor.checkin_scheduler.headers
@@ -80,7 +86,8 @@ class FareChecker:
         fare_type = fare_type_bounds[bound]["fareProductDetails"]["fareProductId"]
 
         logger.debug("Retrieving matching flights")
-        response = make_request("POST", site, self.headers, query, max_attempts=7)
+        time.sleep(self._set_sleep_duration())
+        response = make_request("POST", site, self.headers, query, max_attempts=7, is_fare_checker=True)
         return response["changeShoppingPage"]["flights"][bound_page]["cards"], fare_type
 
     def _get_change_flight_page(self, flight: Flight) -> Tuple[JSON, List[JSON]]:
@@ -91,7 +98,8 @@ class FareChecker:
             "last-name": self.reservation_monitor.last_name,
         }
         site = VIEW_RESERVATION_URL + flight.confirmation_number
-        response = make_request("GET", site, self.headers, info, max_attempts=7)
+        time.sleep(self._set_sleep_duration())
+        response = make_request("GET", site, self.headers, info, max_attempts=7, is_fare_checker=True)
         reservation_info = response["viewReservationViewPage"]
         fare_type_bounds = reservation_info["bounds"]
 
@@ -108,7 +116,8 @@ class FareChecker:
             raise FlightChangeError("Flight cannot be changed online")
 
         site = BOOKING_URL + info["href"]
-        response = make_request("GET", site, self.headers, info["query"], max_attempts=7)
+        time.sleep(self._set_sleep_duration())
+        response = make_request("GET", site, self.headers, info["query"], max_attempts=7, is_fare_checker=True)
 
         return response["changeFlightPage"], fare_type_bounds
 
