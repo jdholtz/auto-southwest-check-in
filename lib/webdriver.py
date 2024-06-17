@@ -11,7 +11,7 @@ from seleniumbase import Driver
 from seleniumbase.fixtures import page_actions as seleniumbase_actions
 
 from .log import LOGS_DIRECTORY, get_logger
-from .utils import LoginError
+from .utils import LoginError, set_sleep_duration
 
 if TYPE_CHECKING:
     from .checkin_scheduler import CheckInScheduler
@@ -58,9 +58,6 @@ class WebDriver:
         self.login_request_id = None
         self.login_status_code = None
         self.trips_request_id = None
-
-    def _set_sleep_duration(self) -> None:
-        return random.uniform(1, 5)
 
     def _should_take_screenshots(self) -> bool:
         """
@@ -114,12 +111,10 @@ class WebDriver:
         driver.click_if_visible(".button-popup.confirm-button")
 
         driver.click(".login-button--box")
-        login_sleep = self._set_sleep_duration()
-        time.sleep(login_sleep)
+        time.sleep(set_sleep_duration(1, 5))
         driver.type('input[name="userNameOrAccountNumber"]', account_monitor.username)
 
         # Use quote_plus to workaround a x-www-form-urlencoded encoding bug on the mobile site
-        time.sleep(login_sleep)
         driver.type('input[name="password"]', f"{account_monitor.password}\n")
 
         # Wait for the necessary information to be set

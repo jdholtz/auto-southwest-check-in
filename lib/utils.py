@@ -21,8 +21,8 @@ logger = get_logger(__name__)
 RESERVATION_NOT_FOUND_CODE = 400620389
 
 
-def set_sleep_duration() -> None:
-    return random.uniform(1, 6)
+def set_sleep_duration(min_duration: float, max_duration: float) -> float:
+    return random.uniform(min_duration, max_duration)
 
 def make_request(method: str, site: str, headers: JSON, info: JSON, max_attempts=20, is_fare_checker: bool = False) -> JSON:
     """
@@ -57,7 +57,7 @@ def make_request(method: str, site: str, headers: JSON, info: JSON, max_attempts
             break
 
         if is_fare_checker:
-            attempts_sleep = set_sleep_duration()
+            attempts_sleep = set_sleep_duration(1, 6)
         else:
             attempts_sleep = 0.5
 
