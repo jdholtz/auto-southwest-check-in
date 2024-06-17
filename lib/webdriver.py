@@ -131,7 +131,7 @@ class WebDriver:
     def _get_driver(self) -> Driver:
         logger.debug("Starting webdriver for current session")
         browser_path = self.checkin_scheduler.reservation_monitor.config.browser_path
-        user_agent = "Mozilla/5.0 (Wayland; Linux x86_64; aarch64; Surface) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36 Ubuntu/23.04 Edg/114.0.1823.43"
+        user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36"
 
         # List of platforms that should be excluded from certain driver arguments
         excluded_platforms = ["darwin"]
@@ -153,7 +153,7 @@ class WebDriver:
         if sys.platform in excluded_platforms:
             driver = Driver(**common_params)
         else:
-            driver = Driver(**common_params, mobile=True, agent=user_agent)
+            driver = Driver(**common_params, mobile=False, agent=user_agent)
         logger.debug("Using browser version: %s", driver.caps["browserVersion"])
 
         driver.add_cdp_listener("Network.requestWillBeSent", self._headers_listener)
