@@ -15,7 +15,7 @@ from .log import get_logger
 JSON = Dict[str, Any]
 
 BASE_URL = "https://mobile.southwest.com/api/"
-NTP_SERVER = "pool.ntp.org"
+NTP_SERVER = "us.pool.ntp.org"
 logger = get_logger(__name__)
 
 RESERVATION_NOT_FOUND_CODE = 400620389

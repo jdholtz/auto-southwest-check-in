@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 import time
 from typing import TYPE_CHECKING, Any, Dict, List
@@ -19,7 +20,6 @@ if TYPE_CHECKING:
 BASE_URL = "https://mobile.southwest.com"
 LOGIN_URL = BASE_URL + "/api/security/v4/security/token"
 TRIPS_URL = BASE_URL + "/api/mobile-misc/v1/mobile-misc/page/upcoming-trips"
-MY_ACCOUNT_URL = BASE_URL + "/my-account"
 HEADERS_URL = [
     BASE_URL + "/api/chase/v2/chase/offers"
 ]
@@ -129,7 +129,7 @@ class WebDriver:
         return reservations
 
     def _get_driver(self) -> Driver:
-        logger.debug("Starting webdriver for current session")
+        logger.debug("Starting webdriver for current session (this may take a moment)")
         browser_path = self.checkin_scheduler.reservation_monitor.config.browser_path
 
         driver_version = "mlatest"
@@ -150,9 +150,9 @@ class WebDriver:
 
         driver.add_cdp_listener("Network.requestWillBeSent", self._headers_listener)
 
-        logger.debug("Loading Southwest my account page (this may take a moment)")
-        driver.open(MY_ACCOUNT_URL)
-        driver.click("(//button[contains(@class,'closeButton')])[2]")
+        logger.debug("Loading Southwest home page (this may take a moment)")
+        driver.open(BASE_URL)
+        driver.click("//img[contains(@alt,'Check in')]")
         return driver
 
     def _headers_listener(self, data: JSON) -> None:
@@ -202,7 +202,6 @@ class WebDriver:
             raise error
 
         self._set_account_name(account_monitor, login_response)
-        driver.click("div.nav-item.my-account-nav-item")
 
     def _click_login_button(self, driver: Driver) -> None:
         """
@@ -249,7 +248,8 @@ class WebDriver:
     def _get_needed_headers(self, request_headers: JSON) -> JSON:
         headers = {}
         for header in request_headers:
-            headers[header] = request_headers[header]
+            if re.match(r"x-api-key|x-channel-id|user-agent|^[\w-]+?-\w$", header, re.I):
+                headers[header] = request_headers[header]
 
         return headers
 
