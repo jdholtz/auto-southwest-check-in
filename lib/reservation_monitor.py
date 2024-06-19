@@ -119,19 +119,6 @@ class ReservationMonitor:
                     f"Failed fare check,\nconfirmation number = {flight.confirmation_number}"
                 )
 
-    def _sleep_message(self, sleep_time):
-        hours = int(sleep_time // 3600)
-        minutes = int((sleep_time % 3600) // 60)
-        seconds = int(sleep_time % 60)
-        
-        if hours > 0:
-            logger.debug(f"Sleeping for {hours} hours and {minutes} minutes\n")
-        else:
-            if seconds > 0:
-                logger.debug(f"Sleeping for {minutes} minutes and {seconds} seconds\n")
-            else:
-                logger.debug(f"Sleeping for {minutes} minutes\n")
-
     def _smart_sleep(self, previous_time: datetime) -> None:
         """
         Account for the time it took to do recurring tasks so the sleep interval
@@ -140,7 +127,7 @@ class ReservationMonitor:
         current_time = get_current_time()
         time_taken = (current_time - previous_time).total_seconds()
         sleep_time = self.config.retrieval_interval - time_taken
-        self._sleep_message(sleep_time)
+        logger.debug("Sleeping for %d seconds", sleep_time)
         time.sleep(sleep_time)
 
     def _stop_checkins(self) -> None:

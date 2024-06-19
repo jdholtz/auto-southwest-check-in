@@ -129,7 +129,7 @@ class WebDriver:
         return reservations
 
     def _get_driver(self) -> Driver:
-        logger.debug("Starting webdriver for current session (this may take a moment)")
+        logger.debug("Starting webdriver for current session")
         browser_path = self.checkin_scheduler.reservation_monitor.config.browser_path
 
         driver_version = "mlatest"
@@ -152,7 +152,7 @@ class WebDriver:
 
         logger.debug("Loading Southwest home page (this may take a moment)")
         driver.open(BASE_URL)
-        driver.click("//img[contains(@alt,'Check in')]")
+        driver.js_click("(//div[@data-qa='placement-link'])[2]")
         return driver
 
     def _headers_listener(self, data: JSON) -> None:
