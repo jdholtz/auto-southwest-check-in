@@ -29,7 +29,7 @@ information beforehand.
 
 First, download the script onto your computer
 ```shell
-git clone https://github.com/dmytrokoren/auto-southwest-check-in.git
+git clone https://github.com/jdholtz/auto-southwest-check-in.git
 cd auto-southwest-check-in
 ```
 Then, install the needed packages for the script
