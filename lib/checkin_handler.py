@@ -186,7 +186,7 @@ class CheckInHandler:
         site = CHECKIN_URL + self.flight.confirmation_number
 
         logger.debug("Making GET request to check in")
-        response = make_request("GET", site, headers, info)
+        response = make_request("GET", site, headers, info, random_sleep=True)
 
         info = response["checkInViewReservationPage"]["_links"]["checkIn"]
         site = f"mobile-air-operations{info['href']}"

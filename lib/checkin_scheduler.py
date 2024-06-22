@@ -77,7 +77,7 @@ class CheckInScheduler:
 
         try:
             logger.debug("Retrieving reservation information")
-            response = make_request("GET", site, self.headers, info)
+            response = make_request("GET", site, self.headers, info, random_sleep=True)
         except RequestError as err:
             # Don't send a notification if flights have already been scheduled and all flights
             # from this reservation are old. This is how old flights are removed.
