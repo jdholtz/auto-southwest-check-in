@@ -80,7 +80,9 @@ class FareChecker:
         fare_type = fare_type_bounds[bound]["fareProductDetails"]["fareProductId"]
 
         logger.debug("Retrieving matching flights")
-        response = make_request("POST", site, self.headers, query, max_attempts=7, random_sleep=True)
+        response = make_request(
+            "POST", site, self.headers, query, max_attempts=7, random_sleep=True
+        )
         return response["changeShoppingPage"]["flights"][bound_page]["cards"], fare_type
 
     def _get_change_flight_page(self, flight: Flight) -> Tuple[JSON, List[JSON]]:
@@ -108,7 +110,9 @@ class FareChecker:
             raise FlightChangeError("Flight cannot be changed online")
 
         site = BOOKING_URL + info["href"]
-        response = make_request("GET", site, self.headers, info["query"], max_attempts=7, random_sleep=True)
+        response = make_request(
+            "GET", site, self.headers, info["query"], max_attempts=7, random_sleep=True
+        )
 
         return response["changeFlightPage"], fare_type_bounds
 

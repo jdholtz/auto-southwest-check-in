@@ -20,9 +20,7 @@ if TYPE_CHECKING:
 BASE_URL = "https://mobile.southwest.com"
 LOGIN_URL = BASE_URL + "/api/security/v4/security/token"
 TRIPS_URL = BASE_URL + "/api/mobile-misc/v1/mobile-misc/page/upcoming-trips"
-HEADERS_URL = [
-    BASE_URL + "/api/chase/v2/chase/offers"
-]
+HEADERS_URL = [BASE_URL + "/api/chase/v2/chase/offers"]
 
 # Southwest's code when logging in with the incorrect information
 INVALID_CREDENTIALS_CODE = 400518024
@@ -144,7 +142,7 @@ class WebDriver:
             headless=True,
             uc_cdp_events=True,
             undetectable=True,
-            is_mobile=True
+            is_mobile=True,
         )
         logger.debug("Using browser version: %s", driver.caps["browserVersion"])
 

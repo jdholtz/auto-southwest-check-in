@@ -1,7 +1,7 @@
 import json
+import random
 import socket
 import time
-import random
 from datetime import datetime, timezone
 from enum import IntEnum
 from typing import Any, Dict, Union
@@ -24,7 +24,10 @@ RESERVATION_NOT_FOUND_CODE = 400620389
 def random_sleep_duration(min_duration: float, max_duration: float) -> float:
     return random.uniform(min_duration, max_duration)
 
-def make_request(method: str, site: str, headers: JSON, info: JSON, max_attempts=20, random_sleep=False) -> JSON:
+
+def make_request(
+    method: str, site: str, headers: JSON, info: JSON, max_attempts=20, random_sleep=False
+) -> JSON:
     """
     Makes a request to the Southwest servers. For increased reliability, the request is performed
     multiple times on failure. This request retrying is also necessary for check-ins, as check-in
