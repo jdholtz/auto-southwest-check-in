@@ -53,6 +53,7 @@ def make_request(
         # Request did not succeed
         response_body = response.content.decode()
         error = RequestError(None, response_body)
+        error_msg = response.reason + " " + str(response.status_code)
 
         if error.southwest_code == RESERVATION_NOT_FOUND_CODE:
             # Don't keep requesting if the reservation was not found
@@ -60,16 +61,17 @@ def make_request(
             break
 
         if random_sleep:
-            attempts_sleep = random_sleep_duration(1, 3)
+            sleep_time = random_sleep_duration(1, 3)
         else:
-            attempts_sleep = 0.5
+            sleep_time = 0.5
 
-        logger.debug(f"Sleeping for {attempts_sleep:.2f} seconds after {attempts} attempts")
-        time.sleep(attempts_sleep)
+        logger.debug(
+            f"Request error on attempt {attempts}: {error_msg}. Sleeping for {sleep_time:.2f} "
+            "seconds until next attempt"
+        )
+        time.sleep(sleep_time)
 
-    error_msg = response.reason + " " + str(response.status_code)
     logger.debug("Failed to make request after %d attempts: %s", attempts, error_msg)
-
     logger.debug("Response body: %s", response_body)
     raise RequestError(error_msg, response_body)
 
