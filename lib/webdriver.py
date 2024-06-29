@@ -11,7 +11,7 @@ from seleniumbase import Driver
 from seleniumbase.fixtures import page_actions as seleniumbase_actions
 
 from .log import LOGS_DIRECTORY, get_logger
-from .utils import LoginError
+from .utils import LoginError, random_sleep_duration
 
 if TYPE_CHECKING:
     from .checkin_scheduler import CheckInScheduler
@@ -20,11 +20,7 @@ if TYPE_CHECKING:
 BASE_URL = "https://mobile.southwest.com"
 LOGIN_URL = BASE_URL + "/api/security/v4/security/token"
 TRIPS_URL = BASE_URL + "/api/mobile-misc/v1/mobile-misc/page/upcoming-trips"
-CHECKIN_URL = BASE_URL + "/check-in"
-HEADERS_URLS = [
-    BASE_URL + "/api/chase/v2/chase/offers",
-    BASE_URL + "/api/mobile-air-booking/v1/mobile-air-booking/feature/shopping-details",
-]
+HEADERS_URL = [BASE_URL + "/api/chase/v2/chase/offers"]
 
 # Southwest's code when logging in with the incorrect information
 INVALID_CREDENTIALS_CODE = 400518024
@@ -112,6 +108,7 @@ class WebDriver:
         driver.click_if_visible(".button-popup.confirm-button")
 
         driver.click(".login-button--box")
+        time.sleep(random_sleep_duration(1, 5))
         driver.type('input[name="userNameOrAccountNumber"]', account_monitor.username)
 
         # Use quote_plus to workaround a x-www-form-urlencoded encoding bug on the mobile site
@@ -130,7 +127,7 @@ class WebDriver:
         return reservations
 
     def _get_driver(self) -> Driver:
-        logger.debug("Starting webdriver for current session (this may take a few minutes)")
+        logger.debug("Starting webdriver for current session")
         browser_path = self.checkin_scheduler.reservation_monitor.config.browser_path
 
         driver_version = "mlatest"
@@ -145,13 +142,15 @@ class WebDriver:
             headless=True,
             uc_cdp_events=True,
             undetectable=True,
+            is_mobile=True,
         )
         logger.debug("Using browser version: %s", driver.caps["browserVersion"])
 
         driver.add_cdp_listener("Network.requestWillBeSent", self._headers_listener)
 
-        logger.debug("Loading Southwest check-in page (this may take a few minutes)")
-        driver.get(CHECKIN_URL)
+        logger.debug("Loading Southwest home page (this may take a moment)")
+        driver.open(BASE_URL)
+        driver.js_click("(//div[@data-qa='placement-link'])[2]")
         return driver
 
     def _headers_listener(self, data: JSON) -> None:
@@ -160,7 +159,7 @@ class WebDriver:
         in the checkin_scheduler.
         """
         request = data["params"]["request"]
-        if request["url"] in HEADERS_URLS and not self.headers_set:
+        if request["url"] in HEADERS_URL and not self.headers_set:
             self.checkin_scheduler.headers = self._get_needed_headers(request["headers"])
             self.headers_set = True
 

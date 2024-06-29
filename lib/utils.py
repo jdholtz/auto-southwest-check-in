@@ -1,4 +1,5 @@
 import json
+import random
 import socket
 import time
 from datetime import datetime, timezone
@@ -20,7 +21,13 @@ logger = get_logger(__name__)
 RESERVATION_NOT_FOUND_CODE = 400620389
 
 
-def make_request(method: str, site: str, headers: JSON, info: JSON, max_attempts=20) -> JSON:
+def random_sleep_duration(min_duration: float, max_duration: float) -> float:
+    return random.uniform(min_duration, max_duration)
+
+
+def make_request(
+    method: str, site: str, headers: JSON, info: JSON, max_attempts=20, random_sleep=False
+) -> JSON:
     """
     Makes a request to the Southwest servers. For increased reliability, the request is performed
     multiple times on failure. This request retrying is also necessary for check-ins, as check-in
@@ -52,7 +59,13 @@ def make_request(method: str, site: str, headers: JSON, info: JSON, max_attempts
             logger.debug("Reservation not found")
             break
 
-        time.sleep(0.5)
+        if random_sleep:
+            attempts_sleep = random_sleep_duration(1, 3)
+        else:
+            attempts_sleep = 0.5
+
+        logger.debug(f"Sleeping for {attempts_sleep:.2f} seconds after {attempts} attempts")
+        time.sleep(attempts_sleep)
 
     error_msg = response.reason + " " + str(response.status_code)
     logger.debug("Failed to make request after %d attempts: %s", attempts, error_msg)

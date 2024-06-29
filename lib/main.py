@@ -87,8 +87,8 @@ def set_up_check_in(arguments: List[str]) -> None:
         logger.error("Invalid arguments. For more information, try '--help'")
         sys.exit(2)
 
-    logger.debug(
-        "Monitoring %d accounts and %d reservations", len(config.accounts), len(config.reservations)
+    print(
+        f"Monitoring {len(config.accounts)} accounts and {len(config.reservations)} reservations\n"
     )
     lock = multiprocessing.Lock()
     set_up_accounts(config, lock)
