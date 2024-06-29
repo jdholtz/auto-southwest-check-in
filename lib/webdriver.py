@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 BASE_URL = "https://mobile.southwest.com"
 LOGIN_URL = BASE_URL + "/api/security/v4/security/token"
 TRIPS_URL = BASE_URL + "/api/mobile-misc/v1/mobile-misc/page/upcoming-trips"
-HEADERS_URL = [BASE_URL + "/api/chase/v2/chase/offers"]
+HEADERS_URL = BASE_URL + "/api/chase/v2/chase/offers"
 
 # Southwest's code when logging in with the incorrect information
 INVALID_CREDENTIALS_CODE = 400518024
@@ -103,10 +103,6 @@ class WebDriver:
         seleniumbase_actions.wait_for_element_not_visible(driver, ".dimmer")
         self._take_debug_screenshot(driver, "pre_login.png")
 
-        # If a popup came up with an error, click "OK" to remove it.
-        # See https://github.com/jdholtz/auto-southwest-check-in/issues/226
-        driver.click_if_visible(".button-popup.confirm-button")
-
         driver.click(".login-button--box")
         time.sleep(random_sleep_duration(1, 5))
         driver.type('input[name="userNameOrAccountNumber"]', account_monitor.username)
@@ -159,7 +155,7 @@ class WebDriver:
         in the checkin_scheduler.
         """
         request = data["params"]["request"]
-        if request["url"] in HEADERS_URL and not self.headers_set:
+        if request["url"] == HEADERS_URL:
             self.checkin_scheduler.headers = self._get_needed_headers(request["headers"])
             self.headers_set = True
 
