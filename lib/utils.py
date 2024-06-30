@@ -26,7 +26,7 @@ def random_sleep_duration(min_duration: float, max_duration: float) -> float:
 
 
 def make_request(
-    method: str, site: str, headers: JSON, info: JSON, max_attempts=20, random_sleep=False
+    method: str, site: str, headers: JSON, info: JSON, max_attempts=20, random_sleep=True
 ) -> JSON:
     """
     Makes a request to the Southwest servers. For increased reliability, the request is performed

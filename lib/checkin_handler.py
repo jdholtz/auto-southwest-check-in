@@ -186,11 +186,12 @@ class CheckInHandler:
         site = CHECKIN_URL + self.flight.confirmation_number
 
         logger.debug("Making GET request to check in")
-        response = make_request("GET", site, headers, info, random_sleep=True)
+        response = make_request("GET", site, headers, info)
 
         info = response["checkInViewReservationPage"]["_links"]["checkIn"]
         site = f"mobile-air-operations{info['href']}"
 
         logger.debug("Making POST request to check in")
-        reservation = make_request("POST", site, headers, info["body"])
+        # Don't randomly sleep during this request to have it go through more quickly
+        reservation = make_request("POST", site, headers, info["body"], random_sleep=False)
         return reservation
