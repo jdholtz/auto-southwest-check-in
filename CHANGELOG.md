@@ -3,6 +3,13 @@ When upgrading to a new version, make sure to follow the directions under the "U
 If there is no "Upgrading" header for that version, no post-upgrade actions need to be performed.
 
 
+## Upcoming
+### Improvements
+- Mitigations for 403 and 429 errors were added to significantly improve Docker and server environments as well as
+checking many accounts and reservations at once
+([#274](https://github.com/jdholtz/auto-southwest-check-in/pull/274) by [@dmytrokoren](https://github.com/dmytrokoren))
+
+
 ## 7.5 (2024-06-07)
 ### New Features
 - Times are now fetched from an NTP server when possible ([#235](https://github.com/jdholtz/auto-southwest-check-in/issues/235))
