@@ -38,6 +38,11 @@ def test_test_notifications_sends_to_every_url_in_config(mocker: MockerFixture) 
     mock_send_notification.assert_called_once()
 
 
+@pytest.mark.parametrize(["expected", "count"], [("tests", 0), ("test", 1), ("tests", 2)])
+def test_pluralize_pluralizes_a_word_if_needed(expected: str, count: int) -> None:
+    assert main.pluralize("test", count) == expected
+
+
 def test_set_up_accounts_starts_all_accounts(mocker: MockerFixture) -> None:
     config = GlobalConfig()
     config.accounts = [AccountConfig(), AccountConfig()]
