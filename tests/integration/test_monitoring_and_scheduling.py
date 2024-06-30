@@ -143,7 +143,7 @@ def test_account_schedules_new_flights(requests_mock: RequestMocker, mocker: Moc
     mocker.patch("lib.webdriver.seleniumbase_actions.wait_for_element_not_visible")
     mock_process = mocker.patch("lib.checkin_handler.Process").return_value
     # Raise a StopIteration to prevent an infinite loop
-    mocker.patch("time.sleep", side_effect=[None, None, StopIteration])
+    mocker.patch("time.sleep", side_effect=[None, None, None, None, None, StopIteration])
 
     # Is checked in a separate integration test
     mock_check_flight_price = mocker.patch("lib.fare_checker.FareChecker.check_flight_price")

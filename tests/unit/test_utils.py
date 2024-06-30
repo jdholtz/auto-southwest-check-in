@@ -2,6 +2,7 @@ import json
 import socket
 from datetime import datetime, timezone
 from typing import Any
+from unittest.mock import call
 
 import ntplib
 import pytest
@@ -11,16 +12,45 @@ from requests_mock.mocker import Mocker as RequestMocker
 from lib import utils
 
 
+def test_random_sleep_duration_respects_min_and_max_durations(mocker: MockerFixture) -> None:
+    mock_uniform = mocker.patch("random.uniform", return_value=12)
+    sleep_time = utils.random_sleep_duration(10, 100)
+
+    assert sleep_time == 12
+    mock_uniform.assert_called_once_with(10, 100)
+
+
 def test_make_request_raises_exception_on_failure(
     requests_mock: RequestMocker, mocker: MockerFixture
 ) -> None:
     mock_sleep = mocker.patch("time.sleep")
+    mocker.patch("lib.utils.random_sleep_duration", side_effect=[1.5, 1, 2.2, 3, 2])
     requests_mock.post(utils.BASE_URL + "test", status_code=400, reason="error")
 
     with pytest.raises(utils.RequestError):
         utils.make_request("POST", "test", {}, {}, max_attempts=5)
 
     assert mock_sleep.call_count == 5
+
+    expected_calls = [call(1.5), call(1), call(2.2), call(3), call(2)]
+    mock_sleep.assert_has_calls(expected_calls)
+
+
+def test_make_request_does_not_sleep_randomly_on_failures_when_random_sleep_is_false(
+    requests_mock: RequestMocker, mocker: MockerFixture
+) -> None:
+    mock_sleep = mocker.patch("time.sleep")
+    mock_rand_sleep_duration = mocker.patch("lib.utils.random_sleep_duration")
+    requests_mock.post(utils.BASE_URL + "test", status_code=400, reason="error")
+
+    with pytest.raises(utils.RequestError):
+        utils.make_request("POST", "test", {}, {}, max_attempts=2, random_sleep=False)
+
+    assert mock_sleep.call_count == 2
+    mock_rand_sleep_duration.assert_not_called()
+
+    expected_calls = [call(0.5), call(0.5)]
+    mock_sleep.assert_has_calls(expected_calls)
 
 
 def test_make_request_stops_early_when_reservation_not_found(
