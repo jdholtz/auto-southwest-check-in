@@ -13,8 +13,8 @@ test multiple parts of the script rather than just one.
 The test naming and formatting conventions can be replicated from the tests that already exist.
 
 ## Running Tests
-[Pytest][0] is used to run all tests. Both unit tests and integration tests are automatically run
-after every pull request and push to the `master` branch using a [GitHub workflow][1]. Additionally,
+[Pytest] is used to run all tests. Both unit tests and integration tests are automatically run
+after every pull request and push to the `master` branch using a [GitHub workflow]. Additionally,
 unit tests are also run on every push to the `develop` branch.
 
 ### Setup
@@ -53,5 +53,5 @@ To get a coverage report
 pytest --cov
 ```
 
-[0]: https://docs.pytest.org
-[1]: ../.github/workflows/tests.yml
+[Pytest]: https://docs.pytest.org
+[GitHub workflow]: ../.github/workflows/tests.yml

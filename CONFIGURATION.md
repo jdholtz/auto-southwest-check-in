@@ -46,9 +46,9 @@ Environment Variable: `AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_URL`
 > When using the environment variable, you may only specify a single URL.
 > If you are also using `config.json`, it will append the URL as long as it's not a duplicate.
 
-Users can be notified on successful and failed check-ins. This is done through the [Apprise library][0].
+Users can be notified on successful and failed check-ins. This is done through the [Apprise library].
 To start, first gather the service URL you want to send notifications to (information on how to create
-service URLs can be found on the [Apprise Readme][1]). Then put it in your configuration file.
+service URLs can be found on the [Apprise Readme]). Then put it in your configuration file.
 ```json
 {
   "notification_urls": "service://my_service_url"
@@ -224,7 +224,7 @@ In this example, the script will send notifications attached to this reservation
 Default: No URL \
 Type: String
 
-Monitor successful and failed fare checks using a [Healthchecks.io](https://healthchecks.io/) URL. When a fare check
+Monitor successful and failed fare checks using a [Healthchecks.io] URL. When a fare check
 fails, the `/fail` endpoint of your Healthchecks URL will be pinged to notify you of the failure.
 
 This configuration option can only be applied within reservation and account configurations (specifying it at the top-level
@@ -242,5 +242,6 @@ will have no effect). Due to this, no environment variable is provided as a repl
 ```
 
 
-[0]: https://github.com/caronc/apprise
-[1]: https://github.com/caronc/apprise#supported-notifications
+[Apprise library]: https://github.com/caronc/apprise
+[Apprise Readme]: https://github.com/caronc/apprise#supported-notifications
+[Healthchecks.io]: https://healthchecks.io

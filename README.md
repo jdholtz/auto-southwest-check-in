@@ -23,9 +23,9 @@ information beforehand.
 ## Installation
 
 ### Prerequisites
-- [Python 3.8+][0]
-- [Pip][1]
-- [Any Chromium-based browser][2]
+- [Python 3.8+]
+- [Pip]
+- [Any Chromium-based browser]
 
 First, download the script onto your computer
 ```shell
@@ -36,7 +36,7 @@ Then, install the needed packages for the script
 ```shell
 pip3 install -r requirements.txt
 ```
-You may want to install the requirements in a [Python virtual environment][3] to ensure they don't conflict
+You may want to install the requirements in a [Python virtual environment] to ensure they don't conflict
 with other Python projects on your system.
 
 ### Upgrading
@@ -74,8 +74,8 @@ If you want the latest features of the script, you can use the `develop` branch 
 can be viewed in the Changelog). However, keep in mind that changes to this branch do not ensure reliability.
 
 ### Running in Docker
-The application can also be run in a container using [Docker][4]. The Docker repository for this project
-can be found [here][5]. To pull the latest image, run:
+The application can also be run in a container using [Docker]. The Docker repository for this project
+can be found [here][Docker repository]. To pull the latest image, run:
 ```shell
 docker pull jdholtz/auto-southwest-check-in
 ```
@@ -120,7 +120,7 @@ services:
       - AUTO_SOUTHWEST_CHECK_IN_PASSWORD=TopsyKretts
 ```
 
-Additional information on the Docker container can be found in the [public repository][5].
+Additional information on the Docker container can be found in the [public repository][Docker repository].
 
 ## Configuration
 To use the default configuration file, copy `config.example.json` to `config.json`.
@@ -132,19 +132,19 @@ To troubleshoot a problem, run the script with the `--verbose` flag. This will d
 get a better overview of the problem. You can also run the script with the `--debug-screenshots` flag which will
 take screenshots of the browser (stored in the logs/ directory) so you can see it at different stages in the script.
 
-If you run into any issues, please file it via [GitHub Issues][6]. Please attach any relevant logs (found in
+If you run into any issues, please file it via [GitHub Issues]. Please attach any relevant logs (found in
 `logs/auto-southwest-check-in.log`) to the issue. The logs should not have any personal information but check to make
 sure before attaching it.
 
 For any common questions or issues, visit the [FAQ](#faq). If you have any additional questions or discussion topics,
-you can start a [GitHub Discussion][7].
+you can start a [GitHub Discussion].
 
 ## Contributing
 Contributions are always welcome. Please read [Contributing.md](CONTRIBUTING.md) if you are considering making contributions.
 
 ## FAQ
 Below, a list of answers to frequently asked questions about Auto-Southwest Check-In can be found. If you believe any more
-questions should be added to this list, please submit a [Discussion][7] or [Pull Request][8] so the addition can be made.
+questions should be added to this list, please submit a [Discussion][GitHub Discussion] or [Pull Request] so the addition can be made.
 
 <details>
 <summary>Do I Need to Set up a Different Instance of the Script for Each Passenger on My Reservation?</summary>
@@ -175,7 +175,7 @@ in at the correct time.
 <summary>While Attempting to Run This Script, I Get a [SSL: CERTIFICATE_VERIFY_FAILED] Error. How Can I Fix It?</summary>
 
 If you are on MacOS, this error most likely occurred because your Python installation does not have any root certificates. To
-install these certificates, follow the directions found at [this Stack Overflow question][9].
+install these certificates, follow the directions found at [this Stack Overflow question].
 
 Credit to [@greennayr](https://github.com/greennayr) for the answer to this question.
 </details>
@@ -184,22 +184,22 @@ Credit to [@greennayr](https://github.com/greennayr) for the answer to this ques
 <summary>The Script Is Stuck on 'Starting webdriver for current session' or 'Loading Southwest Check-In page'. How Can I Fix It?</summary>
 
 Depending on your network speed or your compute power, it may take 3 to 5 minutes to start the browser and load the Southwest website.
-If you are still running into this issue after waiting for 8+ minutes, please file an [issue][6] (see below if you are running Docker).
+If you are still running into this issue after waiting for 8+ minutes, please file an [issue][GitHub Issues] (see below if you are running Docker).
 
 
 If you are running the script with Docker, the current workaround is to run the Docker container with the `--privileged` flag
-(see [the comment on #96](https://github.com/jdholtz/auto-southwest-check-in/issues/96#issuecomment-1587779388)). However, this
-is not a very good solution. If anyone figures out a better solution, please let me know.
+(see [the comment on #96]. However, this is not a great solution. If anyone figures out a better solution, please let me know.
 </details>
 
 
-[0]: https://www.python.org/downloads/
-[1]: https://pip.pypa.io/en/stable/installation/
-[2]: https://en.wikipedia.org/wiki/Chromium_(web_browser)#Active
-[3]: https://virtualenv.pypa.io/en/stable/
-[4]: https://www.docker.com/
-[5]: https://hub.docker.com/repository/docker/jdholtz/auto-southwest-check-in
-[6]: https://github.com/jdholtz/auto-southwest-check-in/issues/new/choose
-[7]: https://github.com/jdholtz/auto-southwest-check-in/discussions/new/choose
-[8]: https://github.com/jdholtz/auto-southwest-check-in/pulls
-[9]: https://stackoverflow.com/questions/42098126/mac-osx-python-ssl-sslerror-ssl-certificate-verify-failed-certificate-verify
+[Python 3.8+]: https://www.python.org/downloads/
+[Pip]: https://pip.pypa.io/en/stable/installation/
+[Any Chromium-based browser]: https://en.wikipedia.org/wiki/Chromium_(web_browser)#Active
+[Python virtual environment]: https://virtualenv.pypa.io/en/stable/
+[Docker]: https://www.docker.com/
+[Docker repository]: https://hub.docker.com/repository/docker/jdholtz/auto-southwest-check-in
+[GitHub Issues]: https://github.com/jdholtz/auto-southwest-check-in/issues/new/choose
+[GitHub Discussion]: https://github.com/jdholtz/auto-southwest-check-in/discussions/new/choose
+[Pull Request]: https://github.com/jdholtz/auto-southwest-check-in/pulls
+[this Stack Overflow question]: https://stackoverflow.com/questions/42098126/mac-osx-python-ssl-sslerror-ssl-certificate-verify-failed-certificate-verify
+[the comment on #96]: https://github.com/jdholtz/auto-southwest-check-in/issues/96#issuecomment-1587779388
