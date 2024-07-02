@@ -25,7 +25,9 @@ def test_flight(mocker: MockerFixture) -> Flight:
         "departureTime": None,
         "flights": [{"number": "100"}],
     }
-    return Flight(flight_info, "")
+
+    reservation_info = {"bounds": [flight_info]}
+    return Flight(flight_info, reservation_info, "")
 
 
 class TestFareChecker:
@@ -93,7 +95,7 @@ class TestFareChecker:
 
     @pytest.mark.parametrize("bound", ["outbound", "inbound"])
     def test_get_matching_flights_retrieves_correct_bound_page(
-        self, mocker: MockerFixture, bound: str
+        self, mocker: MockerFixture, test_flight: Flight, bound: str
     ) -> None:
         change_flight_page = {"_links": {"changeShopping": {"href": "test_link"}}}
         fare_type_bounds = [
@@ -113,27 +115,23 @@ class TestFareChecker:
         response = {"changeShoppingPage": {"flights": {f"{bound}Page": {"cards": "test_cards"}}}}
         mocker.patch("lib.fare_checker.make_request", return_value=response)
 
-        matching_flights, fare_type = self.checker._get_matching_flights(None)
+        matching_flights, fare_type = self.checker._get_matching_flights(test_flight)
 
         assert matching_flights == "test_cards"
         assert fare_type == bound + "_fare"
 
     def test_get_change_flight_page_retrieves_change_flight_page(
-        self, mocker: MockerFixture, test_flight: Flight
+        self, mocker: MockerFixture
     ) -> None:
-        reservation_info = {
-            "viewReservationViewPage": {
-                "bounds": ["bound_one", "bound_two"],
-                "_links": {"change": {"href": "test_link", "query": "query"}},
-            }
+        res_info = {
+            "bounds": ["bound_one", "bound_two"],
+            "_links": {"change": {"href": "test_link", "query": "query"}},
         }
-        expected_page = {"changeFlightPage": "test_page"}
-        mock_make_request = mocker.patch(
-            "lib.fare_checker.make_request", side_effect=[reservation_info, expected_page]
-        )
+        flight_page = {"changeFlightPage": "test_page"}
+        mock_make_request = mocker.patch("lib.fare_checker.make_request", return_value=flight_page)
         mock_check_for_companion = mocker.patch.object(FareChecker, "_check_for_companion")
 
-        change_flight_page, fare_type_bounds = self.checker._get_change_flight_page(test_flight)
+        change_flight_page, fare_type_bounds = self.checker._get_change_flight_page(res_info)
 
         mock_check_for_companion.assert_called_once()
         assert change_flight_page == "test_page"
@@ -144,19 +142,16 @@ class TestFareChecker:
         assert call_args[3] == "query"
 
     def test_get_change_flight_page_raises_exception_when_flight_cannot_be_changed(
-        self, mocker: MockerFixture, test_flight: Flight
+        self, mocker: MockerFixture
     ) -> None:
         reservation_info = {
-            "viewReservationViewPage": {
-                "greyBoxMessage": None,
-                "bounds": ["bound_one", "bound_two"],
-                "_links": {"change": None},
-            }
+            "greyBoxMessage": None,
+            "bounds": ["bound_one", "bound_two"],
+            "_links": {"change": None},
         }
-        mocker.patch("lib.fare_checker.make_request", return_value=reservation_info)
 
         with pytest.raises(FlightChangeError):
-            self.checker._get_change_flight_page(test_flight)
+            self.checker._get_change_flight_page(reservation_info)
 
     def test_get_search_query_returns_the_correct_query_for_one_way(
         self, test_flight: Flight

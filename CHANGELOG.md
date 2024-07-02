@@ -8,6 +8,7 @@ If there is no "Upgrading" header for that version, no post-upgrade actions need
 - Mitigations for 403 and 429 errors were added to significantly improve Docker and server environments as well as
 checking many accounts and reservations at once
 ([#274](https://github.com/jdholtz/auto-southwest-check-in/pull/274) by [@dmytrokoren](https://github.com/dmytrokoren))
+- Fare checks now run faster due to caching a flight's reservation information from previous queries to Southwest's API
 
 
 ## 7.5 (2024-06-07)

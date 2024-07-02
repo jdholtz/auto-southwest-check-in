@@ -55,20 +55,23 @@ class CheckInScheduler:
     def _get_flights(self, confirmation_number: str) -> List[Flight]:
         """Get all flights booked on a single reservation"""
         reservation_info = self._get_reservation_info(confirmation_number)
-        logger.debug("%d flights found under current reservation", len(reservation_info))
+        logger.debug("%d flights found under current reservation", len(reservation_info["bounds"]))
 
         current_utc_time = get_current_time()
         flights = []
         # If multiple flights are under the same confirmation number, it will schedule all checkins
-        for flight_info in reservation_info:
-            flight = Flight(flight_info, confirmation_number)
+        for flight_info in reservation_info["bounds"]:
+            # For simplicity, reservation_info is only cached in the Flight constructor even though
+            # it can get the flight_info
+            flight = Flight(flight_info, reservation_info, confirmation_number)
+
             if flight.departure_time > current_utc_time:
                 self._set_same_day_flight(flight, flights)
                 flights.append(flight)
 
         return flights
 
-    def _get_reservation_info(self, confirmation_number: str) -> List[Dict[str, Any]]:
+    def _get_reservation_info(self, confirmation_number: str) -> Dict[str, Any]:
         info = {
             "first-name": self.reservation_monitor.first_name,
             "last-name": self.reservation_monitor.last_name,
@@ -87,11 +90,10 @@ class CheckInScheduler:
             else:
                 logger.debug("Flights on the reservation have already departed")
 
-            return []
+            return {}
 
         logger.debug("Successfully retrieved reservation information")
-        reservation_info = response["viewReservationViewPage"]["bounds"]
-        return reservation_info
+        return response["viewReservationViewPage"]
 
     def _set_same_day_flight(self, flight: Flight, previous_flights: List[Flight]) -> None:
         for prev_flight in previous_flights:

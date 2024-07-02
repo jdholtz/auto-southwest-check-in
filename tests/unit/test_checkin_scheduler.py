@@ -28,7 +28,7 @@ def test_flights(mocker: MockerFixture) -> List[Flight]:
         "departureTime": None,
         "flights": [{"number": "100"}],
     }
-    return [Flight(flight_info, ""), Flight(flight_info, "")]
+    return [Flight(flight_info, {}, ""), Flight(flight_info, {}, "")]
 
 
 class TestCheckInScheduler:
@@ -63,7 +63,9 @@ class TestCheckInScheduler:
     def test_get_flights_retrieves_all_flights_under_reservation(
         self, mocker: MockerFixture, test_flights: List[Flight]
     ) -> None:
-        mocker.patch.object(CheckInScheduler, "_get_reservation_info", return_value=[{}, {}])
+        mocker.patch.object(
+            CheckInScheduler, "_get_reservation_info", return_value={"bounds": [{}, {}]}
+        )
         mock_set_same_day_flight = mocker.patch.object(CheckInScheduler, "_set_same_day_flight")
 
         # Set the departing times to be after the current time
@@ -81,7 +83,9 @@ class TestCheckInScheduler:
     def test_get_flights_does_not_retrieve_departed_flights(
         self, mocker: MockerFixture, test_flights: List[Flight]
     ) -> None:
-        mocker.patch.object(CheckInScheduler, "_get_reservation_info", return_value=[{}, {}])
+        mocker.patch.object(
+            CheckInScheduler, "_get_reservation_info", return_value={"bounds": [{}, {}]}
+        )
 
         # Set the departing time to be before the current time. Only uses the first flight
         test_flights[0].departure_time = datetime(1999, 12, 30, 18, 29)
@@ -94,11 +98,11 @@ class TestCheckInScheduler:
         assert len(flights) == 0
 
     def test_get_reservation_info_returns_reservation_info(self, mocker: MockerFixture) -> None:
-        reservation_info = {"viewReservationViewPage": {"bounds": [{"test": "reservation"}]}}
-        mocker.patch("lib.checkin_scheduler.make_request", return_value=reservation_info)
+        reservation_content = {"viewReservationViewPage": {"bounds": [{"test": "reservation"}]}}
+        mocker.patch("lib.checkin_scheduler.make_request", return_value=reservation_content)
 
         reservation_info = self.scheduler._get_reservation_info("flight1")
-        assert reservation_info == [{"test": "reservation"}]
+        assert reservation_info == {"bounds": [{"test": "reservation"}]}
 
     # A reservation has flights in the past and this is the first time attempting to
     # schedule it
@@ -117,7 +121,7 @@ class TestCheckInScheduler:
         reservation_info = self.scheduler._get_reservation_info("flight1")
 
         mock_failed_reservation_retrieval.assert_called_once()
-        assert reservation_info == []
+        assert reservation_info == {}
 
     # A reservation is already scheduled but fails for a retrieval resulting in another error than
     # all flights being old
@@ -133,7 +137,7 @@ class TestCheckInScheduler:
         reservation_info = self.scheduler._get_reservation_info("flight1")
 
         mock_failed_reservation_retrieval.assert_called_once()
-        assert reservation_info == []
+        assert reservation_info == {}
 
     # A reservation is already scheduled and the flights are in the past
     def test_get_reservation_info_does_not_send_error_notification_when_reservation_is_old(
@@ -151,7 +155,7 @@ class TestCheckInScheduler:
         reservation_info = self.scheduler._get_reservation_info("flight1")
 
         mock_failed_reservation_retrieval.assert_not_called()
-        assert reservation_info == []
+        assert reservation_info == {}
 
     @pytest.mark.parametrize(["hour_diff", "same_day"], [(23, True), (24, True), (25, False)])
     def test_set_same_day_flight_sets_flight_as_same_day_correctly(

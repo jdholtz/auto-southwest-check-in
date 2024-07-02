@@ -26,8 +26,10 @@ class TestFlight:
 
         # Needs to be mocked so it is only run when Flight is instantiated
         with mock.patch.object(Flight, "_set_flight_time"):
+            # Reservation info can be left empty as it is only used for caching, but isn't relevant
+            # to the functionality of the flight class
             # pylint: disable=attribute-defined-outside-init
-            self.flight = Flight(flight_info, "test_num")
+            self.flight = Flight(flight_info, {}, "test_num")
 
             # Flight times that would be set if _set_flight_time isn't mocked
             self.flight.departure_time = datetime(1971, 6, 18, 12)
@@ -44,7 +46,7 @@ class TestFlight:
             "departureTime": None,
             "flights": [{"number": "100"}],
         }
-        flight = Flight(flight_info, "")
+        flight = Flight(flight_info, {}, "")
 
         assert flight.is_international == is_international
 
@@ -58,8 +60,8 @@ class TestFlight:
             "departureTime": None,
             "flights": [{"number": "100"}],
         }
-        flight1 = Flight(flight_info, "")
-        flight2 = Flight(flight_info, "")
+        flight1 = Flight(flight_info, {}, "")
+        flight2 = Flight(flight_info, {}, "")
 
         flight1.departure_time = datetime(1999, 1, 1, 8, 59)
         flight2.departure_time = datetime(1999, 1, 1, 8, 59)
@@ -93,7 +95,7 @@ class TestFlight:
         self, mocker: MockerFixture, flight_info: Dict[str, Any], departure_time: datetime
     ) -> None:
         mocker.patch.object(Flight, "_set_flight_time")
-        new_flight = Flight(flight_info, "")
+        new_flight = Flight(flight_info, {}, "")
         new_flight.departure_time = departure_time
 
         assert self.flight != new_flight

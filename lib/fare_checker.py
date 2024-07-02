@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Dict, List, Tuple
 
-from .checkin_scheduler import VIEW_RESERVATION_URL
 from .flight import Flight
 from .log import get_logger
 from .utils import FlightChangeError, make_request
@@ -65,7 +64,7 @@ class FareChecker:
         Additionally, retrieve the flight's fare type so we can check the correct
         fare for a price drop.
         """
-        change_flight_page, fare_type_bounds = self._get_change_flight_page(flight)
+        change_flight_page, fare_type_bounds = self._get_change_flight_page(flight.reservation_info)
         query = self._get_search_query(change_flight_page, flight)
 
         info = change_flight_page["_links"]["changeShopping"]
@@ -83,16 +82,7 @@ class FareChecker:
         response = make_request("POST", site, self.headers, query, max_attempts=7)
         return response["changeShoppingPage"]["flights"][bound_page]["cards"], fare_type
 
-    def _get_change_flight_page(self, flight: Flight) -> Tuple[JSON, List[JSON]]:
-        # First, get the reservation information
-        logger.debug("Retrieving reservation information")
-        info = {
-            "first-name": self.reservation_monitor.first_name,
-            "last-name": self.reservation_monitor.last_name,
-        }
-        site = VIEW_RESERVATION_URL + flight.confirmation_number
-        response = make_request("GET", site, self.headers, info, max_attempts=7)
-        reservation_info = response["viewReservationViewPage"]
+    def _get_change_flight_page(self, reservation_info: JSON) -> Tuple[JSON, List[JSON]]:
         fare_type_bounds = reservation_info["bounds"]
 
         # Ensure the flight does not have a companion pass connected to it
