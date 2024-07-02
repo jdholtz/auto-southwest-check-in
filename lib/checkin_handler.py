@@ -103,8 +103,8 @@ class CheckInHandler:
                 self.checkin_scheduler.refresh_headers()
 
             logger.debug("Lock released")
+            current_time = get_current_time()
 
-        current_time = get_current_time()
         sleep_time = (checkin_time - current_time).total_seconds()
         logger.debug("Sleeping until check-in: %d seconds...", sleep_time)
         time.sleep(sleep_time)
