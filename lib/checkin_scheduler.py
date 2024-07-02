@@ -42,10 +42,7 @@ class CheckInScheduler:
             flights.extend(self._get_flights(confirmation_number))
 
         logger.debug("%d total flights were found", len(flights))
-        new_flights = self._get_new_flights(flights)
-        self._schedule_flights(new_flights)
-
-        self._remove_old_flights(flights)
+        self._update_scheduled_flights(flights)
 
     def refresh_headers(self) -> None:
         logger.debug("Refreshing headers for current session")
@@ -102,15 +99,31 @@ class CheckInScheduler:
                 flight.is_same_day = True
                 break
 
-    def _get_new_flights(self, flights: List[Flight]) -> List[Flight]:
-        """Retrieve a list of all flights that are not already scheduled for check-in"""
+    def _update_scheduled_flights(self, flights: List[Flight]) -> None:
+        """
+        Responsible for three tasks to update scheduled flights:
+          1. Schedule check-ins for any new flights
+          2. Remove scheduled flights that no longer exist
+          3. Update the cached reservation info for any scheduled flights that do still exist
+        """
+        logger.debug(
+            "Updating scheduled flights (%d scheduled, %d found)", len(self.flights), len(flights)
+        )
+
         new_flights = []
         for flight in flights:
-            if flight not in self.flights:
+            try:
+                matching_flight_idx = self.flights.index(flight)
+                # Flight has already been scheduled, so update the cached reservation info
+                self.flights[matching_flight_idx].reservation_info = flight.reservation_info
+            except ValueError:
+                # Flight has not been scheduled yet
                 new_flights.append(flight)
 
         logger.debug("%d new flights found", len(new_flights))
-        return new_flights
+        self._schedule_flights(new_flights)
+
+        self._remove_old_flights(flights)
 
     def _schedule_flights(self, flights: List[Flight]) -> None:
         logger.debug("Scheduling %d flights for check-in", len(flights))

@@ -1,3 +1,4 @@
+import copy
 import json
 from datetime import datetime, timedelta, timezone
 from typing import List
@@ -28,7 +29,8 @@ def test_flights(mocker: MockerFixture) -> List[Flight]:
         "departureTime": None,
         "flights": [{"number": "100"}],
     }
-    return [Flight(flight_info, {}, ""), Flight(flight_info, {}, "")]
+    reservation_info = {"bounds": [flight_info]}
+    return [Flight(flight_info, reservation_info, ""), Flight(flight_info, reservation_info, "")]
 
 
 class TestCheckInScheduler:
@@ -41,18 +43,14 @@ class TestCheckInScheduler:
         mock_get_flights = mocker.patch.object(
             CheckInScheduler, "_get_flights", return_value=["flight"]
         )
-        mock_get_new_flights = mocker.patch.object(
-            CheckInScheduler, "_get_new_flights", return_value=["flight"]
+        mock_update_scheduled_flights = mocker.patch.object(
+            CheckInScheduler, "_update_scheduled_flights"
         )
-        mock_schedule_flights = mocker.patch.object(CheckInScheduler, "_schedule_flights")
-        mock_remove_old_flights = mocker.patch.object(CheckInScheduler, "_remove_old_flights")
 
         self.scheduler.process_reservations(["test1", "test2"])
 
         mock_get_flights.assert_has_calls([mock.call("test1"), mock.call("test2")])
-        mock_get_new_flights.assert_called_once_with(["flight", "flight"])
-        mock_schedule_flights.assert_called_once_with(["flight"])
-        mock_remove_old_flights.assert_called_once_with(["flight", "flight"])
+        mock_update_scheduled_flights.assert_called_once_with(["flight", "flight"])
 
     def test_refresh_headers_sets_new_headers(self, mocker: MockerFixture) -> None:
         mock_webdriver_set_headers = mocker.patch.object(WebDriver, "set_headers")
@@ -169,18 +167,32 @@ class TestCheckInScheduler:
 
         assert new_flight.is_same_day == same_day
 
-    def test_get_new_flights_gets_flights_not_already_scheduled(
-        self, test_flights: List[Flight]
+    def test_update_scheduled_flights_updates_all_flights_correctly(
+        self, mocker: MockerFixture, test_flights: List[Flight]
     ) -> None:
         flight1 = test_flights[0]
         flight2 = test_flights[1]
+
         # Change the flight number so it is seen as a new flight
         flight2.flight_number = "101"
 
-        self.scheduler.flights = [flight1]
-        new_flights = self.scheduler._get_new_flights([flight1, flight2])
+        flight3 = copy.copy(flight1)
+        # Modify the reservation info so the end of the test can validate it was
+        # updated to the newest info
+        flight3.reservation_info = {}
+        self.scheduler.flights = [flight3]
 
-        assert new_flights == [flight2]
+        mock_schedule_flights = mocker.patch.object(CheckInScheduler, "_schedule_flights")
+        mock_remove_old_flights = mocker.patch.object(CheckInScheduler, "_remove_old_flights")
+
+        self.scheduler._update_scheduled_flights(test_flights)
+
+        mock_schedule_flights.assert_called_once_with([flight2])
+        mock_remove_old_flights.assert_called_once_with(test_flights)
+
+        assert (
+            self.scheduler.flights[0].reservation_info == flight1.reservation_info
+        ), "Cached reservation info for already scheduled flight was never updated"
 
     def test_schedule_flights_schedules_all_flights(
         self, mocker: MockerFixture, test_flights: List[Flight]
