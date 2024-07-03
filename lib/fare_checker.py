@@ -91,14 +91,14 @@ class FareChecker:
 
         # Next, get the search information needed to change the flight
         logger.debug("Retrieving search information for the current flight")
-        info = reservation_info["_links"]["change"]
+        change_link = reservation_info["_links"]["change"]
 
         # The change link does not exist, so skip fare checking for this flight
-        if info is None:
+        if change_link is None:
             raise FlightChangeError("Flight cannot be changed online")
 
-        site = BOOKING_URL + info["href"]
-        response = make_request("GET", site, self.headers, info["query"], max_attempts=7)
+        site = BOOKING_URL + change_link["href"]
+        response = make_request("GET", site, self.headers, change_link["query"], max_attempts=7)
 
         return response["changeFlightPage"], fare_type_bounds
 

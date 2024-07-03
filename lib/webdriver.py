@@ -146,6 +146,7 @@ class WebDriver:
 
         logger.debug("Loading Southwest home page (this may take a moment)")
         driver.open(BASE_URL)
+        self._take_debug_screenshot(driver, "after_page_load.png")
         driver.js_click("(//div[@data-qa='placement-link'])[2]")
         return driver
 
