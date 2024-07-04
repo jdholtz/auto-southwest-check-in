@@ -48,7 +48,7 @@ class TestConfig:
                 "check_fares": False,
                 "healthchecks_url": "test_healthchecks",
                 "notification_24_hour_time": False,
-                "notification_level": 2,
+                "notification_level": 3,
                 "notification_urls": ["url2"],
                 "retrieval_interval": 10,
             }
@@ -72,7 +72,7 @@ class TestConfig:
             {"healthchecks_url": 0},
             {"notification_24_hour_time": "invalid"},
             {"notification_level": "invalid"},
-            {"notification_level": 3},
+            {"notification_level": 4},
             {"notification_urls": None},
             {"retrieval_interval": "invalid"},
         ],
@@ -99,7 +99,7 @@ class TestConfig:
         assert test_config.check_fares is False
         assert test_config.healthchecks_url == "test_healthchecks"
         assert test_config.notification_24_hour_time is False
-        assert test_config.notification_level == NotificationLevel.ERROR
+        assert test_config.notification_level == NotificationLevel.CHECKIN
         assert test_config.notification_urls == ["test_url"]
         assert test_config.retrieval_interval == 30 * 60 * 60
 

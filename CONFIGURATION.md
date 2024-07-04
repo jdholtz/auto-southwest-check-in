@@ -77,8 +77,9 @@ You can also select the level of notifications you want to receive.
   "notification_level": 1
 }
 ```
-Level 1 means you receive successful scheduling and check-in messages, lower fare messages, and all messages in later levels.\
-Level 2 means you receive only error messages (failed scheduling and check-ins).
+`Level 1`: Receive successful scheduling messages, lower fare messages, and all messages in later levels.\
+`Level 2`: Receive successful check-in messages and all messages in later levels.\
+`Level 3`: Receive only error messages (failed scheduling and check-ins).
 
 ### Notification 24 Hour Time
 Default: false \

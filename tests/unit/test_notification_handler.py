@@ -91,9 +91,11 @@ class TestNotificationHandler:
             },
             mock_flight,
         )
-        assert mock_send_notification.call_args[0][1] == NotificationLevel.INFO
+        assert mock_send_notification.call_args[0][1] == NotificationLevel.CHECKIN
 
-    def test_does_not_include_notification_for_lap_child(self, mocker: MockerFixture) -> None:
+    def test_successful_checkin_does_not_include_notification_for_lap_child(
+        self, mocker: MockerFixture
+    ) -> None:
         """
         A lap child does not get a boarding position, and does not need a notification
         """
@@ -114,8 +116,8 @@ class TestNotificationHandler:
             mock_flight,
         )
         assert "John got A1!" in mock_send_notification.call_args[0][0]
-        assert "Lap Child got NoneNone!" not in mock_send_notification.call_args[0][0]
-        assert mock_send_notification.call_args[0][1] == NotificationLevel.INFO
+        assert "Lap Child" not in mock_send_notification.call_args[0][0]
+        assert mock_send_notification.call_args[0][1] == NotificationLevel.CHECKIN
 
     def test_failed_checkin_sends_error_notification(self, mocker: MockerFixture) -> None:
         mock_send_notification = mocker.patch.object(NotificationHandler, "send_notification")
