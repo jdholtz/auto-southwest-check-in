@@ -6,7 +6,7 @@ import pytest
 from pytest_mock import MockerFixture
 
 from lib.checkin_handler import MAX_CHECK_IN_ATTEMPTS, CheckInHandler
-from lib.utils import RequestError
+from lib.utils import DriverTimeoutError, RequestError
 
 # This needs to be accessed to be tested
 # pylint: disable=protected-access
@@ -85,7 +85,7 @@ class TestCheckInHandler:
         self.handler._wait_for_check_in(datetime(1999, 12, 31, 18))
         mock_sleep.assert_not_called()
 
-    def test_wait_for_check_in_sleeps_once_when_check_in_is_less_than_thirty_minutes_away(
+    def test_wait_for_check_in_sleeps_once_when_check_in_is_less_than_or_equal_to_thirty_mins_away(
         self, mocker: MockerFixture
     ) -> None:
         mock_sleep = mocker.patch("time.sleep")
@@ -105,7 +105,9 @@ class TestCheckInHandler:
         self, mocker: MockerFixture
     ) -> None:
         mock_sleep = mocker.patch("time.sleep")
-        mock_refresh_headers = self.handler.checkin_scheduler.refresh_headers
+        mock_refresh_headers = mocker.patch.object(
+            self.handler.checkin_scheduler, "refresh_headers"
+        )
         mocker.patch(
             "lib.checkin_handler.get_current_time",
             side_effect=[
@@ -118,6 +120,28 @@ class TestCheckInHandler:
 
         mock_sleep.assert_has_calls([mock.call(17400), mock.call(1800)])
         mock_refresh_headers.assert_called_once()
+
+    @pytest.mark.filterwarnings(
+        # Mocking multiprocessing.Lock causes this warning
+        "ignore:Mocks returned by pytest-mock do not need to be used as context managers:"
+    )
+    def test_wait_for_check_in_handles_timeout_refreshing_headers(
+        self, mocker: MockerFixture
+    ) -> None:
+        mock_sleep = mocker.patch("time.sleep")
+        mocker.patch.object(
+            self.handler.checkin_scheduler, "refresh_headers", side_effect=DriverTimeoutError
+        )
+        mocker.patch(
+            "lib.checkin_handler.get_current_time",
+            side_effect=[
+                datetime(1999, 12, 31, 18, 29, 59),
+                datetime(1999, 12, 31, 23, 19, 59),
+            ],
+        )
+
+        self.handler._wait_for_check_in(datetime(1999, 12, 31, 23, 49, 59))
+        mock_sleep.assert_has_calls([mock.call(17400), mock.call(1800)])
 
     @pytest.mark.parametrize(["weeks", "expected_sleep_calls"], [(0, 0), (1, 1), (3, 2)])
     def test_safe_sleep_sleeps_in_intervals(

@@ -6,7 +6,7 @@ from unittest import mock
 import pytest
 from pytest_mock import MockerFixture
 
-from lib.utils import LoginError
+from lib.utils import DriverTimeoutError, LoginError
 from lib.webdriver import HEADERS_URL, INVALID_CREDENTIALS_CODE, LOGIN_URL, TRIPS_URL, WebDriver
 
 # This needs to be accessed to be tested
@@ -143,6 +143,11 @@ class TestWebDriver:
         mocker.patch("time.sleep", side_effect=mock_sleep)
 
         self.driver._wait_for_attribute("headers_set")
+
+    def test_wait_for_attribute_raises_error_on_timeout(self, mocker: MockerFixture) -> None:
+        mocker.patch("time.sleep")
+        with pytest.raises(DriverTimeoutError):
+            self.driver._wait_for_attribute("headers_set")
 
     def test_wait_for_login_raises_error_on_failed_login(
         self, mocker: MockerFixture, mock_chrome: mock.Mock
