@@ -5,11 +5,8 @@ If there is no "Upgrading" header for that version, no post-upgrade actions need
 
 ## Upcoming
 ### New Features
-- Two new [notification levels](CONFIGURATION.md#notification-level) were added
-    - A separate notification level for successful check-in messages was added which only includes successful check-ins
-    and error messages ([#280](https://github.com/jdholtz/auto-southwest-check-in/issues/280))
-    - A notification level for notices (non-critical warnings) was added, which includes driver timeouts and Too Many Requests
-    errors during logins. This is the lowest notification level offered
+- A new [notification level](CONFIGURATION.md#notification-level) for notices (non-critical warnings) was added, which includes
+driver timeouts and Too Many Requests errors during logins. This is the lowest notification level offered
     - The default configuration is still the same. Refer to the [notification level configuration](CONFIGURATION.md#notification-level)
     for more details on the levels
     - If you have manually set `notification_level` in your config.json, see the "Upgrading" header for how to adjust it for the
@@ -23,7 +20,7 @@ checking many accounts and reservations at once
 
 ### Upgrading
 - If you manually set `notification_level` in your configuration, it will need to be adjusted accordingly.
-    - If it was set to `2` (error messages only), it needs to be set to `4`
+    - If it was set to `2` (error messages only), it needs to be set to `3`
     - If it was set to `1` (all messages), it needs to be set to `2`
     - Refer to the [notification level configuration](CONFIGURATION.md#notification-level) for more details on the levels
 

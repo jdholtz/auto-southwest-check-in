@@ -128,8 +128,7 @@ class DriverTimeoutError(Exception):
 class NotificationLevel(IntEnum):
     NOTICE = 1
     INFO = 2
-    CHECKIN = 3
-    ERROR = 4
+    ERROR = 3
 
 
 def is_truthy(arg: Union[bool, int, str]) -> bool:

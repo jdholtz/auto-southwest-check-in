@@ -79,9 +79,8 @@ You can also select the level of notifications you want to receive.
 ```
 `Level 1`: Receive notices of skipped reservation retrievals due to driver timeouts and Too Many Requests errors
 during logins as well as all messages in later levels.\
-`Level 2`: Receive successful scheduling messages, lower fare messages, and all messages in later levels.\
-`Level 3`: Receive successful check-in messages and all messages in later levels.\
-`Level 4`: Receive only error messages (failed scheduling and check-ins).
+`Level 2`: Receive successful scheduling and check-in messages, lower fare messages, and all messages in later levels.\
+`Level 3`: Receive only error messages (failed scheduling and check-ins).
 
 ### Notification 24 Hour Time
 Default: false \
