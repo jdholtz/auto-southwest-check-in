@@ -83,6 +83,7 @@ class ReservationMonitor:
             self.checkin_scheduler.refresh_headers()
         except DriverTimeoutError:
             logger.warning("Timeout while refreshing headers. Skipping reservation retrieval")
+            self.notification_handler.timeout_during_retrieval("reservation")
             return False
 
         # Schedule the reservations every time in case a flight is changed or cancelled
@@ -200,18 +201,20 @@ class AccountMonitor(ReservationMonitor):
         try:
             reservations = webdriver.get_reservations(self)
         except DriverTimeoutError:
-            logger.warning(
+            logger.debug(
                 "Timeout while retrieving reservations during login. Skipping reservation retrieval"
             )
+            self.notification_handler.timeout_during_retrieval("account")
             return [], True
         except LoginError as err:
             if err.status_code == TOO_MANY_REQUESTS_CODE:
                 # Don't exit when a Too Many Requests error happens. Instead, just skip the
                 # retrieval until the next time.
-                logger.warning(
+                logger.debug(
                     "Encountered a Too Many Requests error while logging in. Skipping reservation "
                     "retrieval"
                 )
+                self.notification_handler.too_many_requests_during_login()
                 return [], True
 
             logger.debug("Error logging in. %s. Exiting", err)

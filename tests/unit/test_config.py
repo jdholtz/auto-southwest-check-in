@@ -72,7 +72,8 @@ class TestConfig:
             {"healthchecks_url": 0},
             {"notification_24_hour_time": "invalid"},
             {"notification_level": "invalid"},
-            {"notification_level": 4},
+            {"notification_level": -1},
+            {"notification_level": 5},
             {"notification_urls": None},
             {"retrieval_interval": "invalid"},
         ],
@@ -90,7 +91,7 @@ class TestConfig:
                 "check_fares": False,
                 "healthchecks_url": "test_healthchecks",
                 "notification_24_hour_time": False,
-                "notification_level": 2,
+                "notification_level": 3,
                 "notification_urls": "test_url",
                 "retrieval_interval": 30,
             }

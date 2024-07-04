@@ -132,6 +132,9 @@ class TestCheckInHandler:
         mocker.patch.object(
             self.handler.checkin_scheduler, "refresh_headers", side_effect=DriverTimeoutError
         )
+        mock_timeout_before_checkin_notification = mocker.patch.object(
+            self.handler.notification_handler, "timeout_before_checkin"
+        )
         mocker.patch(
             "lib.checkin_handler.get_current_time",
             side_effect=[
@@ -142,6 +145,7 @@ class TestCheckInHandler:
 
         self.handler._wait_for_check_in(datetime(1999, 12, 31, 23, 49, 59))
         mock_sleep.assert_has_calls([mock.call(17400), mock.call(1800)])
+        mock_timeout_before_checkin_notification.assert_called_once()
 
     @pytest.mark.parametrize(["weeks", "expected_sleep_calls"], [(0, 0), (1, 1), (3, 2)])
     def test_safe_sleep_sleeps_in_intervals(
@@ -169,13 +173,14 @@ class TestCheckInHandler:
         self, mocker: MockerFixture
     ) -> None:
         post_response = {"checkInConfirmationPage": "Checked In!"}
-        mock_notification_handler = mocker.patch("lib.notification_handler.NotificationHandler")
+        mock_successful_checkin_notification = mocker.patch.object(
+            self.handler.notification_handler, "successful_checkin"
+        )
         mocker.patch.object(CheckInHandler, "_attempt_check_in", return_value=post_response)
 
-        self.handler.notification_handler = mock_notification_handler
         self.handler._check_in()
 
-        mock_notification_handler.successful_checkin.assert_called_once_with(
+        mock_successful_checkin_notification.assert_called_once_with(
             "Checked In!", self.handler.flight
         )
 

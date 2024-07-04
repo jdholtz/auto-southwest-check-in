@@ -66,7 +66,7 @@ If you have more than one service you want to send notifications to, you can put
 ```
 
 ### Notification Level
-Default: 1 \
+Default: 2 \
 Type: Integer \
 Environment Variable: `AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_LEVEL`
 > Using the environment variable will override the applicable setting in `config.json`.
@@ -74,12 +74,14 @@ Environment Variable: `AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_LEVEL`
 You can also select the level of notifications you want to receive.
 ```json
 {
-  "notification_level": 1
+  "notification_level": 2
 }
 ```
-`Level 1`: Receive successful scheduling messages, lower fare messages, and all messages in later levels.\
-`Level 2`: Receive successful check-in messages and all messages in later levels.\
-`Level 3`: Receive only error messages (failed scheduling and check-ins).
+`Level 1`: Receive notices of skipped reservation retrievals due to driver timeouts and Too Many Requests errors
+during logins as well as all messages in later levels.\
+`Level 2`: Receive successful scheduling messages, lower fare messages, and all messages in later levels.\
+`Level 3`: Receive successful check-in messages and all messages in later levels.\
+`Level 4`: Receive only error messages (failed scheduling and check-ins).
 
 ### Notification 24 Hour Time
 Default: false \

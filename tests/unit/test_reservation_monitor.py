@@ -119,6 +119,7 @@ class TestReservationMonitor:
             ReservationMonitor, "_schedule_reservations"
         )
         mock_check_flight_fares = mocker.patch.object(ReservationMonitor, "_check_flight_fares")
+        mock_timeout_notif = mocker.patch.object(NotificationHandler, "timeout_during_retrieval")
 
         self.monitor.config.confirmation_number = "test_num"
         self.monitor.checkin_scheduler.flights = ["test_flight"]
@@ -129,6 +130,7 @@ class TestReservationMonitor:
         mock_refresh_headers.assert_called_once()
         mock_schedule_reservations.assert_not_called()
         mock_check_flight_fares.assert_not_called()
+        mock_timeout_notif.assert_called_once()
 
     def test_perform_check_returns_false_when_no_flights_are_scheduled(
         self, mocker: MockerFixture
@@ -253,9 +255,13 @@ class TestAccountMonitor:
         self, mocker: MockerFixture
     ) -> None:
         mocker.patch.object(WebDriver, "get_reservations", side_effect=DriverTimeoutError)
+        mock_timeout_notif = mocker.patch.object(NotificationHandler, "timeout_during_retrieval")
+
         reservations, skip_scheduling = self.monitor._get_reservations()
+
         assert len(reservations) == 0
         assert skip_scheduling
+        mock_timeout_notif.assert_called_once()
 
     def test_get_reservations_skips_retrieval_on_too_many_requests_error(
         self, mocker: MockerFixture
@@ -263,9 +269,15 @@ class TestAccountMonitor:
         mocker.patch.object(
             WebDriver, "get_reservations", side_effect=LoginError("", TOO_MANY_REQUESTS_CODE)
         )
+        mock_too_many_requests_notif = mocker.patch.object(
+            NotificationHandler, "too_many_requests_during_login"
+        )
+
         reservations, skip_scheduling = self.monitor._get_reservations()
+
         assert len(reservations) == 0
         assert skip_scheduling
+        mock_too_many_requests_notif.assert_called_once()
 
     def test_get_reservations_exits_on_login_error(self, mocker: MockerFixture) -> None:
         mocker.patch.object(WebDriver, "get_reservations", side_effect=LoginError("", 400))

@@ -103,9 +103,8 @@ class CheckInHandler:
                 try:
                     self.checkin_scheduler.refresh_headers()
                 except DriverTimeoutError:
-                    logger.warning(
-                        "Timeout while refreshing headers before check-in. Flight check-in may fail"
-                    )
+                    logger.debug("Timeout while refreshing headers before check-in")
+                    self.notification_handler.timeout_before_checkin(self.flight)
 
             logger.debug("Lock released")
             current_time = get_current_time()
