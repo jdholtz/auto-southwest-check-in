@@ -11,7 +11,7 @@ from seleniumbase import Driver
 from seleniumbase.fixtures import page_actions as seleniumbase_actions
 
 from .log import LOGS_DIRECTORY, get_logger
-from .utils import LoginError, random_sleep_duration
+from .utils import DriverTimeoutError, LoginError, random_sleep_duration
 
 if TYPE_CHECKING:
     from .checkin_scheduler import CheckInScheduler
@@ -24,6 +24,8 @@ HEADERS_URL = BASE_URL + "/api/chase/v2/chase/offers"
 
 # Southwest's code when logging in with the incorrect information
 INVALID_CREDENTIALS_CODE = 400518024
+
+WAIT_TIMEOUT_SECS = 180
 
 JSON = Dict[str, Any]
 
@@ -175,9 +177,19 @@ class WebDriver:
             self.trips_request_id = data["params"]["requestId"]
 
     def _wait_for_attribute(self, attribute: str) -> None:
-        logger.debug("Waiting for %s to be set", attribute)
-        while not getattr(self, attribute):
-            time.sleep(0.5)
+        logger.debug("Waiting for %s to be set (timeout: %d seconds)", attribute, WAIT_TIMEOUT_SECS)
+        poll_interval = 0.5
+
+        attempts = 0
+        max_attempts = WAIT_TIMEOUT_SECS / poll_interval
+        while not getattr(self, attribute) and attempts < max_attempts:
+            time.sleep(poll_interval)
+            attempts += 1
+
+        if attempts >= max_attempts:
+            timeout_err = DriverTimeoutError(f"Timeout waiting for the '{attribute}' attribute")
+            logger.debug(timeout_err)
+            raise timeout_err
 
         logger.debug("%s set successfully", attribute)
 

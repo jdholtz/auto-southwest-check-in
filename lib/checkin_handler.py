@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any, Dict
 
 from .flight import Flight
 from .log import get_logger
-from .utils import RequestError, get_current_time, make_request
+from .utils import DriverTimeoutError, RequestError, get_current_time, make_request
 
 if TYPE_CHECKING:
     from .checkin_scheduler import CheckInScheduler
@@ -100,7 +100,11 @@ class CheckInHandler:
             logger.debug("Acquiring lock...")
             with self.lock:
                 logger.debug("Lock acquired")
-                self.checkin_scheduler.refresh_headers()
+                try:
+                    self.checkin_scheduler.refresh_headers()
+                except DriverTimeoutError:
+                    logger.debug("Timeout while refreshing headers before check-in")
+                    self.notification_handler.timeout_before_checkin(self.flight)
 
             logger.debug("Lock released")
             current_time = get_current_time()

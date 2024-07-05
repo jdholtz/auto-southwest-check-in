@@ -109,21 +109,26 @@ class RequestError(Exception):
         self.southwest_code = response_json.get("code")
 
 
-# Make a custom exception when a login fails
 class LoginError(Exception):
+    """A custom exception when a login fails"""
+
     def __init__(self, reason: str, status_code: int) -> None:
         super().__init__(f"Reason: {reason}. Status code: {status_code}")
         self.status_code = status_code
 
 
-# Make a custom exception for flights that cannot be changed
 class FlightChangeError(Exception):
-    pass
+    """A custom exception for flights that cannot be changed"""
+
+
+class DriverTimeoutError(Exception):
+    """A custom exception for when the webdriver times out waiting for attributes to be set"""
 
 
 class NotificationLevel(IntEnum):
-    INFO = 1
-    ERROR = 2
+    NOTICE = 1
+    INFO = 2
+    ERROR = 3
 
 
 def is_truthy(arg: Union[bool, int, str]) -> bool:
