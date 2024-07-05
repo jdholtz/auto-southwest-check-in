@@ -17,6 +17,7 @@ driver timeouts and Too Many Requests errors during logins. This is the lowest n
 checking many accounts and reservations at once
 ([#274](https://github.com/jdholtz/auto-southwest-check-in/pull/274) by [@dmytrokoren](https://github.com/dmytrokoren))
 - Fare checks now run faster due to caching a flight's reservation information from previous queries to Southwest's API
+- The script now runs as a non-root user in Docker to improve a container's security
 
 ### Upgrading
 - If you manually set `notification_level` in your configuration, it will need to be adjusted accordingly.
