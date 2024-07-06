@@ -161,7 +161,7 @@ class TestCheckInHandler:
     def test_check_in_sends_error_notification_when_check_in_fails(
         self, mocker: MockerFixture
     ) -> None:
-        mocker.patch.object(CheckInHandler, "_attempt_check_in", side_effect=RequestError("", ""))
+        mocker.patch.object(CheckInHandler, "_attempt_check_in", side_effect=RequestError(""))
         mock_notification_handler = mocker.patch("lib.notification_handler.NotificationHandler")
 
         self.handler.notification_handler = mock_notification_handler

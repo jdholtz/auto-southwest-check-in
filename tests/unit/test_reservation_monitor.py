@@ -174,7 +174,7 @@ class TestReservationMonitor:
 
         assert mock_check_flight_price.call_count == len(self.monitor.checkin_scheduler.flights)
 
-    @pytest.mark.parametrize("exception", [RequestError("", ""), FlightChangeError, Exception])
+    @pytest.mark.parametrize("exception", [RequestError(""), FlightChangeError, Exception])
     def test_check_flight_fares_catches_error_when_checking_fares(
         self, mocker: MockerFixture, exception: Exception
     ) -> None:

@@ -78,6 +78,13 @@ class TestCheckInScheduler:
         assert len(flights) == 2
         assert mock_set_same_day_flight.call_count == len(flights)
 
+    def test_get_flights_schedules_no_flights_on_request_error(self, mocker: MockerFixture) -> None:
+        mocker.patch("lib.checkin_scheduler.make_request", side_effect=RequestError(""))
+
+        flights = self.scheduler._get_flights("flight1")
+
+        assert len(flights) == 0
+
     def test_get_flights_does_not_retrieve_departed_flights(
         self, mocker: MockerFixture, test_flights: List[Flight]
     ) -> None:
@@ -126,7 +133,7 @@ class TestCheckInScheduler:
     def test_get_reservation_info_sends_error_when_reservation_retrieval_fails_and_flight_scheduled(
         self, mocker: MockerFixture, test_flights: List[Flight]
     ) -> None:
-        mocker.patch("lib.checkin_scheduler.make_request", side_effect=RequestError("", ""))
+        mocker.patch("lib.checkin_scheduler.make_request", side_effect=RequestError(""))
         mock_failed_reservation_retrieval = mocker.patch.object(
             NotificationHandler, "failed_reservation_retrieval"
         )

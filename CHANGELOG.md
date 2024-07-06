@@ -18,6 +18,8 @@ checking many accounts and reservations at once
 ([#274](https://github.com/jdholtz/auto-southwest-check-in/pull/274) by [@dmytrokoren](https://github.com/dmytrokoren))
 - Fare checks now run faster due to caching a flight's reservation information from previous queries to Southwest's API
 - The script now runs as a non-root user in Docker to improve a container's security
+- Error messages during check-ins and reservation retrievals relating to reservation/passenger not found, invalid confirmation number
+length, and airport check-in required are more detailed
 
 ### Upgrading
 - If you manually set `notification_level` in your configuration, it will need to be adjusted accordingly.
