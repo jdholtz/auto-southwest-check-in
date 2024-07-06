@@ -140,6 +140,13 @@ class TestNotificationHandler:
         self.handler.failed_checkin("", mock_flight)
         assert mock_send_notification.call_args[0][1] == NotificationLevel.ERROR
 
+    def test_airport_checkin_required_sends_error_notification(self, mocker: MockerFixture) -> None:
+        mock_send_notification = mocker.patch.object(NotificationHandler, "send_notification")
+        mock_flight = mocker.patch("lib.notification_handler.Flight")
+
+        self.handler.airport_checkin_required(mock_flight)
+        assert mock_send_notification.call_args[0][1] == NotificationLevel.ERROR
+
     def test_timeout_before_checkin_sends_error_notification(self, mocker: MockerFixture) -> None:
         mock_send_notification = mocker.patch.object(NotificationHandler, "send_notification")
         mock_flight = mocker.patch("lib.notification_handler.Flight")

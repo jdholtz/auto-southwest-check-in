@@ -6,7 +6,7 @@ import pytest
 from pytest_mock import MockerFixture
 
 from lib.checkin_handler import MAX_CHECK_IN_ATTEMPTS, CheckInHandler
-from lib.utils import DriverTimeoutError, RequestError
+from lib.utils import AirportCheckInError, DriverTimeoutError, RequestError
 
 # This needs to be accessed to be tested
 # pylint: disable=protected-access
@@ -168,6 +168,19 @@ class TestCheckInHandler:
         self.handler._check_in()
 
         mock_notification_handler.failed_checkin.assert_called_once()
+        mock_notification_handler.successful_checkin.assert_not_called()
+
+    def test_check_in_sends_airport_check_in_notification_for_airport_check_in_error(
+        self, mocker: MockerFixture
+    ) -> None:
+        mocker.patch.object(CheckInHandler, "_attempt_check_in", side_effect=AirportCheckInError)
+        mock_notification_handler = mocker.patch("lib.notification_handler.NotificationHandler")
+
+        self.handler.notification_handler = mock_notification_handler
+        self.handler._check_in()
+
+        mock_notification_handler.airport_checkin_required.assert_called_once()
+        mock_notification_handler.successful_checkin.assert_not_called()
 
     def test_check_in_sends_success_notification_on_successful_check_in(
         self, mocker: MockerFixture
