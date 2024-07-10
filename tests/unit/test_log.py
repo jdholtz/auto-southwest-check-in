@@ -44,7 +44,7 @@ def test_init_logging_sets_verbosity_level_correctly(
     log.init_logging(logger)
 
     mock_makedirs.assert_called_once()
-    assert len(logger.handlers) == 2
+    assert len(logger.handlers) == 2, "Expected a file and console handler to be created"
     assert logger.handlers[1].level == verbosity_level
 
 

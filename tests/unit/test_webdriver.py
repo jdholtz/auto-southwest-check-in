@@ -143,6 +143,7 @@ class TestWebDriver:
         mocker.patch("time.sleep", side_effect=mock_sleep)
 
         self.driver._wait_for_attribute("headers_set")
+        assert call_count == 2
 
     def test_wait_for_attribute_raises_error_on_timeout(self, mocker: MockerFixture) -> None:
         mocker.patch("time.sleep")

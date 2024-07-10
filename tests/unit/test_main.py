@@ -10,9 +10,9 @@ from lib.notification_handler import NotificationHandler
 from lib.reservation_monitor import AccountMonitor, ReservationMonitor
 
 
-# We don't actually want the config to read the file for these tests
 @pytest.fixture(autouse=True)
 def mock_config(mocker: MockerFixture) -> None:
+    """The config file shouldn't actually be read for these tests"""
     mocker.patch("lib.config.GlobalConfig._read_config")
 
 

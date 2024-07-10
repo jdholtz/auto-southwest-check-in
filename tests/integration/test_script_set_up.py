@@ -25,7 +25,7 @@ def logger(mocker: MockerFixture) -> Iterator[logging.Logger]:
 
 @pytest.fixture(autouse=True)
 def mock_read_config(mocker: MockerFixture) -> None:
-    # Don't ever read the actually config file. Will be mocked within the test
+    # Don't ever read the actual config file. Will be mocked within the test
     # if a certain config needs to be used
     mocker.patch("pathlib.Path.read_text", side_effect=FileNotFoundError)
 
