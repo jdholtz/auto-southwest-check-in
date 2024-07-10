@@ -52,12 +52,13 @@ class CheckInScheduler:
     def _get_flights(self, confirmation_number: str) -> List[Flight]:
         """Get all flights booked on a single reservation"""
         reservation_info = self._get_reservation_info(confirmation_number)
-        logger.debug("%d flights found under current reservation", len(reservation_info["bounds"]))
+        bounds = reservation_info.get("bounds", [])
+        logger.debug("%d flights found under current reservation", len(bounds))
 
         current_utc_time = get_current_time()
         flights = []
         # If multiple flights are under the same confirmation number, it will schedule all checkins
-        for flight_info in reservation_info["bounds"]:
+        for flight_info in bounds:
             # For simplicity, reservation_info is only cached in the Flight constructor even though
             # it can get the flight_info
             flight = Flight(flight_info, reservation_info, confirmation_number)

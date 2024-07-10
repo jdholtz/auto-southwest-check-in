@@ -16,13 +16,31 @@ JSON = Dict[str, Any]
 
 BASE_URL = "https://mobile.southwest.com/api/"
 NTP_SERVER = "pool.ntp.org"
-logger = get_logger(__name__)
 
+AIRPORT_CHECKIN_REQUIRED_CODE = 400511206
+INVALID_CONFIRMATION_NUMBER_LENGTH_CODE = 400310456
+PASSENGER_NOT_FOUND_CODE = 400620480
 RESERVATION_NOT_FOUND_CODE = 400620389
+
+logger = get_logger(__name__)
 
 
 def random_sleep_duration(min_duration: float, max_duration: float) -> float:
     return random.uniform(min_duration, max_duration)
+
+
+def _handle_southwest_error_code(error: "RequestError") -> None:
+    if error.southwest_code == AIRPORT_CHECKIN_REQUIRED_CODE:
+        raise AirportCheckInError("Airport check-in is required")
+
+    if error.southwest_code == INVALID_CONFIRMATION_NUMBER_LENGTH_CODE:
+        raise RequestError("Invalid confirmation number length")
+
+    if error.southwest_code == PASSENGER_NOT_FOUND_CODE:
+        raise RequestError("Passenger not found on reservation")
+
+    if error.southwest_code == RESERVATION_NOT_FOUND_CODE:
+        raise RequestError("Reservation not found")
 
 
 def make_request(
@@ -100,8 +118,9 @@ def get_current_time() -> datetime:
     return datetime.fromtimestamp(response.tx_time, timezone.utc).replace(tzinfo=None)
 
 
-# Make a custom exception when a request fails
 class RequestError(Exception):
+    """A custom exception when a request fails"""
+
     def __init__(self, message: str, response_body: str = "") -> None:
         super().__init__(message)
 
@@ -111,6 +130,10 @@ class RequestError(Exception):
             response_json = {}
 
         self.southwest_code = response_json.get("code")
+
+
+class AirportCheckInError(Exception):
+    """A custom exception when airport check-in is required"""
 
 
 class LoginError(Exception):

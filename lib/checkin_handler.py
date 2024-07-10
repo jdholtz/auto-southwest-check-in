@@ -9,7 +9,13 @@ from typing import TYPE_CHECKING, Any, Dict
 
 from .flight import Flight
 from .log import get_logger
-from .utils import DriverTimeoutError, RequestError, get_current_time, make_request
+from .utils import (
+    AirportCheckInError,
+    DriverTimeoutError,
+    RequestError,
+    get_current_time,
+    make_request,
+)
 
 if TYPE_CHECKING:
     from .checkin_scheduler import CheckInScheduler
@@ -136,6 +142,10 @@ class CheckInHandler:
 
         try:
             reservation = self._attempt_check_in()
+        except AirportCheckInError:
+            logger.debug("Failed to check in. Airport check-in is required")
+            self.notification_handler.airport_checkin_required(self.flight)
+            return
         except RequestError as err:
             logger.debug("Failed to check in. Error: %s. Exiting", err)
             self.notification_handler.failed_checkin(err, self.flight)

@@ -1,7 +1,7 @@
 import json
 import socket
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Union
 from unittest.mock import call
 
 import ntplib
@@ -10,6 +10,7 @@ from pytest_mock import MockerFixture
 from requests_mock.mocker import Mocker as RequestMocker
 
 from lib import utils
+from lib.utils import AirportCheckInError, RequestError
 
 
 def test_random_sleep_duration_respects_min_and_max_durations(mocker: MockerFixture) -> None:
@@ -20,6 +21,24 @@ def test_random_sleep_duration_respects_min_and_max_durations(mocker: MockerFixt
     mock_uniform.assert_called_once_with(10, 100)
 
 
+@pytest.mark.parametrize(
+    ["code", "error"],
+    [
+        (utils.AIRPORT_CHECKIN_REQUIRED_CODE, AirportCheckInError),
+        (utils.INVALID_CONFIRMATION_NUMBER_LENGTH_CODE, RequestError),
+        (utils.PASSENGER_NOT_FOUND_CODE, RequestError),
+        (utils.RESERVATION_NOT_FOUND_CODE, RequestError),
+    ],
+)
+def test_handle_southwest_error_code_handles_all_special_codes(
+    code: int, error: Union[AirportCheckInError, RequestError]
+) -> None:
+    response_body = json.dumps({"code": code})
+    request_err = RequestError("", response_body)
+    with pytest.raises(error):
+        utils._handle_southwest_error_code(request_err)
+
+
 def test_make_request_raises_exception_on_failure(
     requests_mock: RequestMocker, mocker: MockerFixture
 ) -> None:
@@ -27,13 +46,32 @@ def test_make_request_raises_exception_on_failure(
     mocker.patch("lib.utils.random_sleep_duration", side_effect=[1.5, 1, 2.2, 3, 2])
     requests_mock.post(utils.BASE_URL + "test", status_code=400, reason="error")
 
-    with pytest.raises(utils.RequestError):
+    with pytest.raises(RequestError):
         utils.make_request("POST", "test", {}, {}, max_attempts=5)
 
     assert mock_sleep.call_count == 5
 
     expected_calls = [call(1.5), call(1), call(2.2), call(3), call(2)]
     mock_sleep.assert_has_calls(expected_calls)
+
+
+@pytest.mark.parametrize("error", [AirportCheckInError, RequestError])
+def test_make_request_stops_early_for_special_southwest_code(
+    mocker: MockerFixture,
+    requests_mock: RequestMocker,
+    error: Union[AirportCheckInError, RequestError],
+) -> None:
+    requests_mock.get(utils.BASE_URL + "test", status_code=400, reason="Bad Request")
+    mock_sleep = mocker.patch("time.sleep")
+
+    # Initialize error with ("") because RequestError has one required parameter. Doesn't
+    # affect AirportCheckInError
+    mocker.patch("lib.utils._handle_southwest_error_code", side_effect=error(""))
+
+    with pytest.raises(error):
+        utils.make_request("GET", "test", {}, {})
+
+    assert mock_sleep.call_count == 0
 
 
 def test_make_request_does_not_sleep_randomly_on_failures_when_random_sleep_is_false(
@@ -43,7 +81,7 @@ def test_make_request_does_not_sleep_randomly_on_failures_when_random_sleep_is_f
     mock_rand_sleep_duration = mocker.patch("lib.utils.random_sleep_duration")
     requests_mock.post(utils.BASE_URL + "test", status_code=400, reason="error")
 
-    with pytest.raises(utils.RequestError):
+    with pytest.raises(RequestError):
         utils.make_request("POST", "test", {}, {}, max_attempts=2, random_sleep=False)
 
     assert mock_sleep.call_count == 2
@@ -51,24 +89,6 @@ def test_make_request_does_not_sleep_randomly_on_failures_when_random_sleep_is_f
 
     expected_calls = [call(0.5), call(0.5)]
     mock_sleep.assert_has_calls(expected_calls)
-
-
-def test_make_request_stops_early_when_reservation_not_found(
-    mocker: MockerFixture, requests_mock: RequestMocker
-) -> None:
-    response_body = {"code": utils.RESERVATION_NOT_FOUND_CODE}
-    requests_mock.get(
-        utils.BASE_URL + "test",
-        status_code=400,
-        text=json.dumps(response_body),
-        reason="Bad Request",
-    )
-    mock_sleep = mocker.patch("time.sleep")
-
-    with pytest.raises(utils.RequestError):
-        utils.make_request("GET", "test", {}, {})
-
-    assert mock_sleep.call_count == 0
 
 
 def test_make_request_correctly_posts_data(requests_mock: RequestMocker) -> None:

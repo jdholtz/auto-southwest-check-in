@@ -128,6 +128,14 @@ class NotificationHandler:
         logger.debug("Sending failed check-in notification...")
         self.send_notification(error_message, NotificationLevel.ERROR)
 
+    def airport_checkin_required(self, flight: Flight) -> None:
+        error_message = (
+            f"Error: Airport check-in is required for flight {flight.confirmation_number} for "
+            f"{self._get_account_name()}.\n"
+        )
+        logger.debug("Sending airport check-in required notification...")
+        self.send_notification(error_message, NotificationLevel.ERROR)
+
     def timeout_before_checkin(self, flight: Flight) -> None:
         twenty_four_hr_time = self.reservation_monitor.config.notification_24_hour_time
         flight_time = flight.get_display_time(twenty_four_hr_time)
