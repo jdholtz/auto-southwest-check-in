@@ -149,7 +149,8 @@ class WebDriver:
         logger.debug("Loading Southwest home page (this may take a moment)")
         driver.open(BASE_URL)
         self._take_debug_screenshot(driver, "after_page_load.png")
-        driver.js_click("(//div[@data-qa='placement-link'])[2]")
+        driver.wait_for_element("//*[@alt='Check in banner']", timeout=30)
+        driver.click("//*[@alt='Check in banner']")
         return driver
 
     def _headers_listener(self, data: JSON) -> None:
@@ -255,7 +256,7 @@ class WebDriver:
     def _get_needed_headers(self, request_headers: JSON) -> JSON:
         headers = {}
         for header in request_headers:
-            if re.match(r"x-api-key|x-channel-id|user-agent|^[\w-]+?-\w$", header, re.I):
+            if re.match(r"cookie|x-api-key|x-channel-id|user-agent|^[\w-]+?-\w$", header, re.I):
                 headers[header] = request_headers[header]
 
         return headers
