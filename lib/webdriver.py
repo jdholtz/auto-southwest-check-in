@@ -149,7 +149,8 @@ class WebDriver:
         logger.debug("Loading Southwest home page (this may take a moment)")
         driver.open(BASE_URL)
         self._take_debug_screenshot(driver, "after_page_load.png")
-        driver.js_click("(//div[@data-qa='placement-link'])[2]")
+        driver.wait_for_element("//*[@alt='Check in banner']", timeout=30)
+        driver.click("//*[@alt='Check in banner']")
         return driver
 
     def _headers_listener(self, data: JSON) -> None:
