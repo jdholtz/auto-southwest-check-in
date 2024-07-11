@@ -57,47 +57,43 @@ def make_request(
     url = BASE_URL + site
 
     attempts = 0
-    session = requests.Session()
-    try:
-        while attempts < max_attempts:
-            attempts += 1
-            if method == "POST":
-                response = session.post(url, headers=headers, json=info)
-            else:
-                response = session.get(url, headers=headers, params=info)
+    while attempts < max_attempts:
+        attempts += 1
+        if method == "POST":
+            response = requests.post(url, headers=headers, json=info)
+        else:
+            response = requests.get(url, headers=headers, params=info)
 
-            if response.status_code == 200:
-                logger.debug("Successfully made request after %d attempts", attempts)
-                return response.json()
+        if response.status_code == 200:
+            logger.debug("Successfully made request after %d attempts", attempts)
+            return response.json()
 
-            # Request did not succeed
-            response_body = response.content.decode()
-            error_msg = response.reason + " " + str(response.status_code)
-            error = RequestError(error_msg, response_body)
+        # Request did not succeed
+        response_body = response.content.decode()
+        error_msg = response.reason + " " + str(response.status_code)
+        error = RequestError(error_msg, response_body)
 
-            try:
-                _handle_southwest_error_code(error)
-            except (RequestError, AirportCheckInError) as err:
-                # Stop requesting after one attempt for special codes, as the requests won't succeed
-                error = err
-                break
+        try:
+            _handle_southwest_error_code(error)
+        except (RequestError, AirportCheckInError) as err:
+            # Stop requesting after one attempt for special codes, as the requests won't succeed
+            error = err
+            break
 
-            if random_sleep:
-                sleep_time = random_sleep_duration(1, 3)
-            else:
-                sleep_time = 0.5
+        if random_sleep:
+            sleep_time = random_sleep_duration(1, 3)
+        else:
+            sleep_time = 0.5
 
-            logger.debug(
-                f"Request error on attempt {attempts}: {error_msg}. Sleeping for {sleep_time:.2f} "
-                "seconds until next attempt"
-            )
-            time.sleep(sleep_time)
+        logger.debug(
+            f"Request error on attempt {attempts}: {error_msg}. Sleeping for {sleep_time:.2f} "
+            "seconds until next attempt"
+        )
+        time.sleep(sleep_time)
 
-        logger.debug("Failed to make request after %d attempts: %s", attempts, error_msg)
-        logger.debug("Response body: %s", response_body)
-        raise error
-    finally:
-        session.close()
+    logger.debug("Failed to make request after %d attempts: %s", attempts, error_msg)
+    logger.debug("Response body: %s", response_body)
+    raise error
 
 
 def get_current_time() -> datetime:

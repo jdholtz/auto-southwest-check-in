@@ -194,14 +194,13 @@ class CheckInHandler:
         """
         headers = self.checkin_scheduler.headers
         info = {
-            "firstName": self.first_name,
-            "lastName": self.last_name,
-            "recordLocator": self.flight.confirmation_number,
+            "first-name": self.first_name,
+            "last-name": self.last_name,
         }
         site = CHECKIN_URL + self.flight.confirmation_number
 
-        logger.debug("Making POST request to check in")
-        response = make_request("POST", site, headers, info)
+        logger.debug("Making GET request to check in")
+        response = make_request("GET", site, headers, info)
 
         info = response["checkInViewReservationPage"]["_links"]["checkIn"]
         site = f"mobile-air-operations{info['href']}"
