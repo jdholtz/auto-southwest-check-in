@@ -68,17 +68,17 @@ def make_request(
             logger.debug("Successfully made request after %d attempts", attempts)
             return response.json()
 
-        # Request did not succeed
-        response_body = response.content.decode()
-        error_msg = response.reason + " " + str(response.status_code)
-        error = RequestError(error_msg, response_body)
+            # Request did not succeed
+            response_body = response.content.decode()
+            error_msg = response.reason + " " + str(response.status_code)
+            error = RequestError(error_msg, response_body)
 
-        try:
-            _handle_southwest_error_code(error)
-        except (RequestError, AirportCheckInError) as err:
-            # Stop requesting after one attempt for special codes, as the requests won't succeed
-            error = err
-            break
+            try:
+                _handle_southwest_error_code(error)
+            except (RequestError, AirportCheckInError) as err:
+                # Stop requesting after one attempt for special codes, as the requests won't succeed
+                error = err
+                break
 
         if random_sleep:
             sleep_time = random_sleep_duration(1, 3)
@@ -91,9 +91,11 @@ def make_request(
         )
         time.sleep(sleep_time)
 
-    logger.debug("Failed to make request after %d attempts: %s", attempts, error_msg)
-    logger.debug("Response body: %s", response_body)
-    raise error
+        logger.debug("Failed to make request after %d attempts: %s", attempts, error_msg)
+        logger.debug("Response body: %s", response_body)
+        raise error
+    finally:
+        session.close()
 
 
 def get_current_time() -> datetime:
