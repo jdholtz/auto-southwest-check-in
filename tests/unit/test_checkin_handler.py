@@ -32,7 +32,7 @@ class TestCheckInHandler:
         self.handler.schedule_check_in()
 
         mock_process.return_value.start.assert_called_once()
-        assert self.handler.pid is not None
+        assert self.handler.pid is not None, "PID was not set while scheduling a check-in"
 
     def test_stop_check_in_stops_a_process_by_killing_its_pid(self, mocker: MockerFixture) -> None:
         mock_os_kill = mocker.patch("os.kill")

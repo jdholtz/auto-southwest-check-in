@@ -59,7 +59,7 @@ class ReservationMonitor:
             with self.lock:
                 logger.debug("Lock acquired")
 
-                should_exit = self._perform_check()
+                should_exit = self._check()
                 if should_exit:
                     logger.debug("Stopping monitoring")
                     break
@@ -71,7 +71,7 @@ class ReservationMonitor:
             logger.debug("Lock released")
             self._smart_sleep(time_before)
 
-    def _perform_check(self) -> bool:
+    def _check(self) -> bool:
         """
         Check for reservation changes and lower fares. Returns true if future checks should not be
         performed (e.g. no more flights are scheduled to check in).
@@ -172,7 +172,7 @@ class AccountMonitor(ReservationMonitor):
         self.username = config.username
         self.password = config.password
 
-    def _perform_check(self) -> bool:
+    def _check(self) -> bool:
         """
         Check for newly booked reservations for the account. Returns true if future checks should
         not be performed.

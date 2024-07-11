@@ -80,11 +80,13 @@ class TestFareChecker:
         assert price == "price"
         mock_get_matching_fare.assert_called_once_with(["fare_one", "fare_two"], "test_fare")
 
-    # This scenario should not happen because Southwest should always have a flight
-    # at the same time (as it is a scheduled flight)
     def test_get_flight_price_raises_error_when_no_matching_flights_appear(
         self, mocker: MockerFixture, test_flight: Flight
     ) -> None:
+        """
+        This scenario should not happen because Southwest should always have a flight at the same
+        time (as it is a scheduled flight). Test just in case though
+        """
         flights = [{"flightNumbers": "98"}, {"flightNumbers": "99"}]
         mocker.patch.object(
             FareChecker, "_get_matching_flights", return_value=(flights, "test_fare")
@@ -125,7 +127,7 @@ class TestFareChecker:
     ) -> None:
         res_info = {
             "bounds": ["bound_one", "bound_two"],
-            "_links": {"change": {"href": "test_link", "query": "query"}},
+            "_links": {"change": {"href": "test_link", "query": "query_body"}},
         }
         flight_page = {"changeFlightPage": "test_page"}
         mock_make_request = mocker.patch("lib.fare_checker.make_request", return_value=flight_page)
@@ -139,7 +141,7 @@ class TestFareChecker:
 
         call_args = mock_make_request.call_args[0]
         assert call_args[1] == BOOKING_URL + "test_link"
-        assert call_args[3] == "query"
+        assert call_args[3] == "query_body"
 
     def test_get_change_flight_page_raises_exception_when_flight_cannot_be_changed(
         self, mocker: MockerFixture
@@ -243,7 +245,7 @@ class TestFareChecker:
         ],
     )
     def test_check_for_companion_passes_when_no_companion_exists(self, reservation: JSON) -> None:
-        # It will throw an exception if the test does not pass
+        # An exception will be thrown if the test does not pass
         self.checker._check_for_companion(reservation)
 
     def test_get_matching_fare_returns_the_correct_fare(self) -> None:
