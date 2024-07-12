@@ -196,6 +196,7 @@ class CheckInHandler:
         info = {
             "firstName": self.first_name,
             "lastName": self.last_name,
+            "passengerSearchToken": "",
             "recordLocator": self.flight.confirmation_number,
         }
         site = CHECKIN_URL + self.flight.confirmation_number
