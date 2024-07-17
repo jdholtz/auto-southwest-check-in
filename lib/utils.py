@@ -95,7 +95,7 @@ def make_request(
             time.sleep(sleep_time)
 
     logger.debug("Failed to make request after %d attempts: %s", attempts, error_msg)
-    logger.debug("Response body: %s", response_body if "response_body" in locals() else "N/A")
+    logger.debug("Response body: %s", response_body)
     raise error
 
 
