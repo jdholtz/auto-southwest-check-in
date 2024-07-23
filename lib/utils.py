@@ -16,7 +16,6 @@ JSON = Dict[str, Any]
 
 BASE_URL = "https://mobile.southwest.com/api/"
 NTP_SERVER = "pool.ntp.org"
-NTP_BACKUP_SERVER = "time.cloudflare.com"
 
 AIRPORT_CHECKIN_REQUIRED_CODE = 400511206
 INVALID_CONFIRMATION_NUMBER_LENGTH_CODE = 400310456
@@ -58,42 +57,39 @@ def make_request(
     url = BASE_URL + site
 
     attempts = 0
-    error = None
+    while attempts < max_attempts:
+        attempts += 1
+        if method == "POST":
+            response = requests.post(url, headers=headers, json=info)
+        else:
+            response = requests.get(url, headers=headers, params=info)
 
-    with requests.Session() as session:
-        while attempts < max_attempts:
-            attempts += 1
-            try:
-                if method == "POST":
-                    response = session.post(url, headers=headers, json=info)
-                else:
-                    response = session.get(url, headers=headers, params=info)
+        if response.status_code == 200:
+            logger.debug("Successfully made request after %d attempts", attempts)
+            return response.json()
 
-                if response.status_code == 200:
-                    logger.debug("Successfully made request after %d attempts", attempts)
-                    return response.json()
+        # Request did not succeed
+        response_body = response.content.decode()
+        error_msg = response.reason + " " + str(response.status_code)
+        error = RequestError(error_msg, response_body)
 
-                # Request did not succeed
-                response_body = response.content.decode()
-                error_msg = response.reason + " " + str(response.status_code)
-                error = RequestError(error_msg, response_body)
+        try:
+            _handle_southwest_error_code(error)
+        except (RequestError, AirportCheckInError) as err:
+            # Stop requesting after one attempt for special codes, as the requests won't succeed
+            error = err
+            break
 
-                _handle_southwest_error_code(error)
-            except (RequestError, AirportCheckInError) as err:
-                # Stop requesting after one attempt for special codes, as the requests won't succeed
-                error = err
-                break
+        if random_sleep:
+            sleep_time = random_sleep_duration(1, 3)
+        else:
+            sleep_time = 0.5
 
-            if random_sleep:
-                sleep_time = random_sleep_duration(1, 3)
-            else:
-                sleep_time = 0.5
-
-            logger.debug(
-                f"Request error on attempt {attempts}: {error_msg}. Sleeping for {sleep_time:.2f} "
-                "seconds until next attempt"
-            )
-            time.sleep(sleep_time)
+        logger.debug(
+            f"Request error on attempt {attempts}: {error_msg}. Sleeping for {sleep_time:.2f} "
+            "seconds until next attempt"
+        )
+        time.sleep(sleep_time)
 
     logger.debug("Failed to make request after %d attempts: %s", attempts, error_msg)
     logger.debug("Response body: %s", response_body)
@@ -114,11 +110,8 @@ def get_current_time() -> datetime:
         # Set a longer timeout to make the request more reliable
         response = c.request(NTP_SERVER, version=3, timeout=10)
     except (socket.gaierror, ntplib.NTPException):
-        try:
-            response = c.request(NTP_BACKUP_SERVER, version=3, timeout=10)
-        except (socket.gaierror, ntplib.NTPException):
-            logger.debug("Error requesting time from NTP servers. Using local time")
-            return datetime.now(timezone.utc).replace(tzinfo=None)
+        logger.debug("Error requesting time from NTP server. Using local time")
+        return datetime.now(timezone.utc).replace(tzinfo=None)
 
     return datetime.fromtimestamp(response.tx_time, timezone.utc).replace(tzinfo=None)
 
