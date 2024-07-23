@@ -7,6 +7,7 @@ import sys
 import time
 from typing import TYPE_CHECKING, Any, Dict, List
 
+from sbvirtualdisplay import Display
 from seleniumbase import Driver
 from seleniumbase.fixtures import page_actions as seleniumbase_actions
 
@@ -52,6 +53,7 @@ class WebDriver:
         self.checkin_scheduler = checkin_scheduler
         self.headers_set = False
         self.debug_screenshots = self._should_take_screenshots()
+        self.display = None
 
         # For account login
         self.login_request_id = None
@@ -89,6 +91,9 @@ class WebDriver:
         self._take_debug_screenshot(driver, "post_headers.png")
 
         driver.quit()
+        if self.display is not None:
+            self.display.stop()
+            logger.debug("Stopped virtual display successfully")
 
     def get_reservations(self, account_monitor: AccountMonitor) -> List[JSON]:
         """
@@ -122,35 +127,54 @@ class WebDriver:
         reservations = self._fetch_reservations(driver)
 
         driver.quit()
+        if self.display is not None:
+            self.display.stop()
+            logger.debug("Stopped virtual display successfully")
         return reservations
 
     def _get_driver(self) -> Driver:
+        is_docker = os.environ.get("AUTO_SOUTHWEST_CHECK_IN_DOCKER") == "1"
+
+        if is_docker:
+            logger.debug("Starting virtual display for current session")
+            try:
+                self.display = Display(visible=0, size=(1440, 1880))
+                self.display.start()
+                if self.display.is_alive():
+                    logger.debug("Started virtual display successfully")
+                else:
+                    logger.debug("Started virtual display but is not active")
+            except Exception as e:
+                logger.debug(f"Failed to start display: {e}")
+
         logger.debug("Starting webdriver for current session")
         browser_path = self.checkin_scheduler.reservation_monitor.config.browser_path
 
-        driver_version = "mlatest"
-        if os.environ.get("AUTO_SOUTHWEST_CHECK_IN_DOCKER") == "1":
-            # This environment variable is set in the Docker image. Makes sure a new driver
-            # is not downloaded as the Docker image already has the correct driver
-            driver_version = "keep"
+        driver_options = {
+            "binary_location": browser_path,
+            "locale_code": "en",
+            "uc": True,
+            "uc_cdp_events": True,
+            "undetectable": True,
+            "incognito": True,
+        }
 
-        driver = Driver(
-            binary_location=browser_path,
-            driver_version=driver_version,
-            headless=True,
-            uc_cdp_events=True,
-            undetectable=True,
-            incognito=True,
-            is_mobile=True,
-        )
+        if is_docker:
+            driver_options["driver_version"] = "keep"
+            driver_options["headed"] = True
+        else:
+            driver_options["driver_version"] = "mlatest"
+            driver_options["headless"] = True
+
+        driver = Driver(**driver_options)
         logger.debug("Using browser version: %s", driver.caps["browserVersion"])
 
         driver.add_cdp_listener("Network.requestWillBeSent", self._headers_listener)
 
-        logger.debug("Loading Southwest home page (this may take a moment)")
+        logger.debug("Loading Southwest check-in page (this may take a moment)")
         driver.open(BASE_URL)
         self._take_debug_screenshot(driver, "after_page_load.png")
-        driver.assert_element('img[alt="Check in banner"]', timeout=15)
+        driver.assert_element('img[alt="Check in banner"]')
         driver.click('img[alt="Check in banner"]')
         return driver
 
@@ -207,6 +231,9 @@ class WebDriver:
         # Handle login errors
         if self.login_status_code != 200:
             driver.quit()
+            if self.display is not None:
+                self.display.stop()
+                logger.debug("Stopped virtual display successfully")
             error = self._handle_login_error(login_response)
             raise error
 
@@ -260,6 +287,7 @@ class WebDriver:
             if re.match(r"x-api-key|x-channel-id|user-agent|^[\w-]+?-\w$", header, re.I):
                 headers[header] = request_headers[header]
 
+        time.sleep(1)
         return headers
 
     def _set_account_name(self, account_monitor: AccountMonitor, response: JSON) -> None:
