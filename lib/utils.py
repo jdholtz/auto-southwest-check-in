@@ -16,6 +16,7 @@ JSON = Dict[str, Any]
 
 BASE_URL = "https://mobile.southwest.com/api/"
 NTP_SERVER = "pool.ntp.org"
+NTP_BACKUP_SERVER = "time.cloudflare.com"
 
 AIRPORT_CHECKIN_REQUIRED_CODE = 400511206
 INVALID_CONFIRMATION_NUMBER_LENGTH_CODE = 400310456
@@ -100,7 +101,7 @@ def get_current_time() -> datetime:
     """
     Fetch the current time from an NTP server. Times are sometimes off on computers running the
     script and since check-ins rely on exact times, this ensures check-ins are done at the correct
-    time. Falls back to local time if the request to the NTP server fails.
+    time. Falls back to local time if the request to the NTP server and NTP backup server fails.
 
     Times are returned in UTC.
     """
@@ -110,8 +111,11 @@ def get_current_time() -> datetime:
         # Set a longer timeout to make the request more reliable
         response = c.request(NTP_SERVER, version=3, timeout=10)
     except (socket.gaierror, ntplib.NTPException):
-        logger.debug("Error requesting time from NTP server. Using local time")
-        return datetime.now(timezone.utc).replace(tzinfo=None)
+        try:
+            response = c.request(NTP_BACKUP_SERVER, version=3, timeout=10)
+        except (socket.gaierror, ntplib.NTPException):
+            logger.debug("Error requesting time from NTP servers. Using local time")
+            return datetime.now(timezone.utc).replace(tzinfo=None)
 
     return datetime.fromtimestamp(response.tx_time, timezone.utc).replace(tzinfo=None)
 
