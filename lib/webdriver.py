@@ -157,6 +157,7 @@ class WebDriver:
             "uc_cdp_events": True,
             "undetectable": True,
             "incognito": True,
+            "is_mobile": True,
         }
 
         if is_docker:
