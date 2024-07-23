@@ -196,6 +196,7 @@ class AccountMonitor(ReservationMonitor):
         because new headers might not be valid and a list of reservations could not be retrieved.
         """
         logger.debug("Retrieving reservations for account")
+        time.sleep(1)
         webdriver = WebDriver(self.checkin_scheduler)
 
         try:
