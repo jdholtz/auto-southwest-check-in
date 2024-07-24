@@ -101,7 +101,7 @@ def get_current_time() -> datetime:
     """
     Fetch the current time from an NTP server. Times are sometimes off on computers running the
     script and since check-ins rely on exact times, this ensures check-ins are done at the correct
-    time. Falls back to local time if the request to the NTP server and NTP backup server fails.
+    time. Falls back to local time if the request to the NTP servers fail.
 
     Times are returned in UTC.
     """
@@ -112,6 +112,8 @@ def get_current_time() -> datetime:
         response = c.request(NTP_SERVER, version=3, timeout=10)
     except (socket.gaierror, ntplib.NTPException):
         try:
+            # Try the backup NTP server before falling back to local time. Increases reliability of
+            # fetching the time significantly
             response = c.request(NTP_BACKUP_SERVER, version=3, timeout=10)
         except (socket.gaierror, ntplib.NTPException):
             logger.debug("Error requesting time from NTP servers. Using local time")

@@ -20,6 +20,8 @@ checking many accounts and reservations at once
 - The script now runs as a non-root user in Docker to improve a container's security
 - Error messages during check-ins and reservation retrievals relating to reservation/passenger not found, invalid confirmation number
 length, and airport check-in required are more detailed
+- Add a backup NTP server to make retrieving time much more reliable
+([#284](https://github.com/jdholtz/auto-southwest-check-in/pull/284) by [@dmytrokoren](https://github.com/dmytrokoren))
 
 ### Upgrading
 - If you manually set `notification_level` in your configuration, it will need to be adjusted accordingly.
