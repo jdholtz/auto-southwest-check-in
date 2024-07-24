@@ -12,7 +12,7 @@ from seleniumbase import Driver
 from seleniumbase.fixtures import page_actions as seleniumbase_actions
 
 from .log import LOGS_DIRECTORY, get_logger
-from .utils import DriverTimeoutError, LoginError, random_sleep_duration
+from .utils import DriverTimeoutError, LoginError
 
 if TYPE_CHECKING:
     from .checkin_scheduler import CheckInScheduler
@@ -21,6 +21,7 @@ if TYPE_CHECKING:
 BASE_URL = "https://mobile.southwest.com"
 LOGIN_URL = BASE_URL + "/api/security/v4/security/token"
 TRIPS_URL = BASE_URL + "/api/mobile-misc/v1/mobile-misc/page/upcoming-trips"
+CHECKIN_URL = BASE_URL + "/air/check-in"
 HEADERS_URL = BASE_URL + "/api/chase/v2/chase/offers"
 
 # Southwest's code when logging in with the incorrect information
@@ -111,7 +112,6 @@ class WebDriver:
         self._take_debug_screenshot(driver, "pre_login.png")
 
         driver.click(".login-button--box")
-        time.sleep(random_sleep_duration(1, 5))
         driver.type('input[name="userNameOrAccountNumber"]', account_monitor.username)
 
         # Use quote_plus to workaround a x-www-form-urlencoded encoding bug on the mobile site
@@ -125,6 +125,9 @@ class WebDriver:
         # The upcoming trips page is also loaded when we log in, so we might as well grab it
         # instead of requesting again later
         reservations = self._fetch_reservations(driver)
+
+        # To prevent "429 Too Many Requests" error, log out from the current account
+        driver.click(".right-btn")
 
         driver.quit()
         if self.display is not None:
@@ -149,16 +152,16 @@ class WebDriver:
 
         logger.debug("Starting webdriver for current session")
         browser_path = self.checkin_scheduler.reservation_monitor.config.browser_path
+        user_agent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
 
         driver_options = {
             "binary_location": browser_path,
-            "locale_code": "en",
+            "agent": user_agent,
+            "is_mobile": True,
+            "locale_code": "en_us",
             "uc": True,
             "uc_cdp_events": True,
-            "uc_subprocess": False,
             "undetectable": True,
-            "incognito": True,
-            "is_mobile": True,
         }
 
         if is_docker:
@@ -171,12 +174,12 @@ class WebDriver:
         driver = Driver(**driver_options)
         logger.debug("Using browser version: %s", driver.caps["browserVersion"])
 
+        driver.delete_all_cookies()
         driver.add_cdp_listener("Network.requestWillBeSent", self._headers_listener)
 
         logger.debug("Loading Southwest check-in page (this may take a moment)")
-        driver.default_get(BASE_URL)
+        driver.open(CHECKIN_URL)
         self._take_debug_screenshot(driver, "after_page_load.png")
-        driver.uc_click('img[alt="Check in banner"]')
         return driver
 
     def _headers_listener(self, data: JSON) -> None:
