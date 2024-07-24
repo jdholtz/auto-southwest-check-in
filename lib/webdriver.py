@@ -155,6 +155,7 @@ class WebDriver:
             "locale_code": "en",
             "uc": True,
             "uc_cdp_events": True,
+            "uc_subprocess": False,
             "undetectable": True,
             "incognito": True,
             "is_mobile": True,
@@ -173,10 +174,9 @@ class WebDriver:
         driver.add_cdp_listener("Network.requestWillBeSent", self._headers_listener)
 
         logger.debug("Loading Southwest check-in page (this may take a moment)")
-        driver.open(BASE_URL)
+        driver.default_get(BASE_URL)
         self._take_debug_screenshot(driver, "after_page_load.png")
-        driver.assert_element('img[alt="Check in banner"]')
-        driver.click('img[alt="Check in banner"]')
+        driver.uc_click('img[alt="Check in banner"]')
         return driver
 
     def _headers_listener(self, data: JSON) -> None:
