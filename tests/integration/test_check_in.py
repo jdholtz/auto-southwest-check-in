@@ -22,7 +22,7 @@ def handler(mocker: MockerFixture) -> None:
         "departureAirport": {"code": "LAX", "name": "test_outbound"},
         "departureDate": "2021-12-06",
         "departureTime": "14:40",
-        "flights": [{"number": "100"}],
+        "flights": [{"number": "WN100"}],
     }
     flight = Flight(flight_info, {}, "TEST")
     # Make sure it isn't affected by local time
