@@ -6,8 +6,8 @@ from unittest import mock
 import pytest
 from pytest_mock import MockerFixture
 
-from lib.utils import LoginError
-from lib.webdriver import HEADERS_URLS, INVALID_CREDENTIALS_CODE, LOGIN_URL, TRIPS_URL, WebDriver
+from lib.utils import DriverTimeoutError, LoginError
+from lib.webdriver import HEADERS_URL, INVALID_CREDENTIALS_CODE, LOGIN_URL, TRIPS_URL, WebDriver
 
 # This needs to be accessed to be tested
 # pylint: disable=protected-access
@@ -61,6 +61,7 @@ class TestWebDriver:
     def test_get_reservations_fetches_reservations(
         self, mocker: MockerFixture, mock_chrome: mock.Mock, mock_account_monitor: mock.Mock
     ) -> None:
+        mocker.patch("time.sleep")
         mocker.patch("lib.webdriver.seleniumbase_actions.wait_for_element_not_visible")
         mocker.patch.object(WebDriver, "_get_driver", return_value=mock_chrome)
         mock_wait_for_attribute = mocker.patch.object(self.driver, "_wait_for_attribute")
@@ -79,7 +80,7 @@ class TestWebDriver:
     def test_get_driver_returns_a_webdriver_with_one_request(self, mock_chrome: mock.Mock) -> None:
         driver = self.driver._get_driver()
         driver.add_cdp_listener.assert_called_once()
-        driver.get.assert_called_once()
+        driver.open.assert_called_once()
 
         assert mock_chrome.call_args.kwargs.get("driver_version") == "mlatest"
 
@@ -89,30 +90,18 @@ class TestWebDriver:
 
         driver = self.driver._get_driver()
         driver.add_cdp_listener.assert_called_once()
-        driver.get.assert_called_once()
+        driver.open.assert_called_once()
 
         assert mock_chrome.call_args.kwargs.get("driver_version") == "keep"
 
-    @pytest.mark.parametrize("url", HEADERS_URLS)
-    def test_headers_listener_sets_headers_when_correct_url(
-        self, mocker: MockerFixture, url: str
-    ) -> None:
+    def test_headers_listener_sets_headers_when_correct_url(self, mocker: MockerFixture) -> None:
         mocker.patch.object(self.driver, "_get_needed_headers", return_value={"test": "headers"})
-        data = {"params": {"request": {"url": url, "headers": {}}}}
+        data = {"params": {"request": {"url": HEADERS_URL, "headers": {}}}}
 
         self.driver._headers_listener(data)
 
         assert self.driver.headers_set
         assert self.driver.checkin_scheduler.headers == {"test": "headers"}
-
-    def test_headers_listener_does_not_set_headers_when_headers_already_set(self) -> None:
-        data = {
-            "params": {"request": {"url": HEADERS_URLS[0], "headers": {"User-Agent": "Chrome"}}}
-        }
-        self.driver.headers_set = True
-        self.driver._headers_listener(data)
-
-        assert self.driver.checkin_scheduler.headers == {}
 
     def test_headers_listener_does_not_set_headers_when_wrong_url(self) -> None:
         data = {"params": {"request": {"url": "fake_url", "headers": {"User-Agent": "Chrome"}}}}
@@ -154,6 +143,12 @@ class TestWebDriver:
         mocker.patch("time.sleep", side_effect=mock_sleep)
 
         self.driver._wait_for_attribute("headers_set")
+        assert call_count == 2
+
+    def test_wait_for_attribute_raises_error_on_timeout(self, mocker: MockerFixture) -> None:
+        mocker.patch("time.sleep")
+        with pytest.raises(DriverTimeoutError):
+            self.driver._wait_for_attribute("headers_set")
 
     def test_wait_for_login_raises_error_on_failed_login(
         self, mocker: MockerFixture, mock_chrome: mock.Mock

@@ -16,7 +16,7 @@ pull request (This can be done after submitting the PR or separately by me).
     * [Class Method Organization](#class-method-organization)
 
 ## Testing
-This project uses [pytest][0] to unit test the application. When adding/modifying the code, you may need to add a new test or modify an existing test.
+This project uses [pytest] to unit test the application. When adding/modifying the code, you may need to add a new test or modify an existing test.
 
 The goal of these tests is to provide 100% code coverage to increase the reliability of existing features and smoothly integrate new ones into the project.
 To learn about running unit tests for **Auto-Southwest Check-In**, visit the [Testing README](tests/README.md).
@@ -24,18 +24,18 @@ To learn about running unit tests for **Auto-Southwest Check-In**, visit the [Te
 ## Coding Conventions
 Try to stay consistent with the current layout/format of the project. Please use your best judgement when following the conventions in this guide.
 
-It is highly recommended for you to use [pre-commit][1] to ensure you are following these conventions.
+It is highly recommended for you to use [pre-commit] to ensure you are following these conventions.
 
 ### Linting
-[Flake8][2] is used to lint the Python code. When validating your code against flake8, use your best judgement to determine whether to fix
+[Flake8] is used to lint the Python code. When validating your code against flake8, use your best judgement to determine whether to fix
 the issue or disable the warning.
 
-[Codespell][3] is used to reduce typos in comments, strings, and documentation.
+[Codespell] is used to reduce typos in comments, strings, and documentation.
 
 ### Formatting
-[Black][4] is used to format all the Python code to a consistent style. Additionally, [isort][5] is used to provide a consistent ordering to imports.
+[Black] is used to format all the Python code to a consistent style. Additionally, [isort] is used to provide a consistent ordering to imports.
 
-It is also highly recommended to use an [EditorConfig][6] plugin for your code editor to maintain a consistent coding style for all project files.
+It is also highly recommended to use an [EditorConfig] plugin for your code editor to maintain a consistent coding style for all project files.
 
 ### Class Method Organization
 To help with readability, Auto-Southwest Check-In should follow a specific ordering of class methods:
@@ -46,10 +46,10 @@ To help with readability, Auto-Southwest Check-In should follow a specific order
 From there, methods are ordered from top to bottom in the order they are used. Unit tests should be in the same order as the methods they are testing.
 
 
-[0]: https://docs.pytest.org
-[1]: https://pre-commit.com
-[2]: https://flake8.pycqa.org/en/latest
-[3]: https://github.com/codespell-project/codespell
-[4]: https://black.readthedocs.io/en/stable
-[5]: https://pycqa.github.io/isort/
-[6]: https://editorconfig.org/
+[pytest]: https://docs.pytest.org
+[pre-commit]: https://pre-commit.com
+[Flake8]: https://flake8.pycqa.org/en/latest
+[Codespell]: https://github.com/codespell-project/codespell
+[Black]: https://black.readthedocs.io/en/stable
+[isort]: https://pycqa.github.io/isort/
+[EditorConfig]: https://editorconfig.org/

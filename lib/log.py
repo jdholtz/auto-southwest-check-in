@@ -3,8 +3,9 @@ import logging.handlers
 import multiprocessing
 import os
 import sys
+from pathlib import Path
 
-LOGS_DIRECTORY = "logs"
+LOGS_DIRECTORY = Path(__file__).parents[1] / "logs"
 LOG_FILE = "auto-southwest-check-in.log"
 LOG_LEVEL = logging.INFO
 

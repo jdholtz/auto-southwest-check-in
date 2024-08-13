@@ -48,7 +48,7 @@ class TestConfig:
                 "check_fares": False,
                 "healthchecks_url": "test_healthchecks",
                 "notification_24_hour_time": False,
-                "notification_level": 2,
+                "notification_level": 3,
                 "notification_urls": ["url2"],
                 "retrieval_interval": 10,
             }
@@ -72,7 +72,8 @@ class TestConfig:
             {"healthchecks_url": 0},
             {"notification_24_hour_time": "invalid"},
             {"notification_level": "invalid"},
-            {"notification_level": 3},
+            {"notification_level": -1},
+            {"notification_level": 4},
             {"notification_urls": None},
             {"retrieval_interval": "invalid"},
         ],
@@ -90,7 +91,7 @@ class TestConfig:
                 "check_fares": False,
                 "healthchecks_url": "test_healthchecks",
                 "notification_24_hour_time": False,
-                "notification_level": 2,
+                "notification_level": 3,
                 "notification_urls": "test_url",
                 "retrieval_interval": 30,
             }
@@ -450,7 +451,7 @@ class TestGlobalConfig:
         )
 
         assert test_config.browser_path == "test/browser_path"
-        assert test_config.check_fares is False  # Make sure it calls super._parse_config
+        assert test_config.check_fares is False, "Config._parse_config() was never called"
         mock_account_config.assert_called_once_with([])
         mock_reservation_config.assert_called_once_with([])
 
@@ -484,7 +485,7 @@ class TestAccountConfig:
         test_config = AccountConfig()
         test_config._parse_config({"username": "user", "password": "pass", "check_fares": False})
 
-        assert test_config.check_fares is False  # Make sure it calls super._parse_config
+        assert test_config.check_fares is False, "Config._parse_config() was never called"
         assert test_config.username == "user"
         assert test_config.password == "pass"
 
@@ -516,7 +517,7 @@ class TestReservationConfig:
         }
         test_config._parse_config(reservation_config)
 
-        assert test_config.check_fares is False  # Make sure it calls super._parse_config
+        assert test_config.check_fares is False, "Config._parse_config() was never called"
         assert test_config.confirmation_number == "num"
         assert test_config.first_name == "first"
         assert test_config.last_name == "last"

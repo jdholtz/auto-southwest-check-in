@@ -11,7 +11,7 @@ from lib.config import AccountConfig, ReservationConfig
 from lib.fare_checker import FareChecker
 from lib.notification_handler import NotificationHandler
 from lib.reservation_monitor import TOO_MANY_REQUESTS_CODE, AccountMonitor, ReservationMonitor
-from lib.utils import FlightChangeError, LoginError, RequestError
+from lib.utils import DriverTimeoutError, FlightChangeError, LoginError, RequestError
 from lib.webdriver import WebDriver
 
 # This needs to be accessed to be tested
@@ -55,10 +55,40 @@ class TestReservationMonitor:
         self.monitor.monitor()
         mock_stop_monitoring.assert_called_once()
 
-    def test_monitor_monitors_reservations_continuously(self, mocker: MockerFixture) -> None:
+    def test_monitor_monitors_continuously(self, mocker: MockerFixture) -> None:
         # Since the monitor function runs in an infinite loop, throw an Exception when the
         # sleep function is called a second time to break out of the loop.
         mocker.patch.object(ReservationMonitor, "_smart_sleep", side_effect=["", StopIteration])
+        mock_check = mocker.patch.object(ReservationMonitor, "_check", return_value=False)
+
+        self.monitor.config.retrieval_interval = 1
+        with pytest.raises(StopIteration):
+            self.monitor._monitor()
+
+        assert mock_check.call_count == 2
+
+    def test_monitor_monitors_until_check_says_to_exit(self, mocker: MockerFixture) -> None:
+        mock_smart_sleep = mocker.patch.object(ReservationMonitor, "_smart_sleep")
+        mocker.patch.object(ReservationMonitor, "_check", side_effect=[False, False, True])
+
+        self.monitor.config.retrieval_interval = 1
+        self.monitor._monitor()
+
+        assert mock_smart_sleep.call_count == 2
+
+    def test_monitor_monitors_once_if_retrieval_interval_is_zero(
+        self, mocker: MockerFixture
+    ) -> None:
+        mock_smart_sleep = mocker.patch.object(ReservationMonitor, "_smart_sleep")
+        mock_check = mocker.patch.object(ReservationMonitor, "_check", return_value=False)
+
+        self.monitor.config.retrieval_interval = 0
+        self.monitor._monitor()
+
+        mock_check.assert_called_once()
+        mock_smart_sleep.assert_not_called()
+
+    def test_check_checks_reservations(self, mocker: MockerFixture) -> None:
         mock_refresh_headers = mocker.patch.object(CheckInScheduler, "refresh_headers")
         mock_schedule_reservations = mocker.patch.object(
             ReservationMonitor, "_schedule_reservations"
@@ -68,52 +98,45 @@ class TestReservationMonitor:
         self.monitor.config.confirmation_number = "test_num"
         self.monitor.checkin_scheduler.flights = ["test_flight"]
 
-        with pytest.raises(StopIteration):
-            self.monitor._monitor()
+        should_exit = self.monitor._check()
 
-        assert mock_refresh_headers.call_count == 2
-        assert mock_schedule_reservations.call_count == 2
-        mock_schedule_reservations.assert_called_with(
+        assert not should_exit
+        mock_refresh_headers.assert_called_once()
+        mock_schedule_reservations.assert_called_once_with(
             [{"confirmationNumber": self.monitor.config.confirmation_number}]
         )
-        assert mock_check_flight_fares.call_count == 2
+        mock_check_flight_fares.assert_called_once()
 
-    def test_monitor_stops_monitoring_when_no_flights_are_scheduled(
-        self, mocker: MockerFixture
-    ) -> None:
-        mock_smart_sleep = mocker.patch.object(ReservationMonitor, "_smart_sleep")
-        mock_refresh_headers = mocker.patch.object(CheckInScheduler, "refresh_headers")
+    def test_check_skips_scheduling_on_driver_timeout(self, mocker: MockerFixture) -> None:
+        mock_refresh_headers = mocker.patch.object(
+            CheckInScheduler, "refresh_headers", side_effect=DriverTimeoutError
+        )
         mock_schedule_reservations = mocker.patch.object(
             ReservationMonitor, "_schedule_reservations"
         )
         mock_check_flight_fares = mocker.patch.object(ReservationMonitor, "_check_flight_fares")
+        mock_timeout_notif = mocker.patch.object(NotificationHandler, "timeout_during_retrieval")
 
-        self.monitor._monitor()
-
-        mock_refresh_headers.assert_called_once()
-        mock_schedule_reservations.assert_called_once()
-        mock_check_flight_fares.assert_not_called()
-        mock_smart_sleep.assert_not_called()
-
-    def test_monitor_monitors_reservations_once_if_retrieval_interval_is_zero(
-        self, mocker: MockerFixture
-    ) -> None:
-        mock_smart_sleep = mocker.patch.object(ReservationMonitor, "_smart_sleep")
-        mock_refresh_headers = mocker.patch.object(CheckInScheduler, "refresh_headers")
-        mock_schedule_reservations = mocker.patch.object(
-            ReservationMonitor, "_schedule_reservations"
-        )
-        mock_check_flight_fares = mocker.patch.object(ReservationMonitor, "_check_flight_fares")
-
-        self.monitor.config.retrieval_interval = 0
+        self.monitor.config.confirmation_number = "test_num"
         self.monitor.checkin_scheduler.flights = ["test_flight"]
 
-        self.monitor._monitor()
+        should_exit = self.monitor._check()
 
+        assert not should_exit
         mock_refresh_headers.assert_called_once()
-        mock_schedule_reservations.assert_called_once()
-        mock_check_flight_fares.assert_called_once()
-        mock_smart_sleep.assert_not_called()
+        mock_schedule_reservations.assert_not_called()
+        mock_check_flight_fares.assert_not_called()
+        mock_timeout_notif.assert_called_once()
+
+    def test_check_returns_false_when_no_flights_are_scheduled(self, mocker: MockerFixture) -> None:
+        mocker.patch.object(CheckInScheduler, "refresh_headers")
+        mocker.patch.object(ReservationMonitor, "_schedule_reservations")
+        mock_check_flight_fares = mocker.patch.object(ReservationMonitor, "_check_flight_fares")
+
+        should_exit = self.monitor._check()
+
+        assert should_exit
+        mock_check_flight_fares.assert_not_called()
 
     def test_schedule_reservations_schedules_reservations_correctly(
         self, mocker: MockerFixture
@@ -145,7 +168,7 @@ class TestReservationMonitor:
 
         assert mock_check_flight_price.call_count == len(self.monitor.checkin_scheduler.flights)
 
-    @pytest.mark.parametrize("exception", [RequestError("", ""), FlightChangeError, Exception])
+    @pytest.mark.parametrize("exception", [RequestError(""), FlightChangeError, Exception])
     def test_check_flight_fares_catches_error_when_checking_fares(
         self, mocker: MockerFixture, exception: Exception
     ) -> None:
@@ -198,60 +221,41 @@ class TestAccountMonitor:
             "lib.reservation_monitor.get_current_time", return_value=datetime(1999, 12, 31)
         )
 
-    def test_monitor_monitors_the_account_continuously(self, mocker: MockerFixture) -> None:
-        # Since the monitor function runs in an infinite loop, throw an Exception
-        # when the sleep function is called a second time to break out of the loop.
-        mocker.patch.object(AccountMonitor, "_smart_sleep", side_effect=["", StopIteration])
-        mock_get_reservations = mocker.patch.object(
-            AccountMonitor, "_get_reservations", return_value=([], False)
-        )
+    def test_check_checks_account_for_reservations(self, mocker: MockerFixture) -> None:
+        mocker.patch.object(AccountMonitor, "_get_reservations", return_value=([], False))
         mock_schedule_reservations = mocker.patch.object(AccountMonitor, "_schedule_reservations")
         mock_check_flight_fares = mocker.patch.object(AccountMonitor, "_check_flight_fares")
 
-        with pytest.raises(StopIteration):
-            self.monitor._monitor()
+        should_exit = self.monitor._check()
 
-        assert mock_get_reservations.call_count == 2
-        assert mock_schedule_reservations.call_count == 2
-        assert mock_check_flight_fares.call_count == 2
-
-    def test_monitor_skips_scheduling_on_too_many_requests_error(
-        self, mocker: MockerFixture
-    ) -> None:
-        # Since the monitor function runs in an infinite loop, throw an Exception
-        # when the sleep function is called a second time to break out of the loop.
-        mocker.patch.object(AccountMonitor, "_smart_sleep", side_effect=[StopIteration])
-        mock_get_reservations = mocker.patch.object(
-            AccountMonitor, "_get_reservations", return_value=([], True)
-        )
-        mock_schedule_reservations = mocker.patch.object(AccountMonitor, "_schedule_reservations")
-        mock_check_flight_fares = mocker.patch.object(AccountMonitor, "_check_flight_fares")
-
-        with pytest.raises(StopIteration):
-            self.monitor._monitor()
-
-        assert mock_get_reservations.call_count == 1
-        assert mock_schedule_reservations.call_count == 0
-        assert mock_check_flight_fares.call_count == 0
-
-    def test_monitor_checks_reservations_once_if_retrieval_interval_is_zero(
-        self,
-        mocker: MockerFixture,
-    ) -> None:
-        mock_smart_sleep = mocker.patch.object(AccountMonitor, "_smart_sleep")
-        mock_get_reservations = mocker.patch.object(
-            AccountMonitor, "_get_reservations", return_value=([], False)
-        )
-        mock_schedule_reservations = mocker.patch.object(AccountMonitor, "_schedule_reservations")
-        mock_check_flight_fares = mocker.patch.object(AccountMonitor, "_check_flight_fares")
-
-        self.monitor.config.retrieval_interval = 0
-        self.monitor._monitor()
-
-        mock_smart_sleep.assert_not_called()
-        mock_get_reservations.assert_called_once()
+        assert not should_exit
         mock_schedule_reservations.assert_called_once()
         mock_check_flight_fares.assert_called_once()
+
+    def test_check_skips_scheduling_if_an_error_occurs(self, mocker: MockerFixture) -> None:
+        # If an error occurs, _get_reservations will return an empty list of reservations and
+        # true indicating scheduling should be skipped
+        mocker.patch.object(AccountMonitor, "_get_reservations", return_value=([], True))
+        mock_schedule_reservations = mocker.patch.object(AccountMonitor, "_schedule_reservations")
+        mock_check_flight_fares = mocker.patch.object(AccountMonitor, "_check_flight_fares")
+
+        should_exit = self.monitor._check()
+
+        assert not should_exit
+        mock_schedule_reservations.assert_not_called()
+        mock_check_flight_fares.assert_not_called()
+
+    def test_get_reservations_skips_retrieval_on_driver_timeout(
+        self, mocker: MockerFixture
+    ) -> None:
+        mocker.patch.object(WebDriver, "get_reservations", side_effect=DriverTimeoutError)
+        mock_timeout_notif = mocker.patch.object(NotificationHandler, "timeout_during_retrieval")
+
+        reservations, skip_scheduling = self.monitor._get_reservations()
+
+        assert len(reservations) == 0
+        assert skip_scheduling
+        mock_timeout_notif.assert_called_once()
 
     def test_get_reservations_skips_retrieval_on_too_many_requests_error(
         self, mocker: MockerFixture
@@ -259,9 +263,15 @@ class TestAccountMonitor:
         mocker.patch.object(
             WebDriver, "get_reservations", side_effect=LoginError("", TOO_MANY_REQUESTS_CODE)
         )
+        mock_too_many_requests_notif = mocker.patch.object(
+            NotificationHandler, "too_many_requests_during_login"
+        )
+
         reservations, skip_scheduling = self.monitor._get_reservations()
+
         assert len(reservations) == 0
         assert skip_scheduling
+        mock_too_many_requests_notif.assert_called_once()
 
     def test_get_reservations_exits_on_login_error(self, mocker: MockerFixture) -> None:
         mocker.patch.object(WebDriver, "get_reservations", side_effect=LoginError("", 400))

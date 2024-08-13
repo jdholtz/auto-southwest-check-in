@@ -46,9 +46,9 @@ Environment Variable: `AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_URL`
 > When using the environment variable, you may only specify a single URL.
 > If you are also using `config.json`, it will append the URL as long as it's not a duplicate.
 
-Users can be notified on successful and failed check-ins. This is done through the [Apprise library][0].
+Users can be notified on successful and failed check-ins. This is done through the [Apprise library].
 To start, first gather the service URL you want to send notifications to (information on how to create
-service URLs can be found on the [Apprise Readme][1]). Then put it in your configuration file.
+service URLs can be found on the [Apprise Readme]). Then put it in your configuration file.
 ```json
 {
   "notification_urls": "service://my_service_url"
@@ -66,7 +66,7 @@ If you have more than one service you want to send notifications to, you can put
 ```
 
 ### Notification Level
-Default: 1 \
+Default: 2 \
 Type: Integer \
 Environment Variable: `AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_LEVEL`
 > Using the environment variable will override the applicable setting in `config.json`.
@@ -74,11 +74,13 @@ Environment Variable: `AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_LEVEL`
 You can also select the level of notifications you want to receive.
 ```json
 {
-  "notification_level": 1
+  "notification_level": 2
 }
 ```
-Level 1 means you receive successful scheduling and check-in messages, lower fare messages, and all messages in later levels.\
-Level 2 means you receive only error messages (failed scheduling and check-ins).
+`Level 1`: Receive notices of skipped reservation retrievals due to driver timeouts and Too Many Requests errors
+during logins as well as all messages in later levels.\
+`Level 2`: Receive successful scheduling and check-in messages, lower fare messages, and all messages in later levels.\
+`Level 3`: Receive only error messages (failed scheduling and check-ins).
 
 ### Notification 24 Hour Time
 Default: false \
@@ -224,7 +226,7 @@ In this example, the script will send notifications attached to this reservation
 Default: No URL \
 Type: String
 
-Monitor successful and failed fare checks using a [Healthchecks.io](https://healthchecks.io/) URL. When a fare check
+Monitor successful and failed fare checks using a [Healthchecks.io] URL. When a fare check
 fails, the `/fail` endpoint of your Healthchecks URL will be pinged to notify you of the failure.
 
 This configuration option can only be applied within reservation and account configurations (specifying it at the top-level
@@ -242,5 +244,6 @@ will have no effect). Due to this, no environment variable is provided as a repl
 ```
 
 
-[0]: https://github.com/caronc/apprise
-[1]: https://github.com/caronc/apprise#supported-notifications
+[Apprise library]: https://github.com/caronc/apprise
+[Apprise Readme]: https://github.com/caronc/apprise#supported-notifications
+[Healthchecks.io]: https://healthchecks.io

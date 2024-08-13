@@ -73,17 +73,31 @@ class NotificationHandler:
 
     def failed_reservation_retrieval(self, error: RequestError, confirmation_number: str) -> None:
         error_message = (
-            f"Failed to retrieve reservation for {self._get_account_name()} "
+            f"Error: Failed to retrieve reservation for {self._get_account_name()} "
             f"with confirmation number {confirmation_number}. Reason: {error}.\n"
             "Make sure the reservation information is correct and try again.\n"
         )
         logger.debug("Sending failed reservation retrieval notification...")
         self.send_notification(error_message, NotificationLevel.ERROR)
 
+    def timeout_during_retrieval(self, monitor_type: str) -> None:
+        message = (
+            f"Notice: Webdriver time out during {monitor_type} retrieval for "
+            f"{self._get_account_name()}. Skipping reservation retrieval until next interval\n"
+        )
+        self.send_notification(message, NotificationLevel.NOTICE)
+
+    def too_many_requests_during_login(self) -> None:
+        message = (
+            "Notice: Encountered a Too Many Requests error while logging in for "
+            f"{self._get_account_name()}. Skipping reservation retrieval until next interval\n"
+        )
+        self.send_notification(message, NotificationLevel.NOTICE)
+
     def failed_login(self, error: LoginError) -> None:
         error_message = (
-            f"Failed to log in to account with username {self.reservation_monitor.username}. "
-            f"{error}.\n"
+            "Error: Failed to log in to account with username "
+            f"{self.reservation_monitor.username}. {error}.\n"
         )
         logger.debug("Sending failed login notification...")
         self.send_notification(error_message, NotificationLevel.ERROR)
@@ -107,11 +121,31 @@ class NotificationHandler:
 
     def failed_checkin(self, error: RequestError, flight: Flight) -> None:
         error_message = (
-            f"Failed to check in to flight {flight.confirmation_number} for "
+            f"Error: Failed to check in to flight {flight.confirmation_number} for "
             f"{self._get_account_name()}. Reason: {error}.\nCheck in at this url: "
             f"{MANUAL_CHECKIN_URL}\n"
         )
         logger.debug("Sending failed check-in notification...")
+        self.send_notification(error_message, NotificationLevel.ERROR)
+
+    def airport_checkin_required(self, flight: Flight) -> None:
+        error_message = (
+            f"Error: Airport check-in is required for flight {flight.confirmation_number} for "
+            f"{self._get_account_name()}.\n"
+        )
+        logger.debug("Sending airport check-in required notification...")
+        self.send_notification(error_message, NotificationLevel.ERROR)
+
+    def timeout_before_checkin(self, flight: Flight) -> None:
+        twenty_four_hr_time = self.reservation_monitor.config.notification_24_hour_time
+        flight_time = flight.get_display_time(twenty_four_hr_time)
+
+        error_message = (
+            "Error: Timed out waiting for headers before check-in. Check-in to flight "
+            f"{flight.confirmation_number} for {self._get_account_name()} at {flight_time} may "
+            "fail.\n"
+        )
+        logger.debug("Sending timeout before check-in notification...")
         self.send_notification(error_message, NotificationLevel.ERROR)
 
     def lower_fare(self, flight: Flight, price_info: str) -> None:
@@ -136,4 +170,13 @@ class NotificationHandler:
             requests.post(self.reservation_monitor.config.healthchecks_url + "/fail", data=data)
 
     def _get_account_name(self) -> str:
+        # hasattr has to be used instead of isinstance to avoid a circular import
+        if (
+            hasattr(self.reservation_monitor, "username")
+            and not self.reservation_monitor.first_name
+        ):
+            # No name has been set, so use the account's username. A ReservationMonitor will always
+            # have a name set, but check if it is an AccountMonitor (through hasattr) just in case
+            return self.reservation_monitor.username
+
         return f"{self.reservation_monitor.first_name} {self.reservation_monitor.last_name}"

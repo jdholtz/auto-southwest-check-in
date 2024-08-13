@@ -73,6 +73,20 @@ class TestNotificationHandler:
         self.handler.failed_login("")
         assert mock_send_notification.call_args[0][1] == NotificationLevel.ERROR
 
+    def test_timeout_during_retrieval_sends_notice_notification(
+        self, mocker: MockerFixture
+    ) -> None:
+        mock_send_notification = mocker.patch.object(NotificationHandler, "send_notification")
+        self.handler.timeout_during_retrieval("test")
+        assert mock_send_notification.call_args[0][1] == NotificationLevel.NOTICE
+
+    def test_too_many_requests_during_login_sends_notice_notification(
+        self, mocker: MockerFixture
+    ) -> None:
+        mock_send_notification = mocker.patch.object(NotificationHandler, "send_notification")
+        self.handler.too_many_requests_during_login()
+        assert mock_send_notification.call_args[0][1] == NotificationLevel.NOTICE
+
     def test_successful_checkin_sends_notification_for_check_in(
         self, mocker: MockerFixture
     ) -> None:
@@ -93,7 +107,9 @@ class TestNotificationHandler:
         )
         assert mock_send_notification.call_args[0][1] == NotificationLevel.INFO
 
-    def test_does_not_include_notification_for_lap_child(self, mocker: MockerFixture) -> None:
+    def test_successful_checkin_does_not_include_notification_for_lap_child(
+        self, mocker: MockerFixture
+    ) -> None:
         """
         A lap child does not get a boarding position, and does not need a notification
         """
@@ -114,7 +130,7 @@ class TestNotificationHandler:
             mock_flight,
         )
         assert "John got A1!" in mock_send_notification.call_args[0][0]
-        assert "Lap Child got NoneNone!" not in mock_send_notification.call_args[0][0]
+        assert "Lap Child" not in mock_send_notification.call_args[0][0]
         assert mock_send_notification.call_args[0][1] == NotificationLevel.INFO
 
     def test_failed_checkin_sends_error_notification(self, mocker: MockerFixture) -> None:
@@ -122,6 +138,20 @@ class TestNotificationHandler:
         mock_flight = mocker.patch("lib.notification_handler.Flight")
 
         self.handler.failed_checkin("", mock_flight)
+        assert mock_send_notification.call_args[0][1] == NotificationLevel.ERROR
+
+    def test_airport_checkin_required_sends_error_notification(self, mocker: MockerFixture) -> None:
+        mock_send_notification = mocker.patch.object(NotificationHandler, "send_notification")
+        mock_flight = mocker.patch("lib.notification_handler.Flight")
+
+        self.handler.airport_checkin_required(mock_flight)
+        assert mock_send_notification.call_args[0][1] == NotificationLevel.ERROR
+
+    def test_timeout_before_checkin_sends_error_notification(self, mocker: MockerFixture) -> None:
+        mock_send_notification = mocker.patch.object(NotificationHandler, "send_notification")
+        mock_flight = mocker.patch("lib.notification_handler.Flight")
+
+        self.handler.timeout_before_checkin(mock_flight)
         assert mock_send_notification.call_args[0][1] == NotificationLevel.ERROR
 
     def test_lower_fare_sends_lower_fare_notification(self, mocker: MockerFixture) -> None:
@@ -151,7 +181,16 @@ class TestNotificationHandler:
         self.handler.healthchecks_fail("healthchecks fail")
         assert mock_post.call_count == expected_calls
 
-    def test_get_account_name_returns_the_correct_name(self) -> None:
+    def test_get_account_name_returns_username_when_no_name_is_set(
+        self, mocker: MockerFixture
+    ) -> None:
+        self.handler.reservation_monitor = mocker.patch("lib.reservation_monitor.AccountMonitor")
+        self.handler.reservation_monitor.first_name = None
+        self.handler.reservation_monitor.last_name = None
+        self.handler.reservation_monitor.username = "Test user"
+        assert self.handler._get_account_name() == self.handler.reservation_monitor.username
+
+    def test_get_account_name_returns_the_correct_name_when_set(self) -> None:
         self.handler.reservation_monitor.first_name = "John"
         self.handler.reservation_monitor.last_name = "Doe"
         assert self.handler._get_account_name() == "John Doe"

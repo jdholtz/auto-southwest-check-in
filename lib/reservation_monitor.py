@@ -9,7 +9,7 @@ from .config import AccountConfig, ReservationConfig
 from .fare_checker import FareChecker
 from .log import get_logger
 from .notification_handler import NotificationHandler
-from .utils import FlightChangeError, LoginError, RequestError, get_current_time
+from .utils import DriverTimeoutError, FlightChangeError, LoginError, RequestError, get_current_time
 from .webdriver import WebDriver
 
 TOO_MANY_REQUESTS_CODE = 429
@@ -50,37 +50,51 @@ class ReservationMonitor:
                 self._stop_monitoring()
 
     def _monitor(self) -> None:
-        """
-        Check for reservation changes and lower fares every X hours (retrieval interval).
-        Will exit when no more flights are scheduled for check-in.
-        """
-        reservation = {"confirmationNumber": self.config.confirmation_number}
-
+        """Continuously performs checks every X hours (the retrieval interval)"""
         while True:
             time_before = get_current_time()
 
+            # Acquire a lock to prevent concurrency issues with the webdriver
             logger.debug("Acquiring lock...")
             with self.lock:
                 logger.debug("Lock acquired")
 
-                # Ensure there are valid headers
-                self.checkin_scheduler.refresh_headers()
-
-                # Schedule the reservations every time in case a flight is changed or cancelled
-                self._schedule_reservations([reservation])
-
-                if len(self.checkin_scheduler.flights) <= 0:
-                    logger.debug("No more flights are scheduled for check-in. Exiting...")
+                should_exit = self._check()
+                if should_exit:
+                    logger.debug("Stopping monitoring")
                     break
 
-                self._check_flight_fares()
-
                 if self.config.retrieval_interval <= 0:
-                    logger.debug("Reservation monitoring is disabled as retrieval interval is 0")
+                    logger.debug("Monitoring is disabled as retrieval interval is 0")
                     break
 
             logger.debug("Lock released")
             self._smart_sleep(time_before)
+
+    def _check(self) -> bool:
+        """
+        Check for reservation changes and lower fares. Returns true if future checks should not be
+        performed (e.g. no more flights are scheduled to check in).
+        """
+        reservation = {"confirmationNumber": self.config.confirmation_number}
+
+        # Ensure there are valid headers
+        try:
+            self.checkin_scheduler.refresh_headers()
+        except DriverTimeoutError:
+            logger.warning("Timeout while refreshing headers. Skipping reservation retrieval")
+            self.notification_handler.timeout_during_retrieval("reservation")
+            return False
+
+        # Schedule the reservations every time in case a flight is changed or cancelled
+        self._schedule_reservations([reservation])
+
+        if len(self.checkin_scheduler.flights) <= 0:
+            logger.debug("No more flights are scheduled for check-in. Exiting...")
+            return True
+
+        self._check_flight_fares()
+        return False
 
     def _schedule_reservations(self, reservations: List[Dict[str, Any]]) -> None:
         logger.debug("Scheduling flight check-ins for %d reservations", len(reservations))
@@ -101,22 +115,22 @@ class ReservationMonitor:
             try:
                 fare_checker.check_flight_price(flight)
                 self.notification_handler.healthchecks_success(
-                    f"Successful fare check, confirmation number={flight.confirmation_number}"
+                    f"Successful fare check,\nconfirmation number = {flight.confirmation_number}"
                 )
             except RequestError as err:
                 logger.error("Requesting error during fare check. %s. Skipping...", err)
                 self.notification_handler.healthchecks_fail(
-                    f"Failed fare check, confirmation number={flight.confirmation_number}"
+                    f"Failed fare check,\nconfirmation number = {flight.confirmation_number}"
                 )
             except FlightChangeError as err:
                 logger.debug("%s. Skipping fare check", err)
                 self.notification_handler.healthchecks_success(
-                    f"Successful fare check, confirmation number={flight.confirmation_number}"
+                    f"Successful fare check,\nconfirmation number = {flight.confirmation_number}"
                 )
             except Exception as err:
                 logger.exception("Unexpected error during fare check: %s", repr(err))
                 self.notification_handler.healthchecks_fail(
-                    f"Failed fare check, confirmation number={flight.confirmation_number}"
+                    f"Failed fare check,\nconfirmation number = {flight.confirmation_number}"
                 )
 
     def _smart_sleep(self, previous_time: datetime) -> None:
@@ -158,35 +172,27 @@ class AccountMonitor(ReservationMonitor):
         self.username = config.username
         self.password = config.password
 
-    def _monitor(self) -> None:
+    def _check(self) -> bool:
         """
-        Check for newly booked reservations for the account every X hours (retrieval interval).
+        Check for newly booked reservations for the account. Returns true if future checks should
+        not be performed.
         """
-        while True:
-            time_before = get_current_time()
+        reservations, skip_scheduling = self._get_reservations()
 
-            logger.debug("Acquiring lock...")
-            with self.lock:
-                logger.debug("Lock acquired")
-                reservations, skip_scheduling = self._get_reservations()
+        if not skip_scheduling:
+            self._schedule_reservations(reservations)
+            self._check_flight_fares()
 
-                if not skip_scheduling:
-                    self._schedule_reservations(reservations)
-                    self._check_flight_fares()
-
-                if self.config.retrieval_interval <= 0:
-                    logger.debug("Account monitoring is disabled as retrieval interval is 0")
-                    break
-
-            logger.debug("Lock released")
-            self._smart_sleep(time_before)
+        # There are currently no scenarios where future checks should not be performed within
+        # this scope
+        return False
 
     def _get_reservations(self) -> Tuple[List[Dict[str, Any]], bool]:
         """
         Returns a list of reservations and a boolean indicating if reservation
         scheduling should be skipped.
 
-        Reservation scheduling will be skipped if a Too Many Requests error is encountered
+        Reservation scheduling will be skipped if a Too Many Requests error or timeout occurs
         because new headers might not be valid and a list of reservations could not be retrieved.
         """
         logger.debug("Retrieving reservations for account")
@@ -194,14 +200,21 @@ class AccountMonitor(ReservationMonitor):
 
         try:
             reservations = webdriver.get_reservations(self)
+        except DriverTimeoutError:
+            logger.debug(
+                "Timeout while retrieving reservations during login. Skipping reservation retrieval"
+            )
+            self.notification_handler.timeout_during_retrieval("account")
+            return [], True
         except LoginError as err:
             if err.status_code == TOO_MANY_REQUESTS_CODE:
                 # Don't exit when a Too Many Requests error happens. Instead, just skip the
                 # retrieval until the next time.
-                logger.warning(
+                logger.debug(
                     "Encountered a Too Many Requests error while logging in. Skipping reservation "
                     "retrieval"
                 )
+                self.notification_handler.too_many_requests_during_login()
                 return [], True
 
             logger.debug("Error logging in. %s. Exiting", err)

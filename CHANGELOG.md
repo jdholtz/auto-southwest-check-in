@@ -3,6 +3,33 @@ When upgrading to a new version, make sure to follow the directions under the "U
 If there is no "Upgrading" header for that version, no post-upgrade actions need to be performed.
 
 
+## Upcoming
+### New Features
+- A new [notification level](CONFIGURATION.md#notification-level) for notices (non-critical warnings) was added, which includes
+driver timeouts and Too Many Requests errors during logins. This is the lowest notification level offered
+    - The default configuration is still the same. Refer to the [notification level configuration](CONFIGURATION.md#notification-level)
+    for more details on the levels
+    - If you have manually set `notification_level` in your config.json, see the "Upgrading" header for how to adjust it for the
+    new notification levels
+
+### Improvements
+- Mitigations for 403 and 429 errors were added to significantly improve Docker and server environments as well as
+checking many accounts and reservations at once
+([#274](https://github.com/jdholtz/auto-southwest-check-in/pull/274) by [@dmytrokoren](https://github.com/dmytrokoren))
+- Fare checks now run faster due to caching a flight's reservation information from previous queries to Southwest's API
+- The script now runs as a non-root user in Docker to improve a container's security
+- Error messages during check-ins and reservation retrievals relating to reservation/passenger not found, invalid confirmation number
+length, and airport check-in required are more detailed
+- Add a backup NTP server to make retrieving time much more reliable
+([#284](https://github.com/jdholtz/auto-southwest-check-in/pull/284) by [@dmytrokoren](https://github.com/dmytrokoren))
+
+### Upgrading
+- If you manually set `notification_level` in your configuration, it will need to be adjusted accordingly.
+    - If it was set to `2` (error messages only), it needs to be set to `3`
+    - If it was set to `1` (all messages), it needs to be set to `2`
+    - Refer to the [notification level configuration](CONFIGURATION.md#notification-level) for more details on the levels
+
+
 ## 7.5 (2024-06-07)
 ### New Features
 - Times are now fetched from an NTP server when possible ([#235](https://github.com/jdholtz/auto-southwest-check-in/issues/235))

@@ -21,13 +21,15 @@ class TestFlight:
             "arrivalAirport": {"name": None, "country": None},
             "departureDate": "1971-06-18",
             "departureTime": "07:00",
-            "flights": [{"number": "100"}],
+            "flights": [{"number": "WN100"}],
         }
 
         # Needs to be mocked so it is only run when Flight is instantiated
         with mock.patch.object(Flight, "_set_flight_time"):
+            # Reservation info can be left empty as it is only used for caching, but isn't relevant
+            # to the functionality of the flight class
             # pylint: disable=attribute-defined-outside-init
-            self.flight = Flight(flight_info, "test_num")
+            self.flight = Flight(flight_info, {}, "test_num")
 
             # Flight times that would be set if _set_flight_time isn't mocked
             self.flight.departure_time = datetime(1971, 6, 18, 12)
@@ -42,9 +44,9 @@ class TestFlight:
             "departureAirport": {"name": None},
             "arrivalAirport": {"name": None, "country": country},
             "departureTime": None,
-            "flights": [{"number": "100"}],
+            "flights": [{"number": "WN100"}],
         }
-        flight = Flight(flight_info, "")
+        flight = Flight(flight_info, {}, "")
 
         assert flight.is_international == is_international
 
@@ -56,10 +58,10 @@ class TestFlight:
             "departureAirport": {"name": None},
             "arrivalAirport": {"name": None, "country": None},
             "departureTime": None,
-            "flights": [{"number": "100"}],
+            "flights": [{"number": "WN100"}],
         }
-        flight1 = Flight(flight_info, "")
-        flight2 = Flight(flight_info, "")
+        flight1 = Flight(flight_info, {}, "")
+        flight2 = Flight(flight_info, {}, "")
 
         flight1.departure_time = datetime(1999, 1, 1, 8, 59)
         flight2.departure_time = datetime(1999, 1, 1, 8, 59)
@@ -74,7 +76,7 @@ class TestFlight:
                     "departureAirport": {"name": None},
                     "arrivalAirport": {"name": None, "country": None},
                     "departureTime": None,
-                    "flights": [{"number": "101"}],
+                    "flights": [{"number": "WN101"}],
                 },
                 datetime(1999, 1, 1, 8, 59),
             ),
@@ -83,7 +85,7 @@ class TestFlight:
                     "departureAirport": {"name": None},
                     "arrivalAirport": {"name": None, "country": None},
                     "departureTime": None,
-                    "flights": [{"number": "100"}],
+                    "flights": [{"number": "WN100"}],
                 },
                 datetime(1999, 1, 1, 9, 59),
             ),
@@ -93,7 +95,7 @@ class TestFlight:
         self, mocker: MockerFixture, flight_info: Dict[str, Any], departure_time: datetime
     ) -> None:
         mocker.patch.object(Flight, "_set_flight_time")
-        new_flight = Flight(flight_info, "")
+        new_flight = Flight(flight_info, {}, "")
         new_flight.departure_time = departure_time
 
         assert self.flight != new_flight
@@ -139,7 +141,8 @@ class TestFlight:
         assert self.flight._local_departure_time == tz.localize(datetime(1999, 12, 31, 23, 59))
 
     @pytest.mark.parametrize(
-        ["numbers", "expected_num"], [(["100"], "100"), (["100", "101"], "100\u200b/\u200b101")]
+        ["numbers", "expected_num"],
+        [(["WN100"], "100"), (["WN100", "WN101"], "100\u200b/\u200b101")],
     )
     def test_get_flight_number_creates_flight_number_correctly(
         self, numbers: List[str], expected_num: str

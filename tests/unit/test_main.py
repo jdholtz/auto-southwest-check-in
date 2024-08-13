@@ -10,9 +10,9 @@ from lib.notification_handler import NotificationHandler
 from lib.reservation_monitor import AccountMonitor, ReservationMonitor
 
 
-# We don't actually want the config to read the file for these tests
 @pytest.fixture(autouse=True)
 def mock_config(mocker: MockerFixture) -> None:
+    """The config file shouldn't actually be read for these tests"""
     mocker.patch("lib.config.GlobalConfig._read_config")
 
 
@@ -36,6 +36,11 @@ def test_test_notifications_sends_to_every_url_in_config(mocker: MockerFixture) 
     config = GlobalConfig()
     main.test_notifications(config)
     mock_send_notification.assert_called_once()
+
+
+@pytest.mark.parametrize(["expected", "count"], [("tests", 0), ("test", 1), ("tests", 2)])
+def test_pluralize_pluralizes_a_word_if_needed(expected: str, count: int) -> None:
+    assert main.pluralize("test", count) == expected
 
 
 def test_set_up_accounts_starts_all_accounts(mocker: MockerFixture) -> None:

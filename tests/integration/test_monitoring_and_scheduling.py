@@ -91,7 +91,7 @@ def test_flight_is_scheduled_checks_in_and_departs(
                     "departureAirport": {"code": "LAX", "name": "test_outbound"},
                     "departureDate": "2020-10-13",
                     "departureTime": "14:40",
-                    "flights": [{"number": "100"}, {"number": "101"}],
+                    "flights": [{"number": "WN100"}, {"number": "WN101"}],
                 },
             ],
         }
@@ -143,7 +143,7 @@ def test_account_schedules_new_flights(requests_mock: RequestMocker, mocker: Moc
     mocker.patch("lib.webdriver.seleniumbase_actions.wait_for_element_not_visible")
     mock_process = mocker.patch("lib.checkin_handler.Process").return_value
     # Raise a StopIteration to prevent an infinite loop
-    mocker.patch("time.sleep", side_effect=[None, None, StopIteration])
+    mocker.patch("time.sleep", side_effect=[None, None, None, None, None, StopIteration])
 
     # Is checked in a separate integration test
     mock_check_flight_price = mocker.patch("lib.fare_checker.FareChecker.check_flight_price")
@@ -199,14 +199,14 @@ def test_account_schedules_new_flights(requests_mock: RequestMocker, mocker: Moc
                     "departureAirport": {"code": "LAX", "name": "test_outbound"},
                     "departureDate": "2020-10-13",
                     "departureTime": "14:40",
-                    "flights": [{"number": "100"}],
+                    "flights": [{"number": "WN100"}],
                 },
                 {
                     "arrivalAirport": {"name": "test_outbound", "country": None},
                     "departureAirport": {"code": "SYD", "name": "test_inbound"},
                     "departureDate": "2020-10-16",
                     "departureTime": "07:20",
-                    "flights": [{"number": "101"}],
+                    "flights": [{"number": "WN101"}],
                 },
             ],
         }

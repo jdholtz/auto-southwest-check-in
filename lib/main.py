@@ -46,6 +46,11 @@ def test_notifications(config: GlobalConfig) -> None:
     reservation_monitor.notification_handler.send_notification("This is a test message")
 
 
+def pluralize(word: str, count: int) -> str:
+    """Pluralize a word to improve grammar for printed messages"""
+    return word if count == 1 else word + "s"
+
+
 def set_up_accounts(config: GlobalConfig, lock: multiprocessing.Lock) -> None:
     for account in config.accounts:
         account_monitor = AccountMonitor(account, lock)
@@ -87,8 +92,11 @@ def set_up_check_in(arguments: List[str]) -> None:
         logger.error("Invalid arguments. For more information, try '--help'")
         sys.exit(2)
 
-    logger.debug(
-        "Monitoring %d accounts and %d reservations", len(config.accounts), len(config.reservations)
+    num_accounts = len(config.accounts)
+    num_reservations = len(config.reservations)
+    logger.info(
+        f"Monitoring {num_accounts} {pluralize('account', num_accounts)} and {num_reservations} "
+        f"{pluralize('reservation', num_reservations)}\n"
     )
     lock = multiprocessing.Lock()
     set_up_accounts(config, lock)
