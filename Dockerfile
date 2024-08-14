@@ -15,8 +15,6 @@ RUN apk upgrade --no-cache --available \
     && apk add --no-cache \
       --repository=https://dl-cdn.alpinelinux.org/alpine/edge/community \
       font-wqy-zenhei
-
-COPY local.conf /etc/fonts/local.conf
       
 RUN adduser -D auto-southwest-check-in -h /app
 USER auto-southwest-check-in
