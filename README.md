@@ -192,7 +192,6 @@ If you are running the script with Docker, the current workaround is to run the 
 </details>
 
 
-
 [Python 3.8+]: https://www.python.org/downloads/
 [Pip]: https://pip.pypa.io/en/stable/installation/
 [Any Chromium-based browser]: https://en.wikipedia.org/wiki/Chromium_(web_browser)#Active
