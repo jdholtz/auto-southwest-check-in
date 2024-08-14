@@ -1,4 +1,4 @@
-FROM python:edge
+FROM python:3.12.5
 
 WORKDIR /app
 
@@ -6,7 +6,8 @@ WORKDIR /app
 # this Docker image already downloads a compatible chromedriver
 ENV AUTO_SOUTHWEST_CHECK_IN_DOCKER=1
 
-RUN apk add --update --no-cache chromium chromium-chromedriver
+RUN apk add --update --no-cache chromium 
+# chromium-chromedriver
 
 RUN adduser -D auto-southwest-check-in -h /app
 USER auto-southwest-check-in
