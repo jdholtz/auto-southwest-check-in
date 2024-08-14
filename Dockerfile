@@ -6,8 +6,7 @@ WORKDIR /app
 # this Docker image already downloads a compatible chromedriver
 ENV AUTO_SOUTHWEST_CHECK_IN_DOCKER=1
 
-RUN apk add --update --no-cache chromium 
-# chromium-chromedriver
+RUN apk add --update --no-cache chromium chromium-chromedriver
 
 RUN adduser -D auto-southwest-check-in -h /app
 USER auto-southwest-check-in
@@ -17,6 +16,7 @@ RUN pip3 install --upgrade pip && pip3 install --no-cache-dir -r requirements.tx
 
 COPY . .
 
-RUN seleniumbase get chromedriver --path
+ENV CHROME_BIN=/usr/bin/chromium-browser \
+    CHROME_PATH=/usr/lib/chromium/
 
 ENTRYPOINT ["python3", "-u", "southwest.py"]
