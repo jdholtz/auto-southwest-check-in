@@ -11,7 +11,7 @@ RUN apk add -U --upgrade --no-cache chromium bash bash-completion
 
 RUN adduser -D auto-southwest-check-in -h /app
 USER auto-southwest-check-in
-ENV PATH=$PATH:/app/.local/bin:`chromedriver-path`
+ENV PATH=$PATH:/app/.local/bin:`chromedriver-path`:/usr/local/lib/python3.12/site-packages/seleniumbase/drivers:/usr/local/lib/python3.12/site-packages/seleniumbase
 
 COPY requirements.txt requirements.txt
 RUN python -m pip install --upgrade pip && pip3 install --upgrade pip && pip3 install --no-cache-dir -r requirements.txt
