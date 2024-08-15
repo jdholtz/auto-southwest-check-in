@@ -21,7 +21,6 @@ if TYPE_CHECKING:
 BASE_URL = "https://mobile.southwest.com"
 LOGIN_URL = BASE_URL + "/api/security/v4/security/token"
 TRIPS_URL = BASE_URL + "/api/mobile-misc/v1/mobile-misc/page/upcoming-trips"
-CHECKIN_URL = BASE_URL + "/air/check-in"
 HEADERS_URL = BASE_URL + "/api/chase/v2/chase/offers"
 
 # Southwest's code when logging in with the incorrect information
@@ -161,7 +160,6 @@ class WebDriver:
             "uc_cdp_events": True,
             "undetectable": True,
             "incognito": True,
-            "is_mobile": True,
         }
 
         if is_docker:
@@ -174,13 +172,14 @@ class WebDriver:
         driver = Driver(**driver_options)
         logger.debug("Using browser version: %s", driver.caps["browserVersion"])
 
-        driver.delete_all_cookies()
         driver.add_cdp_listener("Network.requestWillBeSent", self._headers_listener)
 
         logger.debug("Loading Southwest check-in page (this may take a moment)")
-        driver.open(CHECKIN_URL)
+        driver.open(BASE_URL)
         time.sleep(5)
         self._take_debug_screenshot(driver, "after_page_load.png")
+        driver.click("//*[@alt='Check in banner']")
+        time.sleep(2)
         return driver
 
     def _headers_listener(self, data: JSON) -> None:
@@ -292,7 +291,6 @@ class WebDriver:
             if re.match(r"x-api-key|x-channel-id|user-agent|^[\w-]+?-\w$", header, re.I):
                 headers[header] = request_headers[header]
 
-        time.sleep(1)
         return headers
 
     def _set_account_name(self, account_monitor: AccountMonitor, response: JSON) -> None:
