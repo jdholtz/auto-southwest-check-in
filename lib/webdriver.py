@@ -156,12 +156,13 @@ class WebDriver:
 
         driver_options = {
             "binary_location": browser_path,
-            "agent": user_agent,
-            "is_mobile": True,
-            "locale_code": "en_us",
+            "page_load_strategy": "none",
+            "locale_code": "en",
             "uc": True,
             "uc_cdp_events": True,
             "undetectable": True,
+            "incognito": True,
+            "is_mobile": True,
         }
 
         if is_docker:
@@ -179,6 +180,7 @@ class WebDriver:
 
         logger.debug("Loading Southwest check-in page (this may take a moment)")
         driver.open(CHECKIN_URL)
+        time.sleep(5)
         self._take_debug_screenshot(driver, "after_page_load.png")
         return driver
 
