@@ -9,8 +9,8 @@ ENV AUTO_SOUTHWEST_CHECK_IN_DOCKER=1
 RUN apk add -U --upgrade --no-cache chromium bash bash-completion xvfb xauth
 #chromium-chromedriver
 
-RUN adduser -D auto-southwest-check-in -h /app
-USER auto-southwest-check-in
+# RUN adduser -D auto-southwest-check-in -h /app
+# USER auto-southwest-check-in
 ENV PATH=$PATH:/app/.local/bin:/usr/local/lib/python3.12/site-packages/seleniumbase/drivers:/usr/local/lib/python3.12/site-packages/seleniumbase
 
 COPY requirements.txt requirements.txt
