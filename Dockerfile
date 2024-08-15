@@ -13,7 +13,7 @@ USER auto-southwest-check-in
 ENV PATH=/app/.local/bin:$PATH
 
 COPY requirements.txt requirements.txt
-RUN pip install --upgrade pip && pip3 install --upgrade pip && pip3 install --no-cache-dir -r requirements.txt
+RUN python -m pip install --upgrade pip && pip3 install --upgrade pip && pip3 install --no-cache-dir -r requirements.txt
 
 COPY . .
 
