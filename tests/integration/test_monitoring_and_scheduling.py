@@ -104,7 +104,7 @@ def test_flight_is_scheduled_checks_in_and_departs(
         side_effect=[datetime(2020, 10, 5, 18, 29), datetime(2020, 10, 14, 18, 29)],
     )
 
-    requests_mock.get(
+    requests_mock.post(
         TEST_RESERVATION_URL,
         [{"json": reservation1, "status_code": 200}, {"json": reservation1, "status_code": 200}],
     )
@@ -212,7 +212,7 @@ def test_account_schedules_new_flights(requests_mock: RequestMocker, mocker: Moc
         }
     }
 
-    requests_mock.get(TEST_RESERVATION_URL, [{"json": reservation, "status_code": 200}])
+    requests_mock.post(TEST_RESERVATION_URL, [{"json": reservation, "status_code": 200}])
 
     monitor = AccountMonitor(config.accounts[0], Lock())
     with pytest.raises(StopIteration):
