@@ -6,12 +6,12 @@ WORKDIR /app
 # this Docker image already downloads a compatible chromedriver
 ENV AUTO_SOUTHWEST_CHECK_IN_DOCKER=1
   
-RUN apk add -U --upgrade --no-cache chromium bash bash-completion cmake chromium-chromedriver
+RUN apk add -U --upgrade --no-cache chromium bash bash-completion
+#chromium-chromedriver
 
 RUN adduser -D auto-southwest-check-in -h /app
 USER auto-southwest-check-in
-ENV PATH=$PATH:/app/.local/bin:`chromedriver-path`:/usr/local/lib/python3.12/site-packages/seleniumbase/drivers:/usr/local/lib/python3.12/site-packages/seleniumbase
-RUN echo 'export "PATH=$PATH:/app/.local/bin:`chromedriver-path`:/usr/local/lib/python3.12/site-packages/seleniumbase/drivers:/usr/local/lib/python3.12/site-packages/seleniumbase"' >> /etc/profile
+ENV PATH=$PATH:/app/.local/bin:/usr/local/lib/python3.12/site-packages/seleniumbase/drivers:/usr/local/lib/python3.12/site-packages/seleniumbase
 
 COPY requirements.txt requirements.txt
 RUN python -m pip install --upgrade pip && pip3 install --upgrade pip && pip3 install --no-cache-dir -r requirements.txt
