@@ -11,6 +11,8 @@ RUN apk add --update --no-cache chromium chromium-chromedriver bash bash-complet
 RUN adduser -D auto-southwest-check-in -h /app
 USER auto-southwest-check-in
 
+ENV PATH=/app/.local/bin:$PATH
+
 COPY requirements.txt requirements.txt
 RUN python -m pip install --upgrade pip && pip3 install --upgrade pip && pip3 install --no-cache-dir -r requirements.txt
 
