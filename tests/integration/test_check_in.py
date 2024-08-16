@@ -49,13 +49,13 @@ def test_check_in(
     handler.first_name = "Garry"
     handler.last_name = "Lin"
 
-    get_response = {
+    post_response1 = {
         "checkInViewReservationPage": {
             "_links": {"checkIn": {"body": {"test": "checkin"}, "href": "/post_check_in"}}
         }
     }
 
-    post_response = {
+    post_response2 = {
         "checkInConfirmationPage": {
             "flights": [
                 {
@@ -68,25 +68,25 @@ def test_check_in(
         }
     }
 
-    requests_mock.get(
-        BASE_URL + CHECKIN_URL + "TEST?first-name=Garry&last-name=Lin",
-        [{"json": get_response, "status_code": 200}],
+    requests_mock.post(
+        BASE_URL + CHECKIN_URL + "TEST",
+        [{"json": post_response1, "status_code": 200}],
     )
     requests_mock.post(
         BASE_URL + "mobile-air-operations/post_check_in",
-        [{"json": post_response, "status_code": 200}],
+        [{"json": post_response2, "status_code": 200}],
     )
 
     if same_day_flight:
         # Add a flight before to make sure a same day flight selects the second flight
-        second_post_response = copy.deepcopy(post_response)
-        second_post_response["checkInConfirmationPage"]["flights"].insert(0, {})
+        same_day_post_response = copy.deepcopy(post_response2)
+        same_day_post_response["checkInConfirmationPage"]["flights"].insert(0, {})
 
         requests_mock.post(
             BASE_URL + "mobile-air-operations/post_check_in",
             [
-                {"json": post_response, "status_code": 200},
-                {"json": second_post_response, "status_code": 200},
+                {"json": post_response2, "status_code": 200},
+                {"json": same_day_post_response, "status_code": 200},
             ],
         )
 
