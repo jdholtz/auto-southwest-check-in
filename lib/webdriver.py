@@ -138,7 +138,6 @@ class WebDriver:
         is_docker = os.environ.get("AUTO_SOUTHWEST_CHECK_IN_DOCKER") == "1"
 
         if is_docker:
-            logger.debug("Starting virtual display for current session")
             try:
                 self.display = Display(visible=0, size=(1440, 1880))
                 self.display.start()
@@ -291,6 +290,7 @@ class WebDriver:
             if re.match(r"x-api-key|x-channel-id|user-agent|^[\w-]+?-\w$", header, re.I):
                 headers[header] = request_headers[header]
 
+        time.sleep(1)
         return headers
 
     def _set_account_name(self, account_monitor: AccountMonitor, response: JSON) -> None:
