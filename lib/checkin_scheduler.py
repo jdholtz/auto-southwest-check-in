@@ -71,14 +71,15 @@ class CheckInScheduler:
 
     def _get_reservation_info(self, confirmation_number: str) -> Dict[str, Any]:
         info = {
-            "first-name": self.reservation_monitor.first_name,
-            "last-name": self.reservation_monitor.last_name,
+            "firstName": self.reservation_monitor.first_name,
+            "lastName": self.reservation_monitor.last_name,
+            "recordLocator": confirmation_number,
         }
         site = VIEW_RESERVATION_URL + confirmation_number
 
         try:
             logger.debug("Retrieving reservation information")
-            response = make_request("GET", site, self.headers, info)
+            response = make_request("POST", site, self.headers, info)
         except RequestError as err:
             # Don't send a notification if flights have already been scheduled and all flights
             # from this reservation are old. This is how old flights are removed.
