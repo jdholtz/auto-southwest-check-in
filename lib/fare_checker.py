@@ -73,7 +73,14 @@ class FareChecker:
         # Southwest will not display the other page if its prices aren't requested. Therefore
         # we need to know what page to get based on what flight we requested (in case two flights
         # (round-trip flights) are on the same reservation)
-        bound_page = "outboundPage" if query["outbound"]["isChangeBound"] else "inboundPage"
+        if query.get("outbound", {}).get("isChangeBound"):
+            bound_page = "outboundPage"
+        elif query.get("inbound", {}).get("isChangeBound"):
+            bound_page = "inboundPage"
+        else:
+            # This exception usually happens when Southwest changes the formatting of their flight
+            # numbers
+            raise ValueError("Flight number did not match any flight bound on the reservation")
 
         bound = 0 if bound_page == "outboundPage" else 1
         fare_type = fare_type_bounds[bound]["fareProductDetails"]["fareProductId"]

@@ -122,6 +122,30 @@ class TestFareChecker:
         assert matching_flights == "test_cards"
         assert fare_type == bound + "_fare"
 
+    def test_get_change_flight_page_raises_exception_when_bound_not_matched(
+        self, mocker: MockerFixture, test_flight: Flight
+    ) -> None:
+        change_flight_page = {"_links": {"changeShopping": {"href": "test_link"}}}
+        fare_type_bounds = [
+            {"fareProductDetails": {"fareProductId": "outbound_fare"}},
+            {"fareProductDetails": {"fareProductId": "inbound_fare"}},
+        ]
+        mocker.patch.object(
+            FareChecker,
+            "_get_change_flight_page",
+            return_value=(change_flight_page, fare_type_bounds),
+        )
+
+        # Set both bounds to be false which could happen when the flight number doesn't match those
+        # on the reservation, indicating a formatting change on Southwest's end
+        search_query = {"outbound": {"isChangeBound": False}, "inbound": {"isChangeBound": False}}
+        mocker.patch.object(FareChecker, "_get_search_query", return_value=search_query)
+
+        mocker.patch("lib.fare_checker.make_request")
+
+        with pytest.raises(ValueError):
+            self.checker._get_matching_flights(test_flight)
+
     def test_get_change_flight_page_retrieves_change_flight_page(
         self, mocker: MockerFixture
     ) -> None:
