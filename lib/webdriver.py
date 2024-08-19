@@ -12,7 +12,7 @@ from seleniumbase import Driver
 from seleniumbase.fixtures import page_actions as seleniumbase_actions
 
 from .log import LOGS_DIRECTORY, get_logger
-from .utils import DriverTimeoutError, LoginError
+from .utils import DriverTimeoutError, LoginError, random_sleep_duration
 
 if TYPE_CHECKING:
     from .checkin_scheduler import CheckInScheduler
@@ -112,6 +112,7 @@ class WebDriver:
 
         driver.click(".login-button--box")
         driver.type('input[name="userNameOrAccountNumber"]', account_monitor.username)
+        time.sleep(random_sleep_duration(1, 3))
 
         # Use quote_plus to workaround a x-www-form-urlencoded encoding bug on the mobile site
         driver.type('input[name="password"]', f"{account_monitor.password}\n")
@@ -124,9 +125,6 @@ class WebDriver:
         # The upcoming trips page is also loaded when we log in, so we might as well grab it
         # instead of requesting again later
         reservations = self._fetch_reservations(driver)
-
-        # To prevent "429 Too Many Requests" error, log out from the current account
-        driver.click(".right-btn")
 
         driver.quit()
         if self.display is not None:
@@ -153,9 +151,6 @@ class WebDriver:
 
         driver_options = {
             "binary_location": browser_path,
-            "page_load_strategy": "none",
-            "locale_code": "en",
-            "uc": True,
             "uc_cdp_events": True,
             "undetectable": True,
             "incognito": True,
@@ -172,13 +167,12 @@ class WebDriver:
         logger.debug("Using browser version: %s", driver.caps["browserVersion"])
 
         driver.add_cdp_listener("Network.requestWillBeSent", self._headers_listener)
+        driver.delete_all_cookies()
 
         logger.debug("Loading Southwest check-in page (this may take a moment)")
-        driver.open(BASE_URL)
-        time.sleep(5)
+        driver.uc_open_with_reconnect(BASE_URL, 2)
         self._take_debug_screenshot(driver, "after_page_load.png")
         driver.click("//*[@alt='Check in banner']")
-        time.sleep(2)
         return driver
 
     def _headers_listener(self, data: JSON) -> None:
@@ -290,7 +284,6 @@ class WebDriver:
             if re.match(r"x-api-key|x-channel-id|user-agent|^[\w-]+?-\w$", header, re.I):
                 headers[header] = request_headers[header]
 
-        time.sleep(1)
         return headers
 
     def _set_account_name(self, account_monitor: AccountMonitor, response: JSON) -> None:
