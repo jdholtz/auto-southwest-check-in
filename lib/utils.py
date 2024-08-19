@@ -16,6 +16,7 @@ JSON = Dict[str, Any]
 
 BASE_URL = "https://mobile.southwest.com/api/"
 NTP_SERVER = "pool.ntp.org"
+NTP_BACKUP_SERVER = "time.cloudflare.com"
 
 AIRPORT_CHECKIN_REQUIRED_CODE = 400511206
 INVALID_CONFIRMATION_NUMBER_LENGTH_CODE = 400310456
@@ -68,17 +69,17 @@ def make_request(
             logger.debug("Successfully made request after %d attempts", attempts)
             return response.json()
 
-            # Request did not succeed
-            response_body = response.content.decode()
-            error_msg = response.reason + " " + str(response.status_code)
-            error = RequestError(error_msg, response_body)
+        # Request did not succeed
+        response_body = response.content.decode()
+        error_msg = response.reason + " " + str(response.status_code)
+        error = RequestError(error_msg, response_body)
 
-            try:
-                _handle_southwest_error_code(error)
-            except (RequestError, AirportCheckInError) as err:
-                # Stop requesting after one attempt for special codes, as the requests won't succeed
-                error = err
-                break
+        try:
+            _handle_southwest_error_code(error)
+        except (RequestError, AirportCheckInError) as err:
+            # Stop requesting after one attempt for special codes, as the requests won't succeed
+            error = err
+            break
 
         if random_sleep:
             sleep_time = random_sleep_duration(1, 3)
@@ -91,18 +92,16 @@ def make_request(
         )
         time.sleep(sleep_time)
 
-        logger.debug("Failed to make request after %d attempts: %s", attempts, error_msg)
-        logger.debug("Response body: %s", response_body)
-        raise error
-    finally:
-        session.close()
+    logger.debug("Failed to make request after %d attempts: %s", attempts, error_msg)
+    logger.debug("Response body: %s", response_body)
+    raise error
 
 
 def get_current_time() -> datetime:
     """
     Fetch the current time from an NTP server. Times are sometimes off on computers running the
     script and since check-ins rely on exact times, this ensures check-ins are done at the correct
-    time. Falls back to local time if the request to the NTP server fails.
+    time. Falls back to local time if the request to the NTP servers fail.
 
     Times are returned in UTC.
     """
@@ -112,8 +111,13 @@ def get_current_time() -> datetime:
         # Set a longer timeout to make the request more reliable
         response = c.request(NTP_SERVER, version=3, timeout=10)
     except (socket.gaierror, ntplib.NTPException):
-        logger.debug("Error requesting time from NTP server. Using local time")
-        return datetime.now(timezone.utc).replace(tzinfo=None)
+        try:
+            # Try the backup NTP server before falling back to local time. Increases reliability of
+            # fetching the time significantly
+            response = c.request(NTP_BACKUP_SERVER, version=3, timeout=10)
+        except (socket.gaierror, ntplib.NTPException):
+            logger.debug("Error requesting time from NTP servers. Using local time")
+            return datetime.now(timezone.utc).replace(tzinfo=None)
 
     return datetime.fromtimestamp(response.tx_time, timezone.utc).replace(tzinfo=None)
 
