@@ -91,7 +91,7 @@ def test_flight_is_scheduled_checks_in_and_departs(
                     "departureAirport": {"code": "LAX", "name": "test_outbound"},
                     "departureDate": "2020-10-13",
                     "departureTime": "14:40",
-                    "flights": [{"number": "100"}, {"number": "101"}],
+                    "flights": [{"number": "WN100"}, {"number": "WN101"}],
                 },
             ],
         }
@@ -104,7 +104,7 @@ def test_flight_is_scheduled_checks_in_and_departs(
         side_effect=[datetime(2020, 10, 5, 18, 29), datetime(2020, 10, 14, 18, 29)],
     )
 
-    requests_mock.get(
+    requests_mock.post(
         TEST_RESERVATION_URL,
         [{"json": reservation1, "status_code": 200}, {"json": reservation1, "status_code": 200}],
     )
@@ -199,20 +199,20 @@ def test_account_schedules_new_flights(requests_mock: RequestMocker, mocker: Moc
                     "departureAirport": {"code": "LAX", "name": "test_outbound"},
                     "departureDate": "2020-10-13",
                     "departureTime": "14:40",
-                    "flights": [{"number": "100"}],
+                    "flights": [{"number": "WN100"}],
                 },
                 {
                     "arrivalAirport": {"name": "test_outbound", "country": None},
                     "departureAirport": {"code": "SYD", "name": "test_inbound"},
                     "departureDate": "2020-10-16",
                     "departureTime": "07:20",
-                    "flights": [{"number": "101"}],
+                    "flights": [{"number": "WN101"}],
                 },
             ],
         }
     }
 
-    requests_mock.get(TEST_RESERVATION_URL, [{"json": reservation, "status_code": 200}])
+    requests_mock.post(TEST_RESERVATION_URL, [{"json": reservation, "status_code": 200}])
 
     monitor = AccountMonitor(config.accounts[0], Lock())
     with pytest.raises(StopIteration):

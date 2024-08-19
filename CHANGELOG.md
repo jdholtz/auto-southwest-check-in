@@ -3,7 +3,7 @@ When upgrading to a new version, make sure to follow the directions under the "U
 If there is no "Upgrading" header for that version, no post-upgrade actions need to be performed.
 
 
-## Upcoming
+## 8.0 (2024-08-17)
 ### New Features
 - A new [notification level](CONFIGURATION.md#notification-level) for notices (non-critical warnings) was added, which includes
 driver timeouts and Too Many Requests errors during logins. This is the lowest notification level offered
@@ -20,12 +20,21 @@ checking many accounts and reservations at once
 - The script now runs as a non-root user in Docker to improve a container's security
 - Error messages during check-ins and reservation retrievals relating to reservation/passenger not found, invalid confirmation number
 length, and airport check-in required are more detailed
+- Add a backup NTP server to make retrieving time much more reliable
+([#284](https://github.com/jdholtz/auto-southwest-check-in/pull/284) by [@dmytrokoren](https://github.com/dmytrokoren))
+
+### Bug Fixes
+- Adapt check-ins to use Southwest's new API
+([#282](https://github.com/jdholtz/auto-southwest-check-in/pull/282) by [@dmytrokoren](https://github.com/dmytrokoren))
+- Fix the webdriver failing to start when using Docker
+([#291](https://github.com/jdholtz/auto-southwest-check-in/pull/291) by [@ne0ark](https://github.com/ne0ark))
 
 ### Upgrading
 - If you manually set `notification_level` in your configuration, it will need to be adjusted accordingly.
     - If it was set to `2` (error messages only), it needs to be set to `3`
     - If it was set to `1` (all messages), it needs to be set to `2`
     - Refer to the [notification level configuration](CONFIGURATION.md#notification-level) for more details on the levels
+- Upgrade the dependencies to the latest versions by running `pip install -r requirements.txt`
 
 
 ## 7.5 (2024-06-07)

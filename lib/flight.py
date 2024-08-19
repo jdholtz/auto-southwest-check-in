@@ -78,8 +78,17 @@ class Flight:
         return utc_time
 
     def _get_flight_number(self, flights: JSON) -> str:
+        """
+        Formats the flight number in the way that the fare checker expects it, which is with the
+        'WN' prefix removed and a slash separating each number with a zero-width space on either
+        side.
+        """
         flight_number = ""
         for flight in flights:
-            flight_number += flight["number"] + "\u200b/\u200b"
+            # Remove the 'WN' prefix from each flight number
+            flight_number += flight["number"].replace("WN", "", 1)
+            # Add a slash with a zero-width space on either side
+            flight_number += "\u200b/\u200b"
 
-        return flight_number.rstrip("\u200b/\u200b")
+        # Remove any slashes and zero-width spaces from the end
+        return flight_number.rstrip("/\u200b")

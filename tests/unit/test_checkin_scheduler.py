@@ -82,6 +82,7 @@ class TestCheckInScheduler:
 
     def test_get_flights_retrieves_no_flights_on_request_error(self, mocker: MockerFixture) -> None:
         mocker.patch("lib.checkin_scheduler.make_request", side_effect=RequestError(""))
+        mocker.patch("lib.checkin_scheduler.get_current_time")
 
         flights = self.scheduler._get_flights("flight1")
 

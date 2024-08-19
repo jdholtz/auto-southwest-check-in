@@ -189,18 +189,20 @@ class CheckInHandler:
 
     def _check_in_to_flight(self) -> JSON:
         """
-        First, make a GET request to get the needed check-in information. Then, make
-        a POST request to submit the check in.
+        First, initiate a POST request to get the needed check-in information. Subsequently, execute
+        another POST request to submit the check in.
         """
         headers = self.checkin_scheduler.headers
         info = {
-            "first-name": self.first_name,
-            "last-name": self.last_name,
+            "firstName": self.first_name,
+            "lastName": self.last_name,
+            "passengerSearchToken": "",
+            "recordLocator": self.flight.confirmation_number,
         }
         site = CHECKIN_URL + self.flight.confirmation_number
 
-        logger.debug("Making GET request to check in")
-        response = make_request("GET", site, headers, info)
+        logger.debug("Making POST request to check in")
+        response = make_request("POST", site, headers, info, random_sleep=False)
 
         info = response["checkInViewReservationPage"]["_links"]["checkIn"]
         site = f"mobile-air-operations{info['href']}"

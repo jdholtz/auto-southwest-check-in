@@ -23,7 +23,7 @@ def test_flight(mocker: MockerFixture) -> Flight:
         "departureAirport": {"name": None},
         "arrivalAirport": {"name": None, "country": None},
         "departureTime": None,
-        "flights": [{"number": "100"}],
+        "flights": [{"number": "WN100"}],
     }
 
     reservation_info = {"bounds": [flight_info]}
