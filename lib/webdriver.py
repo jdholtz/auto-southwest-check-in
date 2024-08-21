@@ -92,10 +92,7 @@ class WebDriver:
         self._wait_for_attribute("headers_set")
         self._take_debug_screenshot(driver, "post_headers.png")
 
-        driver.quit()
-        if self.display is not None:
-            self.display.stop()
-            logger.debug("Stopped virtual display successfully")
+        self._quit_driver()
 
     def get_reservations(self, account_monitor: AccountMonitor) -> List[JSON]:
         """
@@ -129,25 +126,12 @@ class WebDriver:
         # instead of requesting again later
         reservations = self._fetch_reservations(driver)
 
-        driver.quit()
-        if self.display is not None:
-            self.display.stop()
-            logger.debug("Stopped virtual display successfully")
+        self._quit_driver()
         return reservations
 
     def _get_driver(self) -> Driver:
+        # This environment variable is set in the Docker image
         is_docker = os.environ.get("AUTO_SOUTHWEST_CHECK_IN_DOCKER") == "1"
-
-        if is_docker:
-            try:
-                self.display = Display(visible=0, size=(1440, 1880))
-                self.display.start()
-                if self.display.is_alive():
-                    logger.debug("Started virtual display successfully")
-                else:
-                    logger.debug("Started virtual display but is not active")
-            except Exception as e:
-                logger.debug(f"Failed to start display: {e}")
 
         logger.debug("Starting webdriver for current session")
         browser_path = self.checkin_scheduler.reservation_monitor.config.browser_path
@@ -165,7 +149,12 @@ class WebDriver:
         }
 
         if is_docker:
+            self._start_display()
+
+            # Prevents downloading a new WebDriver version since
+            # the Docker image already includes the correct one
             driver_options["driver_version"] = "keep"
+
             driver_options["is_mobile"] = True
             driver_options["headed"] = True
         else:
@@ -241,10 +230,7 @@ class WebDriver:
 
         # Handle login errors
         if self.login_status_code != 200:
-            driver.quit()
-            if self.display is not None:
-                self.display.stop()
-                logger.debug("Stopped virtual display successfully")
+            self._quit_driver()
             error = self._handle_login_error(login_response)
             raise error
 
@@ -314,3 +300,23 @@ class WebDriver:
             f"Successfully logged in to {account_monitor.first_name} "
             f"{account_monitor.last_name}'s account\n"
         )  # Don't log as it contains sensitive information
+
+    def _quit_driver(self, driver: Driver) -> None:
+        driver.quit()
+        self._stop_display()
+
+    def _start_display(self) -> None:
+        try:
+            self.display = Display(visible=0, size=(1440, 1880))
+            self.display.start()
+            if self.display.is_alive():
+                logger.debug("Started virtual display successfully")
+            else:
+                logger.debug("Started virtual display but is not active")
+        except Exception as e:
+            logger.debug(f"Failed to start display: {e}")
+
+    def _stop_display(self) -> None:
+        if self.display is not None:
+            self.display.stop()
+            logger.debug("Stopped virtual display successfully")
