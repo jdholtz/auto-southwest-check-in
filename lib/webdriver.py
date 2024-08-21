@@ -3,7 +3,9 @@ from __future__ import annotations
 import json
 import os
 import re
+import shutil
 import sys
+import tempfile
 import time
 from typing import TYPE_CHECKING, Any, Dict, List
 
@@ -110,6 +112,7 @@ class WebDriver:
         seleniumbase_actions.wait_for_element_not_visible(driver, ".dimmer")
         self._take_debug_screenshot(driver, "pre_login.png")
 
+        driver.wait_for_element(".login-button--box")
         driver.click(".login-button--box")
         driver.type('input[name="userNameOrAccountNumber"]', account_monitor.username)
         time.sleep(random_sleep_duration(1, 3))
@@ -149,8 +152,13 @@ class WebDriver:
         logger.debug("Starting webdriver for current session")
         browser_path = self.checkin_scheduler.reservation_monitor.config.browser_path
 
+        # Create a new temporary directory for Chrome profile
+        temp_dir = tempfile.mkdtemp()
+
         driver_options = {
             "binary_location": browser_path,
+            "user_data_dir": temp_dir,
+            "page_load_strategy": "none",
             "uc_cdp_events": True,
             "undetectable": True,
             "incognito": True,
@@ -158,6 +166,7 @@ class WebDriver:
 
         if is_docker:
             driver_options["driver_version"] = "keep"
+            driver_options["is_mobile"] = True
             driver_options["headed"] = True
         else:
             driver_options["driver_version"] = "mlatest"
@@ -171,8 +180,13 @@ class WebDriver:
 
         logger.debug("Loading Southwest check-in page (this may take a moment)")
         driver.uc_open_with_reconnect(BASE_URL, 2)
+        driver.wait_for_element("//*[@alt='Check in banner']")
         self._take_debug_screenshot(driver, "after_page_load.png")
         driver.click("//*[@alt='Check in banner']")
+
+        # Clean up the temporary directory after use
+        shutil.rmtree(driver.user_data_dir, ignore_errors=True)
+
         return driver
 
     def _headers_listener(self, data: JSON) -> None:
@@ -252,6 +266,7 @@ class WebDriver:
             seleniumbase_actions.wait_for_element_not_visible(driver, login_button, timeout=5)
         except Exception:
             logger.debug("Login form failed to submit. Clicking login button again")
+            driver.wait_for_element(login_button)
             driver.click(login_button)
 
     def _fetch_reservations(self, driver: Driver) -> List[JSON]:
