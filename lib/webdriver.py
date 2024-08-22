@@ -92,7 +92,7 @@ class WebDriver:
         self._wait_for_attribute("headers_set")
         self._take_debug_screenshot(driver, "post_headers.png")
 
-        self._quit_driver()
+        self._quit_driver(driver)
 
     def get_reservations(self, account_monitor: AccountMonitor) -> List[JSON]:
         """
@@ -126,42 +126,33 @@ class WebDriver:
         # instead of requesting again later
         reservations = self._fetch_reservations(driver)
 
-        self._quit_driver()
+        self._quit_driver(driver)
         return reservations
 
     def _get_driver(self) -> Driver:
-        # This environment variable is set in the Docker image
-        is_docker = os.environ.get("AUTO_SOUTHWEST_CHECK_IN_DOCKER") == "1"
-
         logger.debug("Starting webdriver for current session")
         browser_path = self.checkin_scheduler.reservation_monitor.config.browser_path
-
-        # Create a new temporary directory for Chrome profile
         temp_dir = tempfile.mkdtemp()
 
-        driver_options = {
-            "binary_location": browser_path,
-            "user_data_dir": temp_dir,
-            "page_load_strategy": "none",
-            "uc_cdp_events": True,
-            "undetectable": True,
-            "incognito": True,
-        }
+        is_docker = os.environ.get("AUTO_SOUTHWEST_CHECK_IN_DOCKER") == "1"
+        # This environment variable is set in the Docker image. Makes sure a new driver
+        # is not downloaded as the Docker image already has the correct driver
+        driver_version = "keep" if is_docker else "mlatest"
 
-        if is_docker:
-            self._start_display()
+        self._start_display() if is_docker else None
 
-            # Prevents downloading a new WebDriver version since
-            # the Docker image already includes the correct one
-            driver_options["driver_version"] = "keep"
-
-            driver_options["is_mobile"] = True
-            driver_options["headed"] = True
-        else:
-            driver_options["driver_version"] = "mlatest"
-            driver_options["headless"] = True
-
-        driver = Driver(**driver_options)
+        driver = Driver(
+            binary_location=browser_path,
+            driver_version=driver_version,
+            user_data_dir=temp_dir,
+            page_load_strategy="none",
+            headed=is_docker,
+            headless=not is_docker,
+            uc_cdp_events=True,
+            undetectable=True,
+            incognito=True,
+            is_mobile=is_docker,
+        )
         logger.debug("Using browser version: %s", driver.caps["browserVersion"])
 
         driver.add_cdp_listener("Network.requestWillBeSent", self._headers_listener)
@@ -230,7 +221,7 @@ class WebDriver:
 
         # Handle login errors
         if self.login_status_code != 200:
-            self._quit_driver()
+            self._quit_driver(driver)
             error = self._handle_login_error(login_response)
             raise error
 
