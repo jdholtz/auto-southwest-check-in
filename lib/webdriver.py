@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import os
 import re
-import shutil
 import sys
 import tempfile
 import time
@@ -139,33 +138,30 @@ class WebDriver:
 
         logger.debug("Starting webdriver for current session")
         browser_path = self.checkin_scheduler.reservation_monitor.config.browser_path
-        temp_dir = tempfile.mkdtemp()
 
-        driver = Driver(
-            binary_location=browser_path,
-            driver_version=driver_version,
-            user_data_dir=temp_dir,
-            page_load_strategy="none",
-            headed=is_docker,
-            headless=not is_docker,
-            uc_cdp_events=True,
-            undetectable=True,
-            incognito=True,
-            is_mobile=is_docker,
-        )
-        logger.debug("Using browser version: %s", driver.caps["browserVersion"])
+        with tempfile.TemporaryDirectory() as temp_dir:
+            driver = Driver(
+                binary_location=browser_path,
+                driver_version=driver_version,
+                user_data_dir=temp_dir,
+                page_load_strategy="none",
+                headed=is_docker,
+                headless=not is_docker,
+                uc_cdp_events=True,
+                undetectable=True,
+                incognito=True,
+                is_mobile=is_docker,
+            )
+            logger.debug("Using browser version: %s", driver.caps["browserVersion"])
 
-        driver.add_cdp_listener("Network.requestWillBeSent", self._headers_listener)
-        driver.delete_all_cookies()
+            driver.add_cdp_listener("Network.requestWillBeSent", self._headers_listener)
+            driver.delete_all_cookies()
 
-        logger.debug("Loading Southwest check-in page (this may take a moment)")
-        driver.uc_open_with_reconnect(BASE_URL, 2)
-        driver.wait_for_element("//*[@alt='Check in banner']")
-        self._take_debug_screenshot(driver, "after_page_load.png")
-        driver.click("//*[@alt='Check in banner']")
-
-        # Clean up the temporary directory after use
-        shutil.rmtree(driver.user_data_dir, ignore_errors=True)
+            logger.debug("Loading Southwest check-in page (this may take a moment)")
+            driver.uc_open_with_reconnect(BASE_URL, 2)
+            driver.wait_for_element("//*[@alt='Check in banner']")
+            self._take_debug_screenshot(driver, "after_page_load.png")
+            driver.click("//*[@alt='Check in banner']")
 
         return driver
 
