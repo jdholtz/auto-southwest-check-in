@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import random
 import re
 import shutil
 import sys
@@ -141,7 +142,11 @@ class WebDriver:
         browser_path = self.checkin_scheduler.reservation_monitor.config.browser_path
 
         # Create a new temporary directory for Chrome profile
-        temp_dir = tempfile.mkdtemp()
+        profile_dir = os.path.join("/tmp", "chrome_profile")
+        os.makedirs(profile_dir, exist_ok=True)
+
+        # Randomly decide whether to use a fresh profile or the persistent one
+        temp_dir = tempfile.mkdtemp() if random.choice([True, False]) else profile_dir
 
         driver = Driver(
             binary_location=browser_path,
@@ -153,7 +158,6 @@ class WebDriver:
             uc_cdp_events=True,
             undetectable=True,
             incognito=True,
-            is_mobile=is_docker,
         )
         logger.debug("Using browser version: %s", driver.caps["browserVersion"])
 
@@ -161,9 +165,11 @@ class WebDriver:
         driver.delete_all_cookies()
 
         logger.debug("Loading Southwest check-in page (this may take a moment)")
+        driver.set_window_size(random.randint(1024, 1920), random.randint(768, 1080))
         driver.uc_open_with_reconnect(BASE_URL, 2)
         driver.wait_for_element("//*[@alt='Check in banner']")
         self._take_debug_screenshot(driver, "after_page_load.png")
+        time.sleep(random_sleep_duration(1, 2))
         driver.click("//*[@alt='Check in banner']")
 
         # Clean up the temporary directory after use
