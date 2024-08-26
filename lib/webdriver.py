@@ -131,12 +131,15 @@ class WebDriver:
         return reservations
 
     def _get_driver(self) -> Driver:
+        # This environment variable is set in the Docker image
         is_docker = os.environ.get("AUTO_SOUTHWEST_CHECK_IN_DOCKER") == "1"
-        # This environment variable is set in the Docker image. Makes sure a new driver
-        # is not downloaded as the Docker image already has the correct driver
-        driver_version = "keep" if is_docker else "mlatest"
 
-        self._start_display() if is_docker else None
+        driver_version = "mlatest"
+        if is_docker:
+            self._start_display()
+            # Make sure a new driver is not downloaded as the Docker image
+            # already has the correct driver
+            driver_version = "keep"
 
         logger.debug("Starting webdriver for current session")
         browser_path = self.checkin_scheduler.reservation_monitor.config.browser_path
