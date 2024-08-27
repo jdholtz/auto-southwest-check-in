@@ -145,7 +145,7 @@ class WebDriver:
         browser_path = self.checkin_scheduler.reservation_monitor.config.browser_path
 
         # Create a new temporary directory for Chrome profile
-        profile_dir = os.path.join("/tmp", "chrome_profile")
+        profile_dir = os.path.join(tempfile.gettempdir(), "chrome_profile")
         os.makedirs(profile_dir, exist_ok=True)
 
         # Randomly decide whether to use a fresh profile or the persistent one
