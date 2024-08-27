@@ -8,6 +8,7 @@ import shutil
 import sys
 import tempfile
 import time
+from contextlib import contextmanager
 from typing import TYPE_CHECKING, Any, Dict, List
 
 from sbvirtualdisplay import Display
@@ -130,6 +131,14 @@ class WebDriver:
         self._quit_driver(driver)
         return reservations
 
+    @contextmanager
+    def _temporary_directory(self, prefix="chrome_profile"):
+        temp_dir = tempfile.mkdtemp(prefix=prefix)
+        try:
+            yield temp_dir
+        finally:
+            shutil.rmtree(temp_dir, ignore_errors=True)
+
     def _get_driver(self) -> Driver:
         # This environment variable is set in the Docker image
         is_docker = os.environ.get("AUTO_SOUTHWEST_CHECK_IN_DOCKER") == "1"
@@ -144,39 +153,39 @@ class WebDriver:
         logger.debug("Starting webdriver for current session")
         browser_path = self.checkin_scheduler.reservation_monitor.config.browser_path
 
-        # Create a new temporary directory for Chrome profile
-        profile_dir = os.path.join("/tmp", "chrome_profile")
+        # Create a persistent Chrome profile directory
+        profile_dir = os.path.join(tempfile.gettempdir(), "chrome_profile")
         os.makedirs(profile_dir, exist_ok=True)
 
         # Randomly decide whether to use a fresh profile or the persistent one
-        temp_dir = tempfile.mkdtemp() if random.choice([True, False]) else profile_dir
+        use_temp_profile = random.choice([True, False])
 
-        driver = Driver(
-            binary_location=browser_path,
-            driver_version=driver_version,
-            user_data_dir=temp_dir,
-            page_load_strategy="none",
-            headed=is_docker,
-            headless=not is_docker,
-            uc_cdp_events=True,
-            undetectable=True,
-            incognito=True,
-        )
-        logger.debug("Using browser version: %s", driver.caps["browserVersion"])
+        with self._temporary_directory() as temp_dir:
+            temp_data_dir = temp_dir if use_temp_profile else profile_dir
 
-        driver.add_cdp_listener("Network.requestWillBeSent", self._headers_listener)
-        driver.delete_all_cookies()
+            driver = Driver(
+                binary_location=browser_path,
+                driver_version=driver_version,
+                user_data_dir=temp_data_dir,
+                page_load_strategy="none",
+                headed=is_docker,
+                headless=not is_docker,
+                uc_cdp_events=True,
+                undetectable=True,
+                incognito=True,
+            )
+            logger.debug("Using browser version: %s", driver.caps["browserVersion"])
 
-        logger.debug("Loading Southwest check-in page (this may take a moment)")
-        driver.set_window_size(random.randint(1024, 1920), random.randint(768, 1080))
-        driver.uc_open_with_reconnect(BASE_URL, 2)
-        driver.wait_for_element("//*[@alt='Check in banner']")
-        self._take_debug_screenshot(driver, "after_page_load.png")
-        time.sleep(random_sleep_duration(1, 2))
-        driver.click("//*[@alt='Check in banner']")
+            driver.add_cdp_listener("Network.requestWillBeSent", self._headers_listener)
+            driver.delete_all_cookies()
 
-        # Clean up the temporary directory after use
-        shutil.rmtree(driver.user_data_dir, ignore_errors=True)
+            logger.debug("Loading Southwest check-in page (this may take a moment)")
+            driver.set_window_size(random.randint(1024, 1920), random.randint(768, 1080))
+            driver.uc_open_with_reconnect(BASE_URL, 2)
+            driver.wait_for_element("//*[@alt='Check in banner']")
+            self._take_debug_screenshot(driver, "after_page_load.png")
+            time.sleep(random_sleep_duration(1, 2))
+            driver.click("//*[@alt='Check in banner']")
 
         return driver
 
