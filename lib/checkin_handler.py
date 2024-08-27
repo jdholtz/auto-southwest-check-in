@@ -201,13 +201,13 @@ class CheckInHandler:
         }
         site = CHECKIN_URL + self.flight.confirmation_number
 
-        logger.debug("Making POST request to check in")
+        logger.debug("Making first POST request to check in")
         # Don't randomly sleep during the check-in requests to have them go through more quickly
         response = make_request("POST", site, headers, info, random_sleep=False)
 
         info = response["checkInViewReservationPage"]["_links"]["checkIn"]
         site = f"mobile-air-operations{info['href']}"
 
-        logger.debug("Making POST request to check in")
+        logger.debug("Making second POST request to check in")
         reservation = make_request("POST", site, headers, info["body"], random_sleep=False)
         return reservation
