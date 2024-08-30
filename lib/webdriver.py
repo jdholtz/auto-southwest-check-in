@@ -148,11 +148,14 @@ class WebDriver:
         profile_dir = os.path.join(tempfile.gettempdir(), "chrome_profile")
         os.makedirs(profile_dir, exist_ok=True)
 
+        # Randomly decide whether to use a fresh profile or the persistent one
+        temp_dir = tempfile.mkdtemp() if random.choice([True, False]) else profile_dir
+
         try:
             driver = Driver(
                 binary_location=browser_path,
                 driver_version=driver_version,
-                user_data_dir=profile_dir,
+                user_data_dir=temp_dir,
                 page_load_strategy="none",
                 headed=is_docker,
                 headless=not is_docker,
@@ -175,7 +178,7 @@ class WebDriver:
 
         finally:
             # Clean up the profile directory after use
-            shutil.rmtree(profile_dir, ignore_errors=True)
+            shutil.rmtree(driver.user_data_dir, ignore_errors=True)
 
         return driver
 
