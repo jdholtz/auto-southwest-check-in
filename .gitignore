@@ -13,3 +13,4 @@ venv/
 
 # From SeleniumBase
 downloaded_files/
+cached_headers.json

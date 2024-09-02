@@ -8,6 +8,7 @@ import shutil
 import sys
 import tempfile
 import time
+from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any, Dict, List
 
 from sbvirtualdisplay import Display
@@ -57,6 +58,8 @@ class WebDriver:
         self.headers_set = False
         self.debug_screenshots = self._should_take_screenshots()
         self.display = None
+        self.json_file_path = "cached_headers.json"
+        self.cache_duration = timedelta(minutes=30)  # Duration to keep headers cached
 
         # For account login
         self.login_request_id = None
@@ -162,7 +165,6 @@ class WebDriver:
                 uc_cdp_events=True,
                 undetectable=True,
                 incognito=True,
-                is_mobile=True,
             )
             logger.debug("Using browser version: %s", driver.caps["browserVersion"])
 
@@ -171,27 +173,36 @@ class WebDriver:
 
             logger.debug("Loading Southwest check-in page (this may take a moment)")
             driver.set_window_size(random.randint(1024, 1920), random.randint(768, 1080))
-            driver.uc_open_with_reconnect(BASE_URL, 2)
+            driver.open(BASE_URL)
             driver.wait_for_element("//*[@alt='Check in banner']")
             self._take_debug_screenshot(driver, "after_page_load.png")
             time.sleep(random_sleep_duration(1, 2))
             driver.click("//*[@alt='Check in banner']")
 
+            return driver
+
         finally:
             # Clean up the profile directory after use
             shutil.rmtree(driver.user_data_dir, ignore_errors=True)
 
-        return driver
-
     def _headers_listener(self, data: JSON) -> None:
         """
         Wait for the correct URL request has gone through. Once it has, set the headers
-        in the checkin_scheduler.
+        in the checkin_scheduler. If it's the first request or if the cached headers
+        have expired, update the headers in the JSON file.
         """
         request = data["params"]["request"]
         if request["url"] == HEADERS_URL:
-            self.checkin_scheduler.headers = self._get_needed_headers(request["headers"])
-            self.headers_set = True
+            current_time = datetime.now()
+            cached_data = self._read_cached_headers()
+
+            if not cached_data or self._is_cache_expired(cached_data["timestamp"], current_time):
+                self.checkin_scheduler.headers = self._get_needed_headers(request["headers"])
+                self._write_cached_headers(current_time, self.checkin_scheduler.headers)
+            else:
+                self.checkin_scheduler.headers = cached_data["headers"]
+
+        self.headers_set = True
 
     def _login_listener(self, data: JSON) -> None:
         """
@@ -291,6 +302,29 @@ class WebDriver:
                 headers[header] = request_headers[header]
 
         return headers
+
+    def _is_cache_expired(self, cached_time_str: str, current_time: datetime) -> bool:
+        cached_time = datetime.fromisoformat(cached_time_str)
+        return current_time - cached_time > self.cache_duration
+
+    def _read_cached_headers(self) -> dict:
+        if not os.path.exists(self.json_file_path):
+            return {}
+
+        with open(self.json_file_path, "r") as file:
+            try:
+                return json.load(file)
+            except json.JSONDecodeError:
+                logger.error(f"Error decoding JSON from {self.json_file_path}.")
+                return {}
+
+    def _write_cached_headers(self, current_time: datetime, headers: JSON) -> None:
+        cached_data = {"timestamp": current_time.isoformat(), "headers": headers}
+        try:
+            with open(self.json_file_path, "w") as file:
+                json.dump(cached_data, file)
+        except Exception as e:
+            logger.error(f"Failed to write cached headers: {e}")
 
     def _set_account_name(self, account_monitor: AccountMonitor, response: JSON) -> None:
         if account_monitor.first_name:

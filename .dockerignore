@@ -20,3 +20,4 @@ pyproject.toml
 setup.cfg
 tests/
 venv
+cached_headers.json
