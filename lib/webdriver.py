@@ -9,7 +9,7 @@ import sys
 import tempfile
 import time
 from datetime import datetime, timedelta
-from typing import TYPE_CHECKING, Any, Dict, List
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from sbvirtualdisplay import Display
 from seleniumbase import Driver
@@ -58,7 +58,7 @@ class WebDriver:
         self.headers_set = False
         self.debug_screenshots = self._should_take_screenshots()
         self.display = None
-        self.json_file_path = "cached_headers.json"
+        self.json_file_path = os.path.join(os.getcwd(), "cached_headers.json")
         self.cache_duration = timedelta(minutes=30)  # Duration to keep headers cached
 
         # For account login
@@ -165,6 +165,7 @@ class WebDriver:
                 uc_cdp_events=True,
                 undetectable=True,
                 incognito=True,
+                is_mobile=True,
             )
             logger.debug("Using browser version: %s", driver.caps["browserVersion"])
 
@@ -173,7 +174,7 @@ class WebDriver:
 
             logger.debug("Loading Southwest check-in page (this may take a moment)")
             driver.set_window_size(random.randint(1024, 1920), random.randint(768, 1080))
-            driver.open(BASE_URL)
+            driver.get(BASE_URL)
             driver.wait_for_element("//*[@alt='Check in banner']")
             self._take_debug_screenshot(driver, "after_page_load.png")
             time.sleep(random_sleep_duration(1, 2))
@@ -187,20 +188,31 @@ class WebDriver:
 
     def _headers_listener(self, data: JSON) -> None:
         """
-        Wait for the correct URL request has gone through. Once it has, set the headers
-        in the checkin_scheduler. If it's the first request or if the cached headers
-        have expired, update the headers in the JSON file.
+        Wait for the correct URL request to go through. Once it has, set the headers
+        in the checkin_scheduler. If it's the first request, if the cached headers
+        have expired, or if the login failed, update the headers in the JSON file.
         """
         request = data["params"]["request"]
         if request["url"] == HEADERS_URL:
             current_time = datetime.now()
-            cached_data = self._read_cached_headers()
+            cached_data = self._cached_headers_manager()
+            time.sleep(1)
 
-            if not cached_data or self._is_cache_expired(cached_data["timestamp"], current_time):
+            if (
+                not cached_data
+                or cached_data.get("login_failed", False)
+                or self._is_cache_expired(cached_data.get("timestamp", ""), current_time)
+            ):
+                logger.debug("Acquiring new headers")
                 self.checkin_scheduler.headers = self._get_needed_headers(request["headers"])
-                self._write_cached_headers(current_time, self.checkin_scheduler.headers)
+                self._cached_headers_manager(
+                    current_time=current_time,
+                    login_failed=False,
+                    headers=self.checkin_scheduler.headers,
+                )
             else:
-                self.checkin_scheduler.headers = cached_data["headers"]
+                logger.debug("Using cached headers")
+                self.checkin_scheduler.headers = cached_data.get("headers", {})
 
         self.headers_set = True
 
@@ -246,6 +258,7 @@ class WebDriver:
 
         # Handle login errors
         if self.login_status_code != 200:
+            self._cached_headers_manager(login_failed=True)
             self._quit_driver(driver)
             error = self._handle_login_error(login_response)
             raise error
@@ -304,27 +317,48 @@ class WebDriver:
         return headers
 
     def _is_cache_expired(self, cached_time_str: str, current_time: datetime) -> bool:
-        cached_time = datetime.fromisoformat(cached_time_str)
-        return current_time - cached_time > self.cache_duration
+        try:
+            cached_time = datetime.fromisoformat(cached_time_str)
+            return current_time - cached_time > self.cache_duration
+        except ValueError:
+            logger.error(f"Invalid timestamp format: {cached_time_str}")
+            return True
 
-    def _read_cached_headers(self) -> dict:
-        if not os.path.exists(self.json_file_path):
-            return {}
-
-        with open(self.json_file_path, "r") as file:
+    def _cached_headers_manager(
+        self,
+        current_time: Optional[datetime] = None,
+        login_failed: Optional[bool] = None,
+        headers: Optional[JSON] = None,
+    ) -> JSON:
+        """
+        Read existing cached data from JSON file or update it with new values.
+        """
+        if os.path.exists(self.json_file_path):
             try:
-                return json.load(file)
+                with open(self.json_file_path, "r") as file:
+                    cached_data = json.load(file)
             except json.JSONDecodeError:
                 logger.error(f"Error decoding JSON from {self.json_file_path}.")
-                return {}
+                cached_data = {}
+        else:
+            cached_data = {}
 
-    def _write_cached_headers(self, current_time: datetime, headers: JSON) -> None:
-        cached_data = {"timestamp": current_time.isoformat(), "headers": headers}
+        # Update cached data if new values are provided
+        if current_time:
+            cached_data["timestamp"] = current_time.isoformat()
+        if login_failed is not None:
+            cached_data["login_failed"] = login_failed
+        if headers:
+            cached_data["headers"] = headers
+
+        # Write the updated data back to the JSON file
         try:
             with open(self.json_file_path, "w") as file:
                 json.dump(cached_data, file)
         except Exception as e:
-            logger.error(f"Failed to write cached headers: {e}")
+            logger.error(f"Failed to write/update cached headers: {e}")
+
+        return cached_data
 
     def _set_account_name(self, account_monitor: AccountMonitor, response: JSON) -> None:
         if account_monitor.first_name:
