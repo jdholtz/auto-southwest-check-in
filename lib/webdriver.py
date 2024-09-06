@@ -58,6 +58,7 @@ class WebDriver:
         self.headers_set = False
         self.debug_screenshots = self._should_take_screenshots()
         self.display = None
+        self.headers_listener_enabled = True
         self.json_file_path = os.path.join(os.getcwd(), "cached_headers.json")
         self.cache_duration = timedelta(minutes=30)  # Duration to keep headers cached
 
@@ -147,6 +148,23 @@ class WebDriver:
         logger.debug("Starting webdriver for current session")
         browser_path = self.checkin_scheduler.reservation_monitor.config.browser_path
 
+        # Check cached headers before initializing the driver
+        cached_data = self._cached_headers_manager()
+        current_time = datetime.now()
+
+        # Determine if we need to listen for new headers
+        need_new_headers = (
+            not cached_data
+            or cached_data.get("login_failed", False)
+            or self._is_cache_expired(cached_data.get("timestamp", ""), current_time)
+        )
+
+        # Use cached headers if they are still valid
+        if not need_new_headers:
+            self.checkin_scheduler.headers = cached_data.get("headers", {})
+            self.headers_listener_enabled = False
+            self.headers_set = True
+
         # Create a persistent directory for Chrome profile
         profile_dir = os.path.join(tempfile.gettempdir(), "chrome_profile")
         os.makedirs(profile_dir, exist_ok=True)
@@ -165,16 +183,15 @@ class WebDriver:
                 uc_cdp_events=True,
                 undetectable=True,
                 incognito=True,
-                is_mobile=True,
             )
             logger.debug("Using browser version: %s", driver.caps["browserVersion"])
 
-            driver.add_cdp_listener("Network.requestWillBeSent", self._headers_listener)
-            driver.delete_all_cookies()
+            if self.headers_listener_enabled:
+                driver.add_cdp_listener("Network.requestWillBeSent", self._headers_listener)
 
             logger.debug("Loading Southwest check-in page (this may take a moment)")
             driver.set_window_size(random.randint(1024, 1920), random.randint(768, 1080))
-            driver.get(BASE_URL)
+            driver.uc_open_with_reconnect(BASE_URL, 2)
             driver.wait_for_element("//*[@alt='Check in banner']")
             self._take_debug_screenshot(driver, "after_page_load.png")
             time.sleep(random_sleep_duration(1, 2))
@@ -194,27 +211,14 @@ class WebDriver:
         """
         request = data["params"]["request"]
         if request["url"] == HEADERS_URL:
-            current_time = datetime.now()
-            cached_data = self._cached_headers_manager()
-            time.sleep(1)
-
-            if (
-                not cached_data
-                or cached_data.get("login_failed", False)
-                or self._is_cache_expired(cached_data.get("timestamp", ""), current_time)
-            ):
-                logger.debug("Acquiring new headers")
-                self.checkin_scheduler.headers = self._get_needed_headers(request["headers"])
-                self._cached_headers_manager(
-                    current_time=current_time,
-                    login_failed=False,
-                    headers=self.checkin_scheduler.headers,
-                )
-            else:
-                logger.debug("Using cached headers")
-                self.checkin_scheduler.headers = cached_data.get("headers", {})
-
-        self.headers_set = True
+            self.checkin_scheduler.headers = self._get_needed_headers(request["headers"])
+            self._cached_headers_manager(
+                current_time=datetime.now(),
+                login_failed=False,
+                headers=self.checkin_scheduler.headers,
+            )
+            self.headers_listener_enabled = False
+            self.headers_set = True
 
     def _login_listener(self, data: JSON) -> None:
         """
@@ -354,7 +358,7 @@ class WebDriver:
         # Write the updated data back to the JSON file
         try:
             with open(self.json_file_path, "w") as file:
-                json.dump(cached_data, file)
+                json.dump(cached_data, file, indent=4)
         except Exception as e:
             logger.error(f"Failed to write/update cached headers: {e}")
 
