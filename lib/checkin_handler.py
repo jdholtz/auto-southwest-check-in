@@ -77,8 +77,8 @@ class CheckInHandler:
         logger.debug("Process with PID %d successfully terminated", self.pid)
 
     def _set_check_in(self) -> None:
-        # Starts to check in five seconds early in case the Southwest server is ahead of your server
-        checkin_time = self.flight.departure_time - timedelta(days=1, seconds=5)
+        # Start check-in three seconds early in case Southwest's server is ahead
+        checkin_time = self.flight.departure_time - timedelta(days=1, seconds=3)
 
         try:
             self._wait_for_check_in(checkin_time)
