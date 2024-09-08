@@ -94,7 +94,7 @@ def test_check_in(
     # pylint: disable-next=protected-access
     handler._set_check_in()
 
-    mock_sleep.assert_has_calls([call(1795), call(1195)])
+    mock_sleep.assert_has_calls([call(1800), call(1200)])
     handler.checkin_scheduler.refresh_headers.assert_called_once()
 
     mock_successful_checkin = handler.notification_handler.successful_checkin

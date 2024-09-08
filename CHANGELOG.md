@@ -3,6 +3,12 @@ When upgrading to a new version, make sure to follow the directions under the "U
 If there is no "Upgrading" header for that version, no post-upgrade actions need to be performed.
 
 
+## Upcoming
+### Improvements
+- Potentially speed up the check-in process
+    - Check-ins now start exactly 24 hours before a flight (instead of 24 hours and 5 seconds)
+
+
 ## 8.0 (2024-08-17)
 ### New Features
 - A new [notification level](CONFIGURATION.md#notification-level) for notices (non-critical warnings) was added, which includes

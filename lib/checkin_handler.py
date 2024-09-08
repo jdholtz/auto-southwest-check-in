@@ -77,8 +77,8 @@ class CheckInHandler:
         logger.debug("Process with PID %d successfully terminated", self.pid)
 
     def _set_check_in(self) -> None:
-        # Starts to check in five seconds early in case the Southwest server is ahead of your server
-        checkin_time = self.flight.departure_time - timedelta(days=1, seconds=5)
+        # Check-in is 24 hours before the flight departs
+        checkin_time = self.flight.departure_time - timedelta(days=1)
 
         try:
             self._wait_for_check_in(checkin_time)
@@ -201,13 +201,13 @@ class CheckInHandler:
         }
         site = CHECKIN_URL + self.flight.confirmation_number
 
-        logger.debug("Making POST request to check in")
+        logger.debug("Making first POST request to check in")
+        # Don't randomly sleep during the check-in requests to have them go through more quickly
         response = make_request("POST", site, headers, info, random_sleep=False)
 
         info = response["checkInViewReservationPage"]["_links"]["checkIn"]
         site = f"mobile-air-operations{info['href']}"
 
-        logger.debug("Making POST request to check in")
-        # Don't randomly sleep during this request to have it go through more quickly
+        logger.debug("Making second POST request to check in")
         reservation = make_request("POST", site, headers, info["body"], random_sleep=False)
         return reservation

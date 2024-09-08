@@ -68,7 +68,7 @@ class TestCheckInHandler:
 
         self.handler._set_check_in()
 
-        mock_wait_for_check_in.assert_called_once_with(datetime(1999, 12, 30, 18, 28, 55))
+        mock_wait_for_check_in.assert_called_once_with(datetime(1999, 12, 30, 18, 29))
         mock_check_in.assert_called_once()
 
     def test_set_check_in_passes_on_keyboard_interrupt(self, mocker: MockerFixture) -> None:
