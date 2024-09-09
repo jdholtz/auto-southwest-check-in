@@ -16,7 +16,7 @@ JSON = Dict[str, Any]
 
 BASE_URL = "https://mobile.southwest.com/api/"
 NTP_SERVER = "time.nist.gov"
-NTP_BACKUP_SERVER = "pool.ntp.org"
+NTP_BACKUP_SERVER = "time.cloudflare.com"
 
 AIRPORT_CHECKIN_REQUIRED_CODE = 400511206
 INVALID_CONFIRMATION_NUMBER_LENGTH_CODE = 400310456
