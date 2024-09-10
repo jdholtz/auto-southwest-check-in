@@ -23,6 +23,7 @@ if TYPE_CHECKING:
     from .reservation_monitor import AccountMonitor
 
 BASE_URL = "https://mobile.southwest.com"
+CHECKIN_URL = BASE_URL + "/air/check-in/?clk=GNAVCHCKIN"
 LOGIN_URL = BASE_URL + "/api/security/v4/security/token"
 TRIPS_URL = BASE_URL + "/api/mobile-misc/v1/mobile-misc/page/upcoming-trips"
 HEADERS_URL = BASE_URL + "/api/chase/v2/chase/offers"
@@ -135,42 +136,20 @@ class WebDriver:
         return reservations
 
     def _get_driver(self) -> Driver:
-        # This environment variable is set in the Docker image
-        is_docker = os.environ.get("AUTO_SOUTHWEST_CHECK_IN_DOCKER") == "1"
-
+        headless = True
+        is_mobile = False
         driver_version = "mlatest"
-        if is_docker:
-            self._start_display()
-            # Make sure a new driver is not downloaded as the Docker image
-            # already has the correct driver
+        if os.environ.get("AUTO_SOUTHWEST_CHECK_IN_DOCKER") == "1":
+            # This environment variable is set in the Docker image. Makes sure a new driver
+            # is not downloaded as the Docker image already has the correct driver
             driver_version = "keep"
+            self._start_display()
+            headless = False
+            is_mobile = True
 
         logger.debug("Starting webdriver for current session")
         browser_path = self.checkin_scheduler.reservation_monitor.config.browser_path
-
-        # Check cached headers before initializing the driver
-        cached_data = self._cached_headers_manager()
-        current_time = datetime.now()
-
-        # Determine if we need to listen for new headers
-        need_new_headers = (
-            not cached_data
-            or cached_data.get("login_failed", False)
-            or self._is_cache_expired(cached_data.get("timestamp", ""), current_time)
-        )
-
-        # Use cached headers if they are still valid
-        if not need_new_headers:
-            self.checkin_scheduler.headers = cached_data.get("headers", {})
-            self.headers_listener_enabled = False
-            self.headers_set = True
-
-        # Create a persistent directory for Chrome profile
-        profile_dir = os.path.join(tempfile.gettempdir(), "chrome_profile")
-        os.makedirs(profile_dir, exist_ok=True)
-
-        # Randomly decide whether to use a fresh profile or the persistent one
-        temp_dir = tempfile.mkdtemp() if random.choice([True, False]) else profile_dir
+        temp_dir = tempfile.mkdtemp()
 
         try:
             driver = Driver(
@@ -178,30 +157,48 @@ class WebDriver:
                 driver_version=driver_version,
                 user_data_dir=temp_dir,
                 page_load_strategy="none",
-                headed=is_docker,
-                headless=not is_docker,
+                headed=not headless,
+                headless=headless,
                 uc_cdp_events=True,
                 undetectable=True,
                 incognito=True,
+                is_mobile=is_mobile,
             )
             logger.debug("Using browser version: %s", driver.caps["browserVersion"])
 
+            self._check_cached_headers()
             if self.headers_listener_enabled:
                 driver.add_cdp_listener("Network.requestWillBeSent", self._headers_listener)
 
             logger.debug("Loading Southwest check-in page (this may take a moment)")
             driver.set_window_size(random.randint(1024, 1920), random.randint(768, 1080))
-            driver.uc_open_with_reconnect(BASE_URL, 2)
-            driver.wait_for_element("//*[@alt='Check in banner']")
+            driver.uc_open_with_reconnect(CHECKIN_URL, 2)
             self._take_debug_screenshot(driver, "after_page_load.png")
             time.sleep(random_sleep_duration(1, 2))
-            driver.click("//*[@alt='Check in banner']")
 
             return driver
 
         finally:
             # Clean up the profile directory after use
-            shutil.rmtree(driver.user_data_dir, ignore_errors=True)
+            shutil.rmtree(temp_dir, ignore_errors=True)
+
+    def _check_cached_headers(self) -> None:
+        cached_data = self._cached_headers_manager()
+        current_time = datetime.now()
+
+        if (
+            not cached_data
+            or cached_data.get("login_failed", False)
+            or self._is_cache_expired(cached_data.get("timestamp", ""), current_time)
+        ):
+            logger.debug("Retrieving new headers")
+            self.headers_listener_enabled = True
+            self.headers_set = False
+        else:
+            logger.debug("Applying cached headers")
+            self.checkin_scheduler.headers = cached_data.get("headers", {})
+            self.headers_listener_enabled = False
+            self.headers_set = True
 
     def _headers_listener(self, data: JSON) -> None:
         """
