@@ -171,6 +171,7 @@ class WebDriver:
             driver.set_window_size(random.randint(1024, 1920), random.randint(768, 1080))
             driver.uc_open_with_reconnect(CHECKIN_URL, 5)
             driver.refresh()
+
             self._check_cached_headers()
             if self.headers_listener_enabled:
                 driver.add_cdp_listener("Network.requestWillBeSent", self._headers_listener)
