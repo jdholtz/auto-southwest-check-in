@@ -199,9 +199,6 @@ class WebDriver:
             self.checkin_scheduler.headers = cached_data.get("headers", {})
             self.headers_listener_enabled = False
             self.headers_set = True
-            ua_headers = self._cached_headers_manager().get("headers", {})
-            if "User-Agent" in ua_headers:
-                logger.debug(f"\n{ua_headers['User-Agent']}\n")
 
     def _headers_listener(self, data: JSON) -> None:
         """
@@ -317,8 +314,6 @@ class WebDriver:
         for header in request_headers:
             if re.match(r"x-api-key|x-channel-id|user-agent|^[\w-]+?-\w$", header, re.I):
                 headers[header] = request_headers[header]
-                if re.match(r"user-agent", header, re.I):
-                    logger.debug(f"\n{request_headers[header]}\n")
 
         return headers
 
