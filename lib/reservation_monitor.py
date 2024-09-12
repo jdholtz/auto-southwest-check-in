@@ -196,11 +196,10 @@ class AccountMonitor(ReservationMonitor):
         or a Too Many Requests error. If the retry fails, reservation scheduling will be
         skipped until the next scheduled attempt.
         """
+        logger.debug("Retrieving reservations for account")
+
         for attempt in range(max_retries + 1):
             webdriver = WebDriver(self.checkin_scheduler)
-
-            if attempt == 0:
-                logger.debug("Retrieving reservations for account")
 
             try:
                 reservations = webdriver.get_reservations(self)
@@ -212,7 +211,7 @@ class AccountMonitor(ReservationMonitor):
                 return reservations, False
 
             except DriverTimeoutError:
-                logger.debug("Encountered a Too Many Requests error while logging in. Retrying")
+                logger.debug("Timeout while retrieving reservations during login. Retrying")
                 self.notification_handler.timeout_during_retrieval("account")
 
             except LoginError as err:
@@ -223,11 +222,10 @@ class AccountMonitor(ReservationMonitor):
                     self.notification_handler.failed_login(err)
                     sys.exit(1)
 
-            # If retry limit is reached, skip reservation retrieval
-            if attempt == max_retries:
-                logger.debug("Too Many Requests error persists. Skipping reservation retrieval")
-                self.notification_handler.too_many_requests_during_login()
-                return [], True
+        if attempt == max_retries:
+            logger.debug("Too Many Requests error persists. Skipping reservation retrieval")
+            self.notification_handler.too_many_requests_during_login()
+            return [], True
 
     def _stop_monitoring(self) -> None:
         print(f"\nStopping monitoring for account with username {self.username}")

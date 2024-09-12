@@ -60,7 +60,7 @@ class WebDriver:
         self.debug_screenshots = self._should_take_screenshots()
         self.display = None
         self.headers_listener_enabled = True
-        self.json_file_path = os.path.join(os.getcwd(), "cached_headers.json")
+        self.cached_headers_path = os.path.join(os.getcwd(), "cached_headers.json")
         self.cache_duration = timedelta(minutes=30)  # Duration to keep headers cached
 
         # For account login
@@ -136,51 +136,51 @@ class WebDriver:
         return reservations
 
     def _get_driver(self) -> Driver:
-        headless = True
-        is_mobile = False
-        driver_version = "mlatest"
-        if os.environ.get("AUTO_SOUTHWEST_CHECK_IN_DOCKER") == "1":
-            # This environment variable is set in the Docker image. Makes sure a new driver
-            # is not downloaded as the Docker image already has the correct driver
-            driver_version = "keep"
-            self._start_display()
-            headless = False
-            is_mobile = True
+        # This environment variable is set in the Docker image
+        is_docker = os.environ.get("AUTO_SOUTHWEST_CHECK_IN_DOCKER") == "1"
 
-        logger.debug("Starting webdriver for current session")
         browser_path = self.checkin_scheduler.reservation_monitor.config.browser_path
-        temp_dir = tempfile.mkdtemp()
+        driver_version = "mlatest"
+
+        if is_docker:
+            self._start_display()
+            # Make sure a new driver is not downloaded as the Docker image
+            # already has the correct driver
+            driver_version = "keep"
+
+        # Create a persistent directory for Chrome profile
+        profile_dir = os.path.join(tempfile.gettempdir(), "chrome_profile")
+        os.makedirs(profile_dir, exist_ok=True)
 
         try:
             driver = Driver(
                 binary_location=browser_path,
                 driver_version=driver_version,
-                user_data_dir=temp_dir,
+                user_data_dir=profile_dir,
                 page_load_strategy="none",
-                headed=not headless,
-                headless=headless,
+                headed=is_docker,
+                headless=not is_docker,
                 uc_cdp_events=True,
                 undetectable=True,
                 incognito=True,
-                is_mobile=is_mobile,
             )
+            logger.debug("Starting webdriver for the current session")
             logger.debug("Using browser version: %s", driver.caps["browserVersion"])
-
-            self._check_cached_headers()
-            if self.headers_listener_enabled:
-                driver.add_cdp_listener("Network.requestWillBeSent", self._headers_listener)
 
             logger.debug("Loading Southwest check-in page (this may take a moment)")
             driver.set_window_size(random.randint(1024, 1920), random.randint(768, 1080))
-            driver.uc_open_with_reconnect(CHECKIN_URL, 2)
+            driver.uc_open_with_reconnect(CHECKIN_URL, 5)
+            driver.refresh()
+            self._check_cached_headers()
+            if self.headers_listener_enabled:
+                driver.add_cdp_listener("Network.requestWillBeSent", self._headers_listener)
             self._take_debug_screenshot(driver, "after_page_load.png")
-            time.sleep(random_sleep_duration(1, 2))
 
             return driver
 
         finally:
             # Clean up the profile directory after use
-            shutil.rmtree(temp_dir, ignore_errors=True)
+            shutil.rmtree(profile_dir, ignore_errors=True)
 
     def _check_cached_headers(self) -> None:
         cached_data = self._cached_headers_manager()
@@ -199,6 +199,9 @@ class WebDriver:
             self.checkin_scheduler.headers = cached_data.get("headers", {})
             self.headers_listener_enabled = False
             self.headers_set = True
+            ua_headers = self._cached_headers_manager().get("headers", {})
+            if "User-Agent" in ua_headers:
+                logger.debug(f"\n{ua_headers['User-Agent']}\n")
 
     def _headers_listener(self, data: JSON) -> None:
         """
@@ -314,6 +317,8 @@ class WebDriver:
         for header in request_headers:
             if re.match(r"x-api-key|x-channel-id|user-agent|^[\w-]+?-\w$", header, re.I):
                 headers[header] = request_headers[header]
+                if re.match(r"user-agent", header, re.I):
+                    logger.debug(f"\n{request_headers[header]}\n")
 
         return headers
 
@@ -334,12 +339,12 @@ class WebDriver:
         """
         Read existing cached data from JSON file or update it with new values.
         """
-        if os.path.exists(self.json_file_path):
+        if os.path.exists(self.cached_headers_path):
             try:
-                with open(self.json_file_path, "r") as file:
+                with open(self.cached_headers_path, "r") as file:
                     cached_data = json.load(file)
             except json.JSONDecodeError:
-                logger.error(f"Error decoding JSON from {self.json_file_path}.")
+                logger.error(f"Error decoding JSON from {self.cached_headers_path}.")
                 cached_data = {}
         else:
             cached_data = {}
@@ -354,9 +359,9 @@ class WebDriver:
 
         # Write the updated data back to the JSON file
         try:
-            with open(self.json_file_path, "w") as file:
+            with open(self.cached_headers_path, "w") as file:
                 json.dump(cached_data, file, indent=4)
-        except Exception as e:
+        except IOError as e:
             logger.error(f"Failed to write/update cached headers: {e}")
 
         return cached_data
