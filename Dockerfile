@@ -18,4 +18,4 @@ RUN pip3 install --upgrade pip && pip3 install --no-cache-dir -r requirements.tx
 
 COPY . .
 
-ENTRYPOINT ["python3", "-u", "southwest.py", "--verbose"]
+ENTRYPOINT ["python3", "-u", "southwest.py"]
