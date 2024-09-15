@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import os
-import random
 import re
 import shutil
 import sys
@@ -62,6 +61,7 @@ class WebDriver:
         self.headers_listener_enabled = True
         self.cached_headers_path = os.path.join(os.getcwd(), "cached_headers.json")
         self.cache_duration = timedelta(minutes=30)  # Duration to keep headers cached
+        self.cached_data = self._cached_headers_manager()
 
         # For account login
         self.login_request_id = None
@@ -84,6 +84,8 @@ class WebDriver:
     def _take_debug_screenshot(self, driver: Driver, name: str) -> None:
         """Take a screenshot of the browser and save the image as 'name' in LOGS_DIRECTORY"""
         if self.debug_screenshots:
+            time.sleep(1)
+            seleniumbase_actions.wait_for_element_not_visible(driver, ".dimmer")
             driver.save_screenshot(os.path.join(LOGS_DIRECTORY, name))
 
     def set_headers(self) -> None:
@@ -116,7 +118,7 @@ class WebDriver:
         self._take_debug_screenshot(driver, "pre_login.png")
 
         driver.wait_for_element(".login-button--box")
-        driver.click(".login-button--box")
+        driver.js_click(".login-button--box")
         driver.type('input[name="userNameOrAccountNumber"]', account_monitor.username)
         time.sleep(random_sleep_duration(1, 3))
 
@@ -136,68 +138,67 @@ class WebDriver:
         return reservations
 
     def _get_driver(self) -> Driver:
-        # This environment variable is set in the Docker image
-        is_docker = os.environ.get("AUTO_SOUTHWEST_CHECK_IN_DOCKER") == "1"
-
         browser_path = self.checkin_scheduler.reservation_monitor.config.browser_path
+
+        user_agent = "Mozilla/5.0 (Android 15; Mobile; rv:68.0) Gecko/68.0 Firefox/130.0"
+        if self.cached_data and self.cached_data.get("login_failed", True):
+            # Alternative user agent used if login fails
+            user_agent = "Mozilla/5.0 (Android 15; Mobile; rv:130.0) Gecko/130.0 Firefox/130.0"
+
+        # Create a temporary directory for Chrome profile
+        temp_dir = tempfile.mkdtemp()
+
         driver_version = "mlatest"
-
-        if is_docker:
-            self._start_display()
-            # Make sure a new driver is not downloaded as the Docker image
-            # already has the correct driver
+        if os.environ.get("AUTO_SOUTHWEST_CHECK_IN_DOCKER") == "1":
+            # This environment variable is set in the Docker image. Makes sure a new driver
+            # is not downloaded as the Docker image already has the correct driver
             driver_version = "keep"
+            self._start_display()
 
-        # Create a persistent directory for Chrome profile
-        profile_dir = os.path.join(tempfile.gettempdir(), "chrome_profile")
-        os.makedirs(profile_dir, exist_ok=True)
-
+        logger.debug("Starting webdriver for current session")
         try:
             driver = Driver(
                 binary_location=browser_path,
                 driver_version=driver_version,
-                user_data_dir=profile_dir,
+                agent=user_agent,
+                user_data_dir=temp_dir,
                 page_load_strategy="none",
-                headed=is_docker,
-                headless=not is_docker,
+                headless=True,
+                headed=False,
                 uc_cdp_events=True,
                 undetectable=True,
                 incognito=True,
             )
-            logger.debug("Starting webdriver for the current session")
             logger.debug("Using browser version: %s", driver.caps["browserVersion"])
-
-            logger.debug("Loading Southwest check-in page (this may take a moment)")
-            driver.set_window_size(random.randint(1024, 1920), random.randint(768, 1080))
-            driver.uc_open_with_reconnect(CHECKIN_URL, 5)
-            driver.refresh()
 
             self._check_cached_headers()
             if self.headers_listener_enabled:
                 driver.add_cdp_listener("Network.requestWillBeSent", self._headers_listener)
+
+            logger.debug("Loading Southwest check-in page (this may take a moment)")
+            driver.refresh()  # This is set to make sure headers setup is not skipped
+            driver.uc_open_with_reconnect(CHECKIN_URL, 2)
             self._take_debug_screenshot(driver, "after_page_load.png")
 
             return driver
 
         finally:
             # Clean up the profile directory after use
-            shutil.rmtree(profile_dir, ignore_errors=True)
+            shutil.rmtree(temp_dir, ignore_errors=True)
 
     def _check_cached_headers(self) -> None:
-        cached_data = self._cached_headers_manager()
         current_time = datetime.now()
-
         if (
-            not cached_data
-            or cached_data.get("login_failed", False)
-            or self._is_cache_expired(cached_data.get("timestamp", ""), current_time)
+            not self.cached_data
+            or self.cached_data.get("login_failed", False)
+            or self._is_cache_expired(self.cached_data.get("timestamp", ""), current_time)
         ):
             logger.debug("Retrieving new headers")
             self.headers_listener_enabled = True
             self.headers_set = False
         else:
             logger.debug("Applying cached headers")
-            self.checkin_scheduler.headers = cached_data.get("headers", {})
+            self.checkin_scheduler.headers = self.cached_data.get("headers", {})
             self.headers_listener_enabled = False
             self.headers_set = True
 
@@ -284,7 +285,7 @@ class WebDriver:
         except Exception:
             logger.debug("Login form failed to submit. Clicking login button again")
             driver.wait_for_element(login_button)
-            driver.click(login_button)
+            driver.js_click(login_button)
 
     def _fetch_reservations(self, driver: Driver) -> List[JSON]:
         """

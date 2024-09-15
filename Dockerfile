@@ -1,4 +1,4 @@
-FROM python:3.13-rc-alpine3.19
+FROM python:alpine3.19
 
 WORKDIR /app
 
@@ -18,4 +18,4 @@ RUN pip3 install --upgrade pip && pip3 install --no-cache-dir -r requirements.tx
 
 COPY . .
 
-ENTRYPOINT ["python3", "-u", "southwest.py"]
+ENTRYPOINT ["python3", "-u", "southwest.py", "--verbose"]

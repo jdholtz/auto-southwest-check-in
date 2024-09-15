@@ -1,5 +1,6 @@
 import json
 import random
+import re
 import socket
 import time
 from datetime import datetime, timezone
@@ -54,27 +55,27 @@ def make_request(
     server is not in sync with our NTP server or local computer).
     """
     # Ensure the URL is not malformed
-    site = site.replace("//", "/").lstrip("/")
+    site = re.sub(r"(?<!:)//+", "/", site).lstrip("/")
     url = BASE_URL + site
 
     attempts = 0
     while attempts < max_attempts:
         attempts += 1
-        if method == "POST":
-            response = requests.post(url, headers=headers, json=info)
-        else:
-            response = requests.get(url, headers=headers, params=info)
-
-        if response.status_code == 200:
-            logger.debug("Successfully made request after %d attempts", attempts)
-            return response.json()
-
-        # Request did not succeed
-        response_body = response.content.decode()
-        error_msg = response.reason + " " + str(response.status_code)
-        error = RequestError(error_msg, response_body)
-
         try:
+            if method.upper() == "POST":
+                response = requests.post(url, headers=headers, json=info)
+            else:
+                response = requests.get(url, headers=headers, params=info)
+
+            if response.status_code == 200:
+                logger.debug("Successfully made request after %d attempts", attempts)
+                return response.json()
+
+            # Handle unsuccessful responses
+            response_body = response.content.decode()
+            error_msg = f"{response.reason} ({response.status_code})"
+            error = RequestError(error_msg, response_body)
+
             _handle_southwest_error_code(error)
         except (RequestError, AirportCheckInError) as err:
             # Stop requesting after one attempt for special codes, as the requests won't succeed
