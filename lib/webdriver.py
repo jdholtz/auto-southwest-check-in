@@ -84,7 +84,7 @@ class WebDriver:
     def _take_debug_screenshot(self, driver: Driver, name: str) -> None:
         """Take a screenshot of the browser and save the image as 'name' in LOGS_DIRECTORY"""
         if self.debug_screenshots:
-            time.sleep(1)
+            time.sleep(2)
             seleniumbase_actions.wait_for_element_not_visible(driver, ".dimmer")
             driver.save_screenshot(os.path.join(LOGS_DIRECTORY, name))
 
@@ -176,8 +176,7 @@ class WebDriver:
                 driver.add_cdp_listener("Network.requestWillBeSent", self._headers_listener)
 
             logger.debug("Loading Southwest check-in page (this may take a moment)")
-            driver.refresh()  # This is set to make sure headers setup is not skipped
-            driver.uc_open_with_reconnect(CHECKIN_URL, 2)
+            driver.open(CHECKIN_URL)
             self._take_debug_screenshot(driver, "after_page_load.png")
 
             return driver
