@@ -13,7 +13,7 @@ from lib.config import GlobalConfig
 from lib.fare_checker import BOOKING_URL, FareChecker
 from lib.flight import Flight
 from lib.reservation_monitor import ReservationMonitor
-from lib.utils import BASE_URL, FlightChangeError
+from lib.utils import BASE_URL, CheckFaresOption, FlightChangeError
 
 CHANGE_FLIGHT_URL = BASE_URL + BOOKING_URL + "change_page"
 MATCHING_FLIGHTS_URL = BASE_URL + BOOKING_URL + "matching_flights"
@@ -47,17 +47,38 @@ FLIGHT_CARDS = [
                 "priceDifference": {"sign": "-", "amount": "4,300", "currencyCode": "PTS"},
             }
         ],
+        "stopDescription": "Nonstop",
     },
-    {"flightNumbers": "98\u200b/\u200b99"},
+    {
+        "flightNumbers": "98\u200b/\u200b99",
+        "fares": [
+            {
+                "_meta": {"fareProductId": "WGA"},
+                "priceDifference": {"sign": "-", "amount": "5,200", "currencyCode": "PTS"},
+            }
+        ],
+        "stopDescription": "1 Stop, LAX",
+    },
     {
         "flightNumbers": "100\u200b/\u200b101",
         "fares": [
             {"_meta": {"fareProductId": "TEST"}},
             {
                 "_meta": {"fareProductId": "WGA"},
-                "priceDifference": {"sign": "-", "amount": "4,300", "currencyCode": "PTS"},
+                "priceDifference": {"sign": "-", "amount": "3,600", "currencyCode": "PTS"},
             },
         ],
+        "stopDescription": "1 Stop, NYC",
+    },
+    {
+        "flightNumbers": "102",
+        "fares": [
+            {
+                "_meta": {"fareProductId": "WGA"},
+                "priceDifference": {"sign": "-", "amount": "4,800", "currencyCode": "PTS"},
+            }
+        ],
+        "stopDescription": "Nonstop",
     },
 ]
 
@@ -82,7 +103,7 @@ def flight() -> Flight:
         "departureAirport": {"code": "LAX", "name": "test_outbound"},
         "departureDate": "2021-12-06",
         "departureTime": "14:40",
-        "flights": [{"number": "100"}, {"number": "101"}],
+        "flights": [{"number": "WN100"}, {"number": "WN101"}],
         "fareProductDetails": {"fareProductId": "WGA"},
     }
 
@@ -94,7 +115,7 @@ def flight() -> Flight:
     return Flight(flight_info, reservation_info, "TEST")
 
 
-def test_fare_drop_outbound(
+def test_fare_drop_outbound_same_flight(
     requests_mock: RequestMocker, monitor: ReservationMonitor, flight: Flight
 ) -> None:
     requests_mock.get(CHANGE_FLIGHT_URL, [{"json": CHANGE_FLIGHT_PAGE, "status_code": 200}])
@@ -103,10 +124,10 @@ def test_fare_drop_outbound(
     fare_checker = FareChecker(monitor)
     fare_checker.check_flight_price(flight)
 
-    monitor.notification_handler.lower_fare.assert_called_once_with(flight, "-4300 PTS")
+    monitor.notification_handler.lower_fare.assert_called_once_with(flight, "-3,600 PTS")
 
 
-def test_fare_drop_inbound(
+def test_fare_drop_inbound_same_flight(
     requests_mock: RequestMocker, monitor: ReservationMonitor, flight: Flight
 ) -> None:
     flight.flight_number = "97"
@@ -138,10 +159,35 @@ def test_fare_drop_inbound(
     fare_checker = FareChecker(monitor)
     fare_checker.check_flight_price(flight)
 
-    monitor.notification_handler.lower_fare.assert_called_once_with(flight, "-4300 PTS")
+    monitor.notification_handler.lower_fare.assert_called_once_with(flight, "-4,300 PTS")
 
 
-@pytest.mark.parametrize(["amount", "sign"], [("1,000", "+"), ("1", "-"), ("0", None)])
+@pytest.mark.parametrize(
+    ["check_fares_option", "low_fare"],
+    [
+        (CheckFaresOption.SAME_FLIGHT, "-3,600 PTS"),
+        (CheckFaresOption.SAME_DAY_NONSTOP, "-4,800 PTS"),
+        (CheckFaresOption.SAME_DAY, "-5,200 PTS"),
+    ],
+)
+def test_fare_drop_with_filter(
+    requests_mock: RequestMocker,
+    monitor: ReservationMonitor,
+    flight: Flight,
+    check_fares_option: CheckFaresOption,
+    low_fare: str,
+) -> None:
+    requests_mock.get(CHANGE_FLIGHT_URL, [{"json": CHANGE_FLIGHT_PAGE, "status_code": 200}])
+    requests_mock.post(MATCHING_FLIGHTS_URL, [{"json": MATCHING_FLIGHTS, "status_code": 200}])
+
+    monitor.config.check_fares = check_fares_option
+    fare_checker = FareChecker(monitor)
+    fare_checker.check_flight_price(flight)
+
+    monitor.notification_handler.lower_fare.assert_called_once_with(flight, low_fare)
+
+
+@pytest.mark.parametrize(["amount", "sign"], [("1,000", None), ("1", "-"), ("0", None)])
 def test_no_fare_drop(
     requests_mock: RequestMocker,
     monitor: ReservationMonitor,
@@ -152,7 +198,10 @@ def test_no_fare_drop(
     flights = copy.deepcopy(FLIGHT_CARDS)
     fare = flights[2]["fares"][1]["priceDifference"]
     fare["amount"] = amount
-    fare["sign"] = sign
+    if sign:
+        fare["sign"] = sign
+    else:
+        fare.pop("sign")
 
     matching_flights = copy.deepcopy(MATCHING_FLIGHTS)
     matching_flights["changeShoppingPage"]["flights"]["outboundPage"]["cards"] = flights

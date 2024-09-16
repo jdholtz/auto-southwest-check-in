@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, List, Tuple
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
 
 from .flight import Flight
 from .log import get_logger
-from .utils import FlightChangeError, make_request
+from .utils import CheckFaresOption, FlightChangeError, make_request
 
 if TYPE_CHECKING:
     from .reservation_monitor import ReservationMonitor
@@ -20,6 +20,7 @@ class FareChecker:
     def __init__(self, reservation_monitor: ReservationMonitor) -> None:
         self.reservation_monitor = reservation_monitor
         self.headers = reservation_monitor.checkin_scheduler.headers
+        self.filter = get_fare_check_filter(self.reservation_monitor.config.check_fares)
 
     def check_flight_price(self, flight: Flight) -> None:
         """
@@ -29,17 +30,14 @@ class FareChecker:
         logger.debug("Checking current price for flight")
         flight_price = self._get_flight_price(flight)
 
-        # The sign key will not exist if the price amount is 0
-        sign = flight_price.get("sign", "")
-        amount = int(flight_price["amount"].replace(",", ""))
-        price_info = f"{sign}{amount} {flight_price['currencyCode']}"
+        price_info = f"{flight_price['amount']:+,} {flight_price['currencyCode']}"
         logger.debug("Flight price change found for %s", price_info)
 
         # The Southwest website can report a fare price difference of -1 USD. This is a
         # false positive as no credit is actually received when the flight is changed.
         # Refer to this discussion for more information:
         # https://github.com/jdholtz/auto-southwest-check-in/discussions/102
-        if sign == "-" and amount > 1:
+        if flight_price["amount"] < -1:
             # Lower fare!
             self.reservation_monitor.notification_handler.lower_fare(flight, price_info)
 
@@ -48,13 +46,8 @@ class FareChecker:
         flights, fare_type = self._get_matching_flights(flight)
         logger.debug("Found %d matching flights", len(flights))
 
-        # Get the fares from the same flight
-        for new_flight in flights:
-            if new_flight["flightNumbers"] == flight.flight_number:
-                return self._get_matching_fare(new_flight["fares"], fare_type)
-
-        # Should never be reached as a matching flight should already be found
-        raise ValueError("Flight did not match any flights retrieved for the same day")
+        lowest_fare = self._get_lowest_fare(flight, flights, fare_type)
+        return lowest_fare
 
     def _get_matching_flights(self, flight: Flight) -> Tuple[List[JSON], str]:
         """
@@ -138,23 +131,74 @@ class FareChecker:
         if grey_box_message and "companion" in (grey_box_message.get("body") or ""):
             raise FlightChangeError("Fare check is not supported with companion passes")
 
-    def _get_matching_fare(self, fares: List[JSON], fare_type: str) -> JSON:
+    def _get_lowest_fare(self, flight: Flight, flights: List[JSON], fare_type: str) -> JSON:
+        """
+        Get the lowest fare for the queried flights based on the filter being used. If no fare is
+        available for the specific fare type, a 0 USD difference will be returned.
+        """
+        lowest_fare = None
+
+        for new_flight in flights:
+            # Only compare flight fares that match the current filter
+            if self.filter(flight, new_flight):
+                fare = self._get_matching_fare(new_flight["fares"], fare_type)
+                # Check if this fare is the lowest encountered so far
+                if (
+                    not lowest_fare
+                    # pylint: disable-next=unsubscriptable-object
+                    or (fare and fare["amount"] < lowest_fare["amount"])
+                ):
+                    lowest_fare = fare
+
+        if not lowest_fare:
+            # No fares are available (most likely due to tickets of that fare type
+            # not being sold anymore). Therefore, report back a 0 USD difference.
+            logger.debug("Fare %s is not available. Setting price difference to 0 USD", fare_type)
+            lowest_fare = {"amount": 0, "currencyCode": "USD"}
+
+        return lowest_fare
+
+    def _get_matching_fare(self, fares: List[JSON], fare_type: str) -> Optional[JSON]:
+        """
+        Get the fare that matches the fare type. If a fare exists, the amount will be returned, as
+        an integer, and the currency code (USD or points). If no fare exists, nothing will be
+        returned.
+        """
         if fares is None:
-            return self._unavailable_fare(fare_type)
+            fares = []
 
         for fare in fares:
             if fare["_meta"]["fareProductId"] == fare_type:
                 if "priceDifference" in fare:
-                    return fare["priceDifference"]
+                    flight_price = fare["priceDifference"]
+                    # Format the amount correctly
+                    sign = flight_price.get("sign", "")
+                    parsed_amount = int(sign + flight_price["amount"].replace(",", ""))
+                    return {"amount": parsed_amount, "currencyCode": flight_price["currencyCode"]}
 
                 break
 
-        return self._unavailable_fare(fare_type)
+        return None
 
-    def _unavailable_fare(self, fare_type: str) -> JSON:
-        """
-        No fares are available (most likely due to tickets of that fare type
-        not being sold anymore). Therefore, report back a 0 USD difference.
-        """
-        logger.debug("Fare %s is not available. Setting price difference to 0 USD", fare_type)
-        return {"amount": "0", "currencyCode": "USD"}
+
+def get_fare_check_filter(check_fares: CheckFaresOption) -> Callable[[Flight, JSON], bool]:
+    if check_fares == CheckFaresOption.SAME_FLIGHT:
+        return same_flight_filter
+    if check_fares == CheckFaresOption.SAME_DAY_NONSTOP:
+        return nonstop_flight_filter
+    if check_fares == CheckFaresOption.SAME_DAY:
+        return any_flight_filter
+
+    raise ValueError(f"check_fares value ({check_fares}) did not match any valid option")
+
+
+def same_flight_filter(flight: Flight, flight_json: JSON) -> bool:
+    return flight_json["flightNumbers"] == flight.flight_number
+
+
+def any_flight_filter(*_) -> bool:
+    return True
+
+
+def nonstop_flight_filter(_, flight_json: JSON) -> bool:
+    return flight_json["stopDescription"] == "Nonstop"

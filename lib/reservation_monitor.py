@@ -9,7 +9,14 @@ from .config import AccountConfig, ReservationConfig
 from .fare_checker import FareChecker
 from .log import get_logger
 from .notification_handler import NotificationHandler
-from .utils import DriverTimeoutError, FlightChangeError, LoginError, RequestError, get_current_time
+from .utils import (
+    CheckFaresOption,
+    DriverTimeoutError,
+    FlightChangeError,
+    LoginError,
+    RequestError,
+    get_current_time,
+)
 from .webdriver import WebDriver
 
 TOO_MANY_REQUESTS_CODE = 429
@@ -102,7 +109,7 @@ class ReservationMonitor:
         self.checkin_scheduler.process_reservations(confirmation_numbers)
 
     def _check_flight_fares(self) -> None:
-        if not self.config.check_fares:
+        if self.config.check_fares == CheckFaresOption.NO:
             return
 
         flights = self.checkin_scheduler.flights

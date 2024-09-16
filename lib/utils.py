@@ -3,7 +3,7 @@ import random
 import socket
 import time
 from datetime import datetime, timezone
-from enum import IntEnum
+from enum import IntEnum, StrEnum
 from typing import Any, Dict, Union
 
 import ntplib
@@ -160,6 +160,13 @@ class NotificationLevel(IntEnum):
     NOTICE = 1
     INFO = 2
     ERROR = 3
+
+
+class CheckFaresOption(StrEnum):
+    NO = "no"
+    SAME_FLIGHT = "same_flight"
+    SAME_DAY_NONSTOP = "same_day_nonstop"
+    SAME_DAY = "same_day"
 
 
 def is_truthy(arg: Union[bool, int, str]) -> bool:

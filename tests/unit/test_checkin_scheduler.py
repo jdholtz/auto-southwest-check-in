@@ -36,7 +36,7 @@ def test_flights(mocker: MockerFixture) -> List[Flight]:
 class TestCheckInScheduler:
     @pytest.fixture(autouse=True)
     def _set_up_scheduler(self) -> None:
-        # pylint: disable=attribute-defined-outside-init
+        # pylint: disable-next=attribute-defined-outside-init
         self.scheduler = CheckInScheduler(ReservationMonitor(ReservationConfig()))
 
     def test_process_reservations_handles_all_reservations(self, mocker: MockerFixture) -> None:

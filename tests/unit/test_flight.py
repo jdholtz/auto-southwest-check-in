@@ -28,7 +28,7 @@ class TestFlight:
         with mock.patch.object(Flight, "_set_flight_time"):
             # Reservation info can be left empty as it is only used for caching, but isn't relevant
             # to the functionality of the flight class
-            # pylint: disable=attribute-defined-outside-init
+            # pylint: disable-next=attribute-defined-outside-init
             self.flight = Flight(flight_info, {}, "test_num")
 
             # Flight times that would be set if _set_flight_time isn't mocked
