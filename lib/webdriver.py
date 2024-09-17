@@ -22,7 +22,6 @@ if TYPE_CHECKING:
     from .reservation_monitor import AccountMonitor
 
 BASE_URL = "https://mobile.southwest.com"
-CHECKIN_URL = BASE_URL + "/air/check-in/?clk=GNAVCHCKIN"
 LOGIN_URL = BASE_URL + "/api/security/v4/security/token"
 TRIPS_URL = BASE_URL + "/api/mobile-misc/v1/mobile-misc/page/upcoming-trips"
 HEADERS_URL = BASE_URL + "/api/chase/v2/chase/offers"
