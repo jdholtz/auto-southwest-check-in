@@ -84,8 +84,6 @@ class WebDriver:
     def _take_debug_screenshot(self, driver: Driver, name: str) -> None:
         """Take a screenshot of the browser and save the image as 'name' in LOGS_DIRECTORY"""
         if self.debug_screenshots:
-            time.sleep(2)
-            seleniumbase_actions.wait_for_element_not_visible(driver, ".dimmer")
             driver.save_screenshot(os.path.join(LOGS_DIRECTORY, name))
 
     def set_headers(self) -> None:
@@ -118,7 +116,7 @@ class WebDriver:
         self._take_debug_screenshot(driver, "pre_login.png")
 
         driver.wait_for_element(".login-button--box")
-        driver.js_click(".login-button--box")
+        driver.uc_click(".login-button--box")
         driver.type('input[name="userNameOrAccountNumber"]', account_monitor.username)
         time.sleep(random_sleep_duration(1, 3))
 
@@ -148,11 +146,15 @@ class WebDriver:
         # Create a temporary directory for Chrome profile
         temp_dir = tempfile.mkdtemp()
 
+        headless = True
+        headed = False
         driver_version = "mlatest"
         if os.environ.get("AUTO_SOUTHWEST_CHECK_IN_DOCKER") == "1":
             # This environment variable is set in the Docker image. Makes sure a new driver
             # is not downloaded as the Docker image already has the correct driver
             driver_version = "keep"
+            headless = False
+            headed = True
             self._start_display()
 
         logger.debug("Starting webdriver for current session")
@@ -163,8 +165,8 @@ class WebDriver:
                 agent=user_agent,
                 user_data_dir=temp_dir,
                 page_load_strategy="none",
-                headless=True,
-                headed=False,
+                headless=headless,
+                headed=headed,
                 uc_cdp_events=True,
                 undetectable=True,
                 incognito=True,
@@ -176,8 +178,11 @@ class WebDriver:
                 driver.add_cdp_listener("Network.requestWillBeSent", self._headers_listener)
 
             logger.debug("Loading Southwest check-in page (this may take a moment)")
-            driver.open(CHECKIN_URL)
+            driver.uc_open(BASE_URL)
+            time.sleep(7)
             self._take_debug_screenshot(driver, "after_page_load.png")
+            driver.wait_for_element("//*[@alt='Check in banner']")
+            driver.uc_click("//*[@alt='Check in banner']")
 
             return driver
 
@@ -284,7 +289,7 @@ class WebDriver:
         except Exception:
             logger.debug("Login form failed to submit. Clicking login button again")
             driver.wait_for_element(login_button)
-            driver.js_click(login_button)
+            driver.uc_click(login_button)
 
     def _fetch_reservations(self, driver: Driver) -> List[JSON]:
         """
