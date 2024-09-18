@@ -177,8 +177,8 @@ class WebDriver:
                 driver.add_cdp_listener("Network.requestWillBeSent", self._headers_listener)
 
             logger.debug("Loading Southwest check-in page (this may take a moment)")
-            driver.uc_open(BASE_URL)
-            time.sleep(7)
+            driver.uc_open_with_reconnect(BASE_URL, 3)
+            self._refresh_driver(driver)
             self._take_debug_screenshot(driver, "after_page_load.png")
             driver.wait_for_element("//*[@alt='Check in banner']")
             driver.uc_click("//*[@alt='Check in banner']")
@@ -379,6 +379,11 @@ class WebDriver:
             f"Successfully logged in to {account_monitor.first_name} "
             f"{account_monitor.last_name}'s account\n"
         )  # Don't log as it contains sensitive information
+
+    def _refresh_driver(self, driver: Driver, delay_before=1, delay_after=0.5) -> None:
+        time.sleep(delay_before)
+        driver.refresh()
+        time.sleep(delay_after)
 
     def _quit_driver(self, driver: Driver) -> None:
         driver.quit()
