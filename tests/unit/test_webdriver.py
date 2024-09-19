@@ -80,7 +80,7 @@ class TestWebDriver:
     def test_get_driver_returns_a_webdriver_with_one_request(self, mock_chrome: mock.Mock) -> None:
         driver = self.driver._get_driver()
         driver.add_cdp_listener.assert_called_once()
-        driver.open.assert_called_once()
+        driver.uc_open_with_reconnect.assert_called_once()
 
         assert mock_chrome.call_args.kwargs.get("driver_version") == "mlatest"
 
@@ -90,7 +90,7 @@ class TestWebDriver:
 
         driver = self.driver._get_driver()
         driver.add_cdp_listener.assert_called_once()
-        driver.open.assert_called_once()
+        driver.uc_open_with_reconnect.assert_called_once()
 
         assert mock_chrome.call_args.kwargs.get("driver_version") == "keep"
 
@@ -204,7 +204,7 @@ class TestWebDriver:
         )
         mocker.patch.object(mock_chrome, "is_element_visible", return_value=False)
         self.driver._click_login_button(mock_chrome)
-        mock_chrome.click.assert_called_once()
+        mock_chrome.uc_click.assert_called_once()
 
     def test_fetch_reservations_fetches_only_flight_reservations(
         self, mocker: MockerFixture
