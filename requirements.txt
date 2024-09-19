@@ -2,4 +2,5 @@ apprise==1.9.0
 ntplib==0.4.0
 pytz==2024.1  # Remove when this script only supports Python 3.9+
 requests==2.31.0
+user-agent==0.1.10
 seleniumbase>=4.30.3

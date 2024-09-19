@@ -187,7 +187,7 @@ class AccountMonitor(ReservationMonitor):
         # this scope
         return False
 
-    def _get_reservations(self, max_retries: int = 1) -> Tuple[List[Dict[str, Any]], bool]:
+    def _get_reservations(self, max_retries: int = 2) -> Tuple[List[Dict[str, Any]], bool]:
         """
         Attempts to retrieve a list of reservations and returns a tuple containing the list
         of reservations and a boolean indicating whether reservation scheduling should be skipped.
@@ -211,21 +211,29 @@ class AccountMonitor(ReservationMonitor):
                 return reservations, False
 
             except DriverTimeoutError:
-                logger.debug("Timeout while retrieving reservations during login. Retrying")
-                self.notification_handler.timeout_during_retrieval("account")
+                if attempt < max_retries:
+                    logger.debug("Timeout while retrieving reservations during login. Retrying")
+                else:
+                    logger.debug("Timeout persisted after retries. Skipping reservation retrieval")
+                    self.notification_handler.timeout_during_retrieval("account")
 
             except LoginError as err:
                 if err.status_code == TOO_MANY_REQUESTS_CODE:
-                    logger.debug("Encountered a Too Many Requests error while logging in. Retrying")
+                    if attempt < max_retries:
+                        logger.debug(
+                            "Encountered a Too Many Requests error while logging in. Retrying"
+                        )
+                    else:
+                        logger.debug(
+                            "Too Many Requests error persists. Skipping reservation retrieval"
+                        )
+                        self.notification_handler.too_many_requests_during_login()
                 else:
                     logger.debug("Error logging in. %s. Exiting", err)
                     self.notification_handler.failed_login(err)
                     sys.exit(1)
 
-        if attempt == max_retries:
-            logger.debug("Too Many Requests error persists. Skipping reservation retrieval")
-            self.notification_handler.too_many_requests_during_login()
-            return [], True
+        return [], True
 
     def _stop_monitoring(self) -> None:
         print(f"\nStopping monitoring for account with username {self.username}")

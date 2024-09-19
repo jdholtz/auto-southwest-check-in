@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 from sbvirtualdisplay import Display
 from seleniumbase import Driver
 from seleniumbase.fixtures import page_actions as seleniumbase_actions
+from user_agent import generate_user_agent
 
 from .log import LOGS_DIRECTORY, get_logger
 from .utils import DriverTimeoutError, LoginError, random_sleep_duration
@@ -136,11 +137,9 @@ class WebDriver:
 
     def _get_driver(self) -> Driver:
         browser_path = self.checkin_scheduler.reservation_monitor.config.browser_path
-
-        user_agent = "Mozilla/5.0 (Android 15; Mobile; rv:68.0) Gecko/68.0 Firefox/130.0"
-        if self.cached_data and self.cached_data.get("login_failed", True):
-            # Alternative user agent used if login fails
-            user_agent = "Mozilla/5.0 (Android 15; Mobile; rv:130.0) Gecko/130.0 Firefox/130.0"
+        user_agent = generate_user_agent(
+            os=("android"), navigator=("firefox"), device_type=("smartphone")
+        )
 
         # Create a temporary directory for Chrome profile
         temp_dir = tempfile.mkdtemp()
