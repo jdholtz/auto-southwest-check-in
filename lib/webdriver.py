@@ -5,7 +5,6 @@ import os
 import re
 import shutil
 import sys
-import tempfile
 import time
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
@@ -13,7 +12,6 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 from sbvirtualdisplay import Display
 from seleniumbase import Driver
 from seleniumbase.fixtures import page_actions as seleniumbase_actions
-from user_agent import generate_user_agent
 
 from .log import LOGS_DIRECTORY, get_logger
 from .utils import DriverTimeoutError, LoginError, random_sleep_duration
@@ -107,6 +105,7 @@ class WebDriver:
         Last, if the account name is not set, it will be set based on the response information.
         """
         driver = self._get_driver()
+        self._refresh_driver(driver)
         driver.add_cdp_listener("Network.responseReceived", self._login_listener)
 
         logger.debug("Logging into account to get a list of reservations and valid headers")
@@ -115,7 +114,6 @@ class WebDriver:
         seleniumbase_actions.wait_for_element_not_visible(driver, ".dimmer")
         self._take_debug_screenshot(driver, "pre_login.png")
 
-        driver.wait_for_element(".login-button--box")
         driver.uc_click(".login-button--box")
         driver.type('input[name="userNameOrAccountNumber"]', account_monitor.username)
         time.sleep(random_sleep_duration(1, 3))
@@ -137,12 +135,11 @@ class WebDriver:
 
     def _get_driver(self) -> Driver:
         browser_path = self.checkin_scheduler.reservation_monitor.config.browser_path
-        user_agent = generate_user_agent(
-            os=("android"), navigator=("firefox"), device_type=("smartphone")
-        )
 
-        # Create a temporary directory for Chrome profile
-        temp_dir = tempfile.mkdtemp()
+        user_agent = "Mozilla/5.0 (Android 15; Mobile; rv:68.0) Gecko/68.0 Firefox/130.0"
+        if self.cached_data and self.cached_data.get("login_failed", True):
+            # Alternative user agent used if login fails
+            user_agent = "Mozilla/5.0 (Android 15; Mobile; rv:130.0) Gecko/130.0 Firefox/130.0"
 
         headless = True
         headed = False
@@ -161,7 +158,6 @@ class WebDriver:
                 binary_location=browser_path,
                 driver_version=driver_version,
                 agent=user_agent,
-                user_data_dir=temp_dir,
                 page_load_strategy="none",
                 headless=headless,
                 headed=headed,
@@ -176,17 +172,15 @@ class WebDriver:
                 driver.add_cdp_listener("Network.requestWillBeSent", self._headers_listener)
 
             logger.debug("Loading Southwest check-in page (this may take a moment)")
-            driver.uc_open_with_reconnect(BASE_URL, 3)
-            self._refresh_driver(driver)
+            driver.uc_open_with_reconnect(BASE_URL, 2)
             self._take_debug_screenshot(driver, "after_page_load.png")
-            driver.wait_for_element("//*[@alt='Check in banner']")
-            driver.uc_click("//*[@alt='Check in banner']")
+            driver.uc_click("//*[@alt='Check in banner']", timeout=30)
 
             return driver
 
         finally:
             # Clean up the profile directory after use
-            shutil.rmtree(temp_dir, ignore_errors=True)
+            shutil.rmtree(driver.user_data_dir, ignore_errors=True)
 
     def _check_cached_headers(self) -> None:
         current_time = datetime.now()
@@ -286,7 +280,6 @@ class WebDriver:
             seleniumbase_actions.wait_for_element_not_visible(driver, login_button, timeout=5)
         except Exception:
             logger.debug("Login form failed to submit. Clicking login button again")
-            driver.wait_for_element(login_button)
             driver.uc_click(login_button)
 
     def _fetch_reservations(self, driver: Driver) -> List[JSON]:
@@ -379,7 +372,7 @@ class WebDriver:
             f"{account_monitor.last_name}'s account\n"
         )  # Don't log as it contains sensitive information
 
-    def _refresh_driver(self, driver: Driver, delay_before=1, delay_after=0.5) -> None:
+    def _refresh_driver(self, driver: Driver, delay_before=4, delay_after=0.5) -> None:
         time.sleep(delay_before)
         driver.refresh()
         time.sleep(delay_after)
