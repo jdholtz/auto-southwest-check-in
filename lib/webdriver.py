@@ -105,7 +105,6 @@ class WebDriver:
         Last, if the account name is not set, it will be set based on the response information.
         """
         driver = self._get_driver()
-        self._refresh_driver(driver)
         driver.add_cdp_listener("Network.responseReceived", self._login_listener)
 
         logger.debug("Logging into account to get a list of reservations and valid headers")
@@ -116,7 +115,6 @@ class WebDriver:
 
         driver.uc_click(".login-button--box")
         driver.type('input[name="userNameOrAccountNumber"]', account_monitor.username)
-        time.sleep(random_sleep_duration(1, 3))
 
         # Use quote_plus to workaround a x-www-form-urlencoded encoding bug on the mobile site
         driver.type('input[name="password"]', f"{account_monitor.password}\n")
@@ -136,10 +134,10 @@ class WebDriver:
     def _get_driver(self) -> Driver:
         browser_path = self.checkin_scheduler.reservation_monitor.config.browser_path
 
-        user_agent = "Mozilla/5.0 (Android 15; Mobile; rv:68.0) Gecko/68.0 Firefox/130.0"
+        user_agent = "Mozilla/5.0 (Android 13; Pixel 7 Pro; Nexus 5) Gecko/20100101 Firefox/117.0"
         if self.cached_data and self.cached_data.get("login_failed", True):
             # Alternative user agent used if login fails
-            user_agent = "Mozilla/5.0 (Android 15; Mobile; rv:130.0) Gecko/130.0 Firefox/130.0"
+            user_agent = "Mozilla/5.0 (Android 15; Mobile; rv:68.0) Gecko/68.0 Firefox/130.0"
 
         headless = True
         headed = False
@@ -173,6 +171,7 @@ class WebDriver:
 
             logger.debug("Loading Southwest check-in page (this may take a moment)")
             driver.uc_open_with_reconnect(BASE_URL, 2)
+            time.sleep(random_sleep_duration(2, 5))
             self._take_debug_screenshot(driver, "after_page_load.png")
             driver.uc_click("//*[@alt='Check in banner']", timeout=30)
 
@@ -229,22 +228,22 @@ class WebDriver:
             logger.debug("Upcoming trips response has been received")
             self.trips_request_id = data["params"]["requestId"]
 
-    def _wait_for_attribute(self, attribute: str) -> None:
-        logger.debug("Waiting for %s to be set (timeout: %d seconds)", attribute, WAIT_TIMEOUT_SECS)
+    def _wait_for_attribute(
+        self, attribute: str, timeout: Optional[int] = WAIT_TIMEOUT_SECS
+    ) -> None:
+        logger.debug("Waiting for %s to be set (timeout: %d seconds)", attribute, timeout)
         poll_interval = 0.5
 
-        attempts = 0
-        max_attempts = WAIT_TIMEOUT_SECS / poll_interval
-        while not getattr(self, attribute) and attempts < max_attempts:
+        max_attempts = int(timeout / poll_interval)
+        for _ in range(max_attempts):
+            if getattr(self, attribute):
+                logger.debug("%s set successfully", attribute)
+                return
             time.sleep(poll_interval)
-            attempts += 1
 
-        if attempts >= max_attempts:
-            timeout_err = DriverTimeoutError(f"Timeout waiting for the '{attribute}' attribute")
-            logger.debug(timeout_err)
-            raise timeout_err
-
-        logger.debug("%s set successfully", attribute)
+        timeout_err = DriverTimeoutError(f"Timeout waiting for the '{attribute}' attribute")
+        logger.debug(timeout_err)
+        raise timeout_err
 
     def _wait_for_login(self, driver: Driver, account_monitor: AccountMonitor) -> None:
         """
@@ -252,6 +251,7 @@ class WebDriver:
         Handles login errors, if necessary.
         """
         self._click_login_button(driver)
+        time.sleep(random_sleep_duration(1, 2))
         self._wait_for_attribute("login_request_id")
         login_response = self._get_response_body(driver, self.login_request_id)
 
@@ -371,11 +371,6 @@ class WebDriver:
             f"Successfully logged in to {account_monitor.first_name} "
             f"{account_monitor.last_name}'s account\n"
         )  # Don't log as it contains sensitive information
-
-    def _refresh_driver(self, driver: Driver, delay_before=4, delay_after=0.5) -> None:
-        time.sleep(delay_before)
-        driver.refresh()
-        time.sleep(delay_after)
 
     def _quit_driver(self, driver: Driver) -> None:
         driver.quit()
