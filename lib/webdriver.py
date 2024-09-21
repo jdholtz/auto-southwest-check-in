@@ -7,8 +7,17 @@ import sys
 import time
 from typing import TYPE_CHECKING, Any, Dict, List
 
-from seleniumbase import Driver
-from seleniumbase.fixtures import page_actions as seleniumbase_actions
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import (
+    ElementClickInterceptedException,
+    NoSuchElementException,
+    TimeoutException
+)
 
 from .log import LOGS_DIRECTORY, get_logger
 from .utils import DriverTimeoutError, LoginError, random_sleep_duration
@@ -71,7 +80,7 @@ class WebDriver:
 
         return False
 
-    def _take_debug_screenshot(self, driver: Driver, name: str) -> None:
+    def _take_debug_screenshot(self, driver: webdriver.Chrome, name: str) -> None:
         """Take a screenshot of the browser and save the image as 'name' in LOGS_DIRECTORY"""
         if self.debug_screenshots:
             driver.save_screenshot(os.path.join(LOGS_DIRECTORY, name))
@@ -97,20 +106,20 @@ class WebDriver:
         Last, if the account name is not set, it will be set based on the response information.
         """
         driver = self._get_driver()
-        driver.add_cdp_listener("Network.responseReceived", self._login_listener)
+        driver.execute_cdp_cmd("Network.responseReceived", self._login_listener)
 
         logger.debug("Logging into account to get a list of reservations and valid headers")
 
         # Log in to retrieve the account's reservations and needed headers for later requests
-        seleniumbase_actions.wait_for_element_not_visible(driver, ".dimmer")
+        self._wait_for_element_not_visible(driver, ".dimmer")
         self._take_debug_screenshot(driver, "pre_login.png")
 
-        driver.click(".login-button--box")
+        driver.find_element(By.CSS_SELECTOR, ".login-button--box").click()
         time.sleep(random_sleep_duration(1, 5))
-        driver.type('input[name="userNameOrAccountNumber"]', account_monitor.username)
+        driver.find_element(By.CSS_SELECTOR, 'input[name="userNameOrAccountNumber"]').send_keys(account_monitor.username)
 
         # Use quote_plus to workaround a x-www-form-urlencoded encoding bug on the mobile site
-        driver.type('input[name="password"]', f"{account_monitor.password}\n")
+        driver.find_element(By.CSS_SELECTOR, 'input[name="password"]').send_keys(f"{account_monitor.password}\n")
 
         # Wait for the necessary information to be set
         self._wait_for_attribute("headers_set")
@@ -124,9 +133,18 @@ class WebDriver:
         driver.quit()
         return reservations
 
-    def _get_driver(self) -> Driver:
+    def _get_driver(self) -> webdriver.Chrome:
         logger.debug("Starting webdriver for current session")
-        browser_path = self.checkin_scheduler.reservation_monitor.config.browser_path
+
+        # Detect if running on a Raspberry Pi
+        if self.is_raspberry_pi():
+            logger.debug("Raspberry Pi detected. Using ARM-compatible Chromedriver.")
+            chromedriver_path = "/usr/lib/chromium-browser/chromedriver"
+            browser_path = "/usr/bin/chromium-browser"
+        else:
+            logger.debug("Not running on Raspberry Pi. Using default Chromedriver.")
+            chromedriver_path = "/usr/lib/chromium-browser/chromedriver"
+            browser_path = "chromium"
 
         driver_version = "mlatest"
         if os.environ.get("AUTO_SOUTHWEST_CHECK_IN_DOCKER") == "1":
@@ -134,23 +152,108 @@ class WebDriver:
             # is not downloaded as the Docker image already has the correct driver
             driver_version = "keep"
 
-        driver = Driver(
-            binary_location=browser_path,
-            driver_version=driver_version,
-            headless=True,
-            uc_cdp_events=True,
-            undetectable=True,
-            is_mobile=True,
-        )
-        logger.debug("Using browser version: %s", driver.caps["browserVersion"])
+        # Configure Chrome options
+        options = Options()
+        options.binary_location = browser_path
+        options.add_argument("--headless")  # Run headless for non-GUI environments
+        options.add_argument("--disable-gpu")  # Disable GPU acceleration in headless mode
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")  # Overcome limited resource problems
+        options.add_argument("--window-size=1920,1080")  # Set window size to avoid element overlap
+        options.add_argument("--disable-extensions")
+        options.add_argument("--disable-popup-blocking")
+        options.add_argument("--disable-infobars")
+        options.add_argument("--start-maximized")
 
-        driver.add_cdp_listener("Network.requestWillBeSent", self._headers_listener)
+        # Initialize Selenium Service
+        service = Service(executable_path=chromedriver_path)
+
+        # Initialize Chrome WebDriver
+        try:
+            driver = webdriver.Chrome(service=service, options=options)
+            logger.debug("Using browser version: %s", driver.capabilities["browserVersion"])
+        except Exception as e:
+            logger.error(f"Failed to initialize Chrome WebDriver: {e}")
+            raise
 
         logger.debug("Loading Southwest home page (this may take a moment)")
-        driver.open(BASE_URL)
+        driver.get(BASE_URL)
         self._take_debug_screenshot(driver, "after_page_load.png")
-        driver.click("(//div[@data-qa='placement-link'])[2]")
+
+        # Handle any pop-ups that may appear
+        self._handle_popup(driver)
+
+        # Proceed to click the placement link with explicit wait
+        try:
+            placement_link = WebDriverWait(driver, 10).until(
+                EC.element_to_be_clickable((By.XPATH, "(//div[@data-qa='placement-link'])[2]"))
+            )
+            placement_link.click()
+            logger.debug("Clicked on the placement link successfully.")
+        except ElementClickInterceptedException:
+            logger.warning("Click intercepted. Attempting to click using JavaScript.")
+            self._click_element_with_js(driver, placement_link)
+        except Exception as e:
+            logger.error(f"Failed to click on the placement link: {e}")
+            self._take_debug_screenshot(driver, "click_error.png")
+            driver.quit()
+            raise
+
         return driver
+
+    def _handle_popup(self, driver: webdriver.Chrome) -> None:
+        """
+        Detects and closes the pop-up if it appears.
+        """
+        try:
+            # Wait for the pop-up to appear (if it does)
+            popup = WebDriverWait(driver, 5).until(
+                EC.visibility_of_element_located((By.CSS_SELECTOR, "div.popup-head"))
+            )
+            logger.debug("Pop-up detected. Attempting to close it.")
+
+            # Locate the close button within the pop-up
+            close_button = popup.find_element(By.CSS_SELECTOR, "button.close-btn")  # Update selector as needed
+
+            # Click the close button
+            close_button.click()
+            logger.debug("Pop-up closed successfully.")
+
+            # Optionally, wait until the pop-up is no longer visible
+            WebDriverWait(driver, 5).until(
+                EC.invisibility_of_element_located((By.CSS_SELECTOR, "div.popup-head"))
+            )
+            logger.debug("Confirmed that the pop-up is no longer visible.")
+        except (NoSuchElementException, TimeoutException) as e:
+            logger.debug("No pop-up detected or failed to close pop-up: %s", e)
+            # If no pop-up is detected, continue without raising an error
+        except Exception as e:
+            logger.error("An unexpected error occurred while handling pop-up: %s", e)
+            self._take_debug_screenshot(driver, "popup_error.png")
+            driver.quit()
+            raise
+
+    def _click_element_with_js(self, driver: webdriver.Chrome, element: webdriver.remote.webelement.WebElement) -> None:
+        """
+        Clicks an element using JavaScript as a fallback.
+        """
+        try:
+            driver.execute_script("arguments[0].click();", element)
+            logger.debug("Clicked on the element using JavaScript.")
+        except Exception as e:
+            logger.error(f"Failed to click on the element using JavaScript: {e}")
+            self._take_debug_screenshot(driver, "js_click_error.png")
+            driver.quit()
+            raise
+
+    def is_raspberry_pi(self) -> bool:
+        """Detect if the system is a Raspberry Pi by checking /proc/cpuinfo."""
+        try:
+            with open("/proc/cpuinfo", "r") as f:
+                info = f.read().lower()
+            return "raspberry pi" in info
+        except Exception:
+            return False
 
     def _headers_listener(self, data: JSON) -> None:
         """
@@ -181,7 +284,7 @@ class WebDriver:
         poll_interval = 0.5
 
         attempts = 0
-        max_attempts = WAIT_TIMEOUT_SECS / poll_interval
+        max_attempts = int(WAIT_TIMEOUT_SECS / poll_interval)
         while not getattr(self, attribute) and attempts < max_attempts:
             time.sleep(poll_interval)
             attempts += 1
@@ -193,7 +296,7 @@ class WebDriver:
 
         logger.debug("%s set successfully", attribute)
 
-    def _wait_for_login(self, driver: Driver, account_monitor: AccountMonitor) -> None:
+    def _wait_for_login(self, driver: webdriver.Chrome, account_monitor: AccountMonitor) -> None:
         """
         Waits for the login request to go through and sets the account name appropriately.
         Handles login errors, if necessary.
@@ -210,25 +313,31 @@ class WebDriver:
 
         self._set_account_name(account_monitor, login_response)
 
-    def _click_login_button(self, driver: Driver) -> None:
+    def _click_login_button(self, driver: webdriver.Chrome) -> None:
         """
         In some cases, the submit action on the login form may fail. Therefore, try clicking
         again, if necessary.
         """
-        seleniumbase_actions.wait_for_element_not_visible(driver, ".dimmer")
-        if driver.is_element_visible("div.popup"):
-            # Don't attempt to click the login button again if the submission form went through,
-            # yet there was an error
-            return
+        self._wait_for_element_not_visible(driver, ".dimmer")
+        try:
+            popup = driver.find_element(By.CSS_SELECTOR, "div.popup")
+            if popup.is_displayed():
+                # Don't attempt to click the login button again if the submission form went through,
+                # yet there was an error
+                return
+        except NoSuchElementException:
+            pass
 
         login_button = "button#login-btn"
         try:
-            seleniumbase_actions.wait_for_element_not_visible(driver, login_button, timeout=5)
+            WebDriverWait(driver, 5).until(
+                EC.invisibility_of_element_located((By.CSS_SELECTOR, login_button))
+            )
         except Exception:
             logger.debug("Login form failed to submit. Clicking login button again")
-            driver.click(login_button)
+            driver.find_element(By.CSS_SELECTOR, login_button).click()
 
-    def _fetch_reservations(self, driver: Driver) -> List[JSON]:
+    def _fetch_reservations(self, driver: webdriver.Chrome) -> List[JSON]:
         """
         Waits for the reservations request to go through and returns only reservations
         that are flights.
@@ -238,7 +347,7 @@ class WebDriver:
         reservations = trips_response["upcomingTripsPage"]
         return [reservation for reservation in reservations if reservation["tripType"] == "FLIGHT"]
 
-    def _get_response_body(self, driver: Driver, request_id: str) -> JSON:
+    def _get_response_body(self, driver: webdriver.Chrome, request_id: str) -> JSON:
         response = driver.execute_cdp_cmd("Network.getResponseBody", {"requestId": request_id})
         return json.loads(response["body"])
 
@@ -273,3 +382,9 @@ class WebDriver:
             f"Successfully logged in to {account_monitor.first_name} "
             f"{account_monitor.last_name}'s account\n"
         )  # Don't log as it contains sensitive information
+
+    def _wait_for_element_not_visible(self, driver: webdriver.Chrome, css_selector: str) -> None:
+        """Waits until the element specified by the CSS selector is not visible."""
+        WebDriverWait(driver, WAIT_TIMEOUT_SECS).until(
+            EC.invisibility_of_element_located((By.CSS_SELECTOR, css_selector))
+        )
