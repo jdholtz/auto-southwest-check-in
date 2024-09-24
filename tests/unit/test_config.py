@@ -6,7 +6,7 @@ import pytest
 from pytest_mock import MockerFixture
 
 from lib.config import AccountConfig, Config, ConfigError, GlobalConfig, ReservationConfig
-from lib.utils import NotificationLevel
+from lib.utils import CheckFaresOption, NotificationLevel
 
 JSON = Dict[str, Any]
 
@@ -88,7 +88,7 @@ class TestConfig:
         test_config = Config()
         test_config._parse_config(
             {
-                "check_fares": False,
+                "check_fares": CheckFaresOption.SAME_DAY_NONSTOP,
                 "healthchecks_url": "test_healthchecks",
                 "notification_24_hour_time": False,
                 "notification_level": 3,
@@ -97,7 +97,7 @@ class TestConfig:
             }
         )
 
-        assert test_config.check_fares is False
+        assert test_config.check_fares == CheckFaresOption.SAME_DAY_NONSTOP
         assert test_config.healthchecks_url == "test_healthchecks"
         assert test_config.notification_24_hour_time is False
         assert test_config.notification_level == NotificationLevel.ERROR
@@ -197,12 +197,18 @@ class TestGlobalConfig:
         with pytest.raises(ConfigError):
             test_config._read_config()
 
-    def test_read_env_vars_check_fares_successful(self, mocker: MockerFixture) -> None:
+    def test_read_env_vars_check_fares_truthy_value(self, mocker: MockerFixture) -> None:
         mocker.patch.dict("os.environ", {"AUTO_SOUTHWEST_CHECK_IN_CHECK_FARES": "true"})
         test_config = GlobalConfig()
         config_content = test_config._read_env_vars({})
 
         assert config_content == {"check_fares": True}
+
+    def test_read_env_vars_check_fares_string(self, mocker: MockerFixture) -> None:
+        mocker.patch.dict("os.environ", {"AUTO_SOUTHWEST_CHECK_IN_CHECK_FARES": "same_day"})
+        test_config = GlobalConfig()
+
+        assert test_config._read_env_vars({}) == {"check_fares": "same_day"}
 
     def test_read_env_vars_check_fares_override_json_config(self, mocker: MockerFixture) -> None:
         mocker.patch.dict("os.environ", {"AUTO_SOUTHWEST_CHECK_IN_CHECK_FARES": "true"})
@@ -211,12 +217,6 @@ class TestGlobalConfig:
         config_content = test_config._read_env_vars(base_config)
 
         assert config_content == {"check_fares": True}
-
-    def test_read_env_vars_check_fares_invalid(self, mocker: MockerFixture) -> None:
-        mocker.patch.dict("os.environ", {"AUTO_SOUTHWEST_CHECK_IN_CHECK_FARES": "invalid"})
-        test_config = GlobalConfig()
-        with pytest.raises(ConfigError):
-            test_config._read_env_vars({})
 
     def test_read_env_vars_notification_24_hr_time_successful(self, mocker: MockerFixture) -> None:
         mocker.patch.dict(
@@ -451,7 +451,7 @@ class TestGlobalConfig:
         )
 
         assert test_config.browser_path == "test/browser_path"
-        assert test_config.check_fares is False, "Config._parse_config() was never called"
+        assert test_config.check_fares == CheckFaresOption.NO
         mock_account_config.assert_called_once_with([])
         mock_reservation_config.assert_called_once_with([])
 
@@ -485,7 +485,7 @@ class TestAccountConfig:
         test_config = AccountConfig()
         test_config._parse_config({"username": "user", "password": "pass", "check_fares": False})
 
-        assert test_config.check_fares is False, "Config._parse_config() was never called"
+        assert test_config.check_fares == CheckFaresOption.NO
         assert test_config.username == "user"
         assert test_config.password == "pass"
 
@@ -517,7 +517,7 @@ class TestReservationConfig:
         }
         test_config._parse_config(reservation_config)
 
-        assert test_config.check_fares is False, "Config._parse_config() was never called"
+        assert test_config.check_fares == CheckFaresOption.NO
         assert test_config.confirmation_number == "num"
         assert test_config.first_name == "first"
         assert test_config.last_name == "last"

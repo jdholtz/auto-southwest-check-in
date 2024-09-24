@@ -9,7 +9,7 @@ Auto-Southwest Check-In supports both global configuration and account/reservati
 reservation-specific configurations).
 
 ## Table of Contents
-- [Fare Check](#fare-check)
+- [Check Fares](#check-fares)
 - [Notifications](#notifications)
     * [Notification URLS](#notification-urls)
     * [Notification Level](#notification-level)
@@ -22,21 +22,27 @@ reservation-specific configurations).
     * [Reservations](#reservations)
 - [Healthchecks URL](#healthchecks-url)
 
-## Fare Check
+## Check Fares
 Default: true \
-Type: Boolean \
+Type: Boolean or String \
 Environment Variable: `AUTO_SOUTHWEST_CHECK_IN_CHECK_FARES`
 > Using the environment variable will override the applicable setting in `config.json`.
 
-In addition to automatically checking in, check for price drops on an interval
+In addition to automatically checking in, flights can be automatically checked for price drops on an interval
 (see [Retrieval Interval](#retrieval-interval)). If a lower fare is found, the user will be notified.
 
 **Note**: Companion passes are not supported for fare checking.
 ```json
 {
-    "check_fares": true
+    "check_fares": "<value>"
 }
 ```
+
+### Check Fares Values
+- `false` or `"no"`: Do not check for lower fares
+- `true` or `"same_flight"`: Check for lower fares on the same flight
+- `"same_day_nonstop"`: Check for lower fares on all nonstop flights on the same day as the flight
+- `"same_day"`: Check for lower fares on all flights on the same day as the flight
 
 ## Notifications
 ### Notification URLs
@@ -179,7 +185,7 @@ and/or not provide reservation information as arguments.
 ### Account and Reservation-specific configuration
 Setting specific configuration values for an account or reservation allows you to fully customize how you want them to be
 monitored by the script. Here is a list of configuration values that can be applied to an individual account or reservation:
-- [Fare Check](#fare-check)
+- [Check Fares](#check-fares)
 - [Healthchecks URL](#healthchecks-url)
 - [Notification URLS](#notification-urls)
 - [Notification Level](#notification-level)

@@ -11,7 +11,13 @@ from lib.config import AccountConfig, ReservationConfig
 from lib.fare_checker import FareChecker
 from lib.notification_handler import NotificationHandler
 from lib.reservation_monitor import TOO_MANY_REQUESTS_CODE, AccountMonitor, ReservationMonitor
-from lib.utils import DriverTimeoutError, FlightChangeError, LoginError, RequestError
+from lib.utils import (
+    CheckFaresOption,
+    DriverTimeoutError,
+    FlightChangeError,
+    LoginError,
+    RequestError,
+)
 from lib.webdriver import WebDriver
 
 # This needs to be accessed to be tested
@@ -30,7 +36,7 @@ def mock_lock(mocker: MockerFixture) -> None:
 class TestReservationMonitor:
     @pytest.fixture(autouse=True)
     def _set_up_monitor(self, mock_lock: mock.Mock, mocker: MockerFixture) -> None:
-        # pylint: disable=attribute-defined-outside-init
+        # pylint: disable-next=attribute-defined-outside-init
         self.monitor = ReservationMonitor(ReservationConfig(), mock_lock)
         mocker.patch(
             "lib.reservation_monitor.get_current_time", return_value=datetime(1999, 12, 31)
@@ -153,7 +159,7 @@ class TestReservationMonitor:
     ) -> None:
         mock_fare_checker = mocker.patch("lib.reservation_monitor.FareChecker")
 
-        self.monitor.config.check_fares = False
+        self.monitor.config.check_fares = CheckFaresOption.NO
         self.monitor._check_flight_fares()
 
         mock_fare_checker.assert_not_called()
@@ -162,7 +168,7 @@ class TestReservationMonitor:
         test_flight = mocker.patch("lib.checkin_handler.Flight")
         mock_check_flight_price = mocker.patch.object(FareChecker, "check_flight_price")
 
-        self.monitor.config.check_fares = True
+        self.monitor.config.check_fares = CheckFaresOption.SAME_FLIGHT
         self.monitor.checkin_scheduler.flights = [test_flight, test_flight]
         self.monitor._check_flight_fares()
 
@@ -177,7 +183,7 @@ class TestReservationMonitor:
             FareChecker, "check_flight_price", side_effect=[None, exception]
         )
 
-        self.monitor.config.check_fares = True
+        self.monitor.config.check_fares = CheckFaresOption.SAME_DAY
         self.monitor.checkin_scheduler.flights = [test_flight, test_flight]
         self.monitor._check_flight_fares()
 
@@ -215,7 +221,7 @@ class TestReservationMonitor:
 class TestAccountMonitor:
     @pytest.fixture(autouse=True)
     def _set_up_monitor(self, mock_lock: mock.Mock, mocker: MockerFixture) -> None:
-        # pylint: disable=attribute-defined-outside-init
+        # pylint: disable-next=attribute-defined-outside-init
         self.monitor = AccountMonitor(AccountConfig(), mock_lock)
         mocker.patch(
             "lib.reservation_monitor.get_current_time", return_value=datetime(1999, 12, 31)

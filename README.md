@@ -1,7 +1,7 @@
 ## Auto-Southwest Check-In
 A Python script that automatically checks you in to your Southwest flight. Additionally,
 the script can notify you if the price of your flight drops before departure
-(see [Fare Check](CONFIGURATION.md#fare-check)).
+(see [Check Fares](CONFIGURATION.md#check-fares)).
 
 This script can also log in to your Southwest account and automatically schedule check-ins as
 flights are scheduled.

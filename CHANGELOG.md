@@ -4,6 +4,14 @@ If there is no "Upgrading" header for that version, no post-upgrade actions need
 
 
 ## Upcoming
+### New Features
+- Fare drops can now be checked for all flights on the same day or all nonstop flights on the same day
+([#303](https://github.com/jdholtz/auto-southwest-check-in/pulls/303))
+    - The following values in your `check_fares` configuration will enable this feature
+        - `same_day` will check all flights on the same day
+        - `same_day_nonstop` will check all nonstop flights on the same day
+    - Detailed information can be found in the [check_fares documentation](CONFIGURATION.md#check-fares)
+
 ### Improvements
 - Potentially speed up the check-in process
     - Check-ins now start exactly 24 hours before a flight (instead of 24 hours and 5 seconds)

@@ -28,7 +28,7 @@ class TestWebDriver:
     def _set_up_webdriver(self, mocker: MockerFixture) -> None:
         mock_checkin_scheduler = mocker.patch("lib.checkin_scheduler.CheckInScheduler")
         mock_checkin_scheduler.headers = {}
-        # pylint: disable=attribute-defined-outside-init
+        # pylint: disable-next=attribute-defined-outside-init
         self.driver = WebDriver(mock_checkin_scheduler)
 
     @pytest.mark.parametrize(
