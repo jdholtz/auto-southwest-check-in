@@ -146,18 +146,20 @@ class CheckInScheduler:
 
         # Copy the list because it can potentially change inside the loop
         for flight in self.flights[:]:
-            if flight not in flights:
-                flight_idx = self.flights.index(flight)
-                flight_time = flight.get_display_time(twenty_four_hr_time)
-                print(
-                    f"Flight from {flight.departure_airport} to {flight.destination_airport} on "
-                    f"{flight_time} is no longer scheduled. Stopping its check-in\n"
-                )  # Don't log as it has sensitive information
+            if flight in flights:
+                continue
 
-                self.checkin_handlers[flight_idx].stop_check_in()
+            flight_idx = self.flights.index(flight)
+            flight_time = flight.get_display_time(twenty_four_hr_time)
+            print(
+                f"Flight from {flight.departure_airport} to {flight.destination_airport} on "
+                f"{flight_time} is no longer scheduled. Stopping its check-in\n"
+            )  # Don't log as it has sensitive information
 
-                self.checkin_handlers.pop(flight_idx)
-                self.flights.pop(flight_idx)
+            self.checkin_handlers[flight_idx].stop_check_in()
+
+            self.checkin_handlers.pop(flight_idx)
+            self.flights.pop(flight_idx)
 
         logger.debug(
             "Successfully removed old flights. %d flights are now scheduled", len(self.flights)
