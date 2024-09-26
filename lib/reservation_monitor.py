@@ -13,6 +13,7 @@ from .utils import DriverTimeoutError, FlightChangeError, LoginError, RequestErr
 from .webdriver import WebDriver
 
 TOO_MANY_REQUESTS_CODE = 429
+MONITOR_WAIT_TIME = 20
 
 logger = get_logger(__name__)
 
@@ -33,11 +34,20 @@ class ReservationMonitor:
         self.lock = lock
         self.notification_handler = NotificationHandler(self)
         self.checkin_scheduler = CheckInScheduler(self)
+        self.monitor_event = multiprocessing.Event()
 
-    def start(self) -> None:
-        """Start each reservation monitor in a separate process to run them in parallel"""
+    def start(self, is_last_account: bool) -> None:
+        """
+        Start each reservation monitor in a separate process to run them in parallel,
+        waiting 20 seconds between the launches of each monitor, except for the last one.
+        """
         process = multiprocessing.Process(target=self.monitor)
         process.start()
+        self.monitor_event.wait()
+
+        if not is_last_account:
+            logger.debug(f"Waiting {MONITOR_WAIT_TIME} seconds to start next monitoring account")
+            time.sleep(MONITOR_WAIT_TIME)
 
     def monitor(self) -> None:
         try:
@@ -142,6 +152,7 @@ class ReservationMonitor:
         time_taken = (current_time - previous_time).total_seconds()
         sleep_time = self.config.retrieval_interval - time_taken
         logger.debug("Sleeping for %d seconds", sleep_time)
+        self.monitor_event.set()
         time.sleep(sleep_time)
 
     def _stop_checkins(self) -> None:
@@ -198,7 +209,7 @@ class AccountMonitor(ReservationMonitor):
         """
         logger.debug("Retrieving reservations for account")
 
-        for attempt in range(max_retries + 1):
+        for attempt in range(max_retries):
             webdriver = WebDriver(self.checkin_scheduler)
 
             try:

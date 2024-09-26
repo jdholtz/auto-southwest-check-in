@@ -52,9 +52,10 @@ def pluralize(word: str, count: int) -> str:
 
 
 def set_up_accounts(config: GlobalConfig, lock: multiprocessing.Lock) -> None:
-    for account in config.accounts:
+    for i, account in enumerate(config.accounts):
+        is_last_account = i == len(config.accounts) - 1
         account_monitor = AccountMonitor(account, lock)
-        account_monitor.start()
+        account_monitor.start(is_last_account)
 
 
 def set_up_reservations(config: GlobalConfig, lock: multiprocessing.Lock) -> None:

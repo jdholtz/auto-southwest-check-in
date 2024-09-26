@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from sbvirtualdisplay import Display
 from seleniumbase import Driver
+from seleniumbase.common.exceptions import WebDriverException
 from seleniumbase.fixtures import page_actions as seleniumbase_actions
 
 from .log import LOGS_DIRECTORY, get_logger
@@ -134,21 +135,20 @@ class WebDriver:
     def _get_driver(self) -> Driver:
         browser_path = self.checkin_scheduler.reservation_monitor.config.browser_path
 
-        user_agent = "Mozilla/5.0 (Android 13; Pixel 7 Pro; Nexus 5) Gecko/20100101 Firefox/117.0"
+        # This environment variable is set in the Docker image
+        is_docker = os.environ.get("AUTO_SOUTHWEST_CHECK_IN_DOCKER") == "1"
+
+        driver_version = "mlatest"
+        if is_docker:
+            self._start_display()
+            # Make sure a new driver is not downloaded as the Docker image
+            # already has the correct driver
+            driver_version = "keep"
+
+        user_agent = "Mozilla/5.0 (Android 12; Mobile; rv:109.0) Gecko/109.0 Firefox/109.0"
         if self.cached_data and self.cached_data.get("login_failed", True):
             # Alternative user agent used if login fails
             user_agent = "Mozilla/5.0 (Android 15; Mobile; rv:68.0) Gecko/68.0 Firefox/130.0"
-
-        headless = True
-        headed = False
-        driver_version = "mlatest"
-        if os.environ.get("AUTO_SOUTHWEST_CHECK_IN_DOCKER") == "1":
-            # This environment variable is set in the Docker image. Makes sure a new driver
-            # is not downloaded as the Docker image already has the correct driver
-            driver_version = "keep"
-            headless = False
-            headed = True
-            self._start_display()
 
         logger.debug("Starting webdriver for current session")
         try:
@@ -157,8 +157,8 @@ class WebDriver:
                 driver_version=driver_version,
                 agent=user_agent,
                 page_load_strategy="none",
-                headless=headless,
-                headed=headed,
+                headed=is_docker,
+                headless=not is_docker,
                 uc_cdp_events=True,
                 undetectable=True,
                 incognito=True,
@@ -177,9 +177,12 @@ class WebDriver:
 
             return driver
 
+        except WebDriverException as e:
+            logger.error(f"WebDriver initialization failed: {str(e)}")
+            return None
         finally:
-            # Clean up the profile directory after use
-            shutil.rmtree(driver.user_data_dir, ignore_errors=True)
+            if "driver" in locals() and driver is not None:
+                shutil.rmtree(driver.user_data_dir, ignore_errors=True)
 
     def _check_cached_headers(self) -> None:
         current_time = datetime.now()
@@ -228,21 +231,22 @@ class WebDriver:
             logger.debug("Upcoming trips response has been received")
             self.trips_request_id = data["params"]["requestId"]
 
-    def _wait_for_attribute(
-        self, attribute: str, timeout: Optional[int] = WAIT_TIMEOUT_SECS
-    ) -> None:
-        logger.debug("Waiting for %s to be set (timeout: %d seconds)", attribute, timeout)
-        poll_interval = 0.5
+    def _wait_for_attribute(self, attribute: str) -> None:
+        logger.debug(
+            "Waiting for '%s' to be set (timeout: %d seconds)", attribute, WAIT_TIMEOUT_SECS
+        )
 
-        max_attempts = int(timeout / poll_interval)
-        for _ in range(max_attempts):
-            if getattr(self, attribute):
-                logger.debug("%s set successfully", attribute)
+        end_time = time.time() + WAIT_TIMEOUT_SECS
+        while time.time() < end_time:
+            if getattr(self, attribute, None):
+                logger.debug("'%s' set successfully", attribute)
                 return
-            time.sleep(poll_interval)
+            time.sleep(0.5)
 
-        timeout_err = DriverTimeoutError(f"Timeout waiting for the '{attribute}' attribute")
-        logger.debug(timeout_err)
+        timeout_err = DriverTimeoutError(
+            f"Timeout waiting for the '{attribute}' attribute after {WAIT_TIMEOUT_SECS} seconds"
+        )
+        logger.debug("%s: current value is '%s'", timeout_err, getattr(self, attribute, None))
         raise timeout_err
 
     def _wait_for_login(self, driver: Driver, account_monitor: AccountMonitor) -> None:
@@ -332,12 +336,8 @@ class WebDriver:
         Read existing cached data from JSON file or update it with new values.
         """
         if os.path.exists(self.cached_headers_path):
-            try:
-                with open(self.cached_headers_path, "r") as file:
-                    cached_data = json.load(file)
-            except json.JSONDecodeError:
-                logger.error(f"Error decoding JSON from {self.cached_headers_path}.")
-                cached_data = {}
+            with open(self.cached_headers_path, "r") as file:
+                cached_data = json.load(file)
         else:
             cached_data = {}
 
@@ -350,11 +350,8 @@ class WebDriver:
             cached_data["headers"] = headers
 
         # Write the updated data back to the JSON file
-        try:
-            with open(self.cached_headers_path, "w") as file:
-                json.dump(cached_data, file, indent=4)
-        except IOError as e:
-            logger.error(f"Failed to write/update cached headers: {e}")
+        with open(self.cached_headers_path, "w") as file:
+            json.dump(cached_data, file, indent=4)
 
         return cached_data
 
