@@ -53,15 +53,16 @@ def pluralize(word: str, count: int) -> str:
 
 def set_up_accounts(config: GlobalConfig, lock: multiprocessing.Lock) -> None:
     for i, account in enumerate(config.accounts):
-        is_last_account = i == len(config.accounts) - 1
+        is_last_monitor = i == len(config.accounts) - 1
         account_monitor = AccountMonitor(account, lock)
-        account_monitor.start(is_last_account)
+        account_monitor.start(is_last_monitor)
 
 
 def set_up_reservations(config: GlobalConfig, lock: multiprocessing.Lock) -> None:
-    for reservation in config.reservations:
+    for i, reservation in enumerate(config.reservations):
+        is_last_monitor = i == len(config.reservations) - 1
         reservation_monitor = ReservationMonitor(reservation, lock)
-        reservation_monitor.start()
+        reservation_monitor.start(is_last_monitor)
 
 
 def set_up_check_in(arguments: List[str]) -> None:

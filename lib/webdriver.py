@@ -5,6 +5,7 @@ import os
 import re
 import shutil
 import sys
+import tempfile
 import time
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
@@ -29,7 +30,7 @@ HEADERS_URL = BASE_URL + "/api/chase/v2/chase/offers"
 # Southwest's code when logging in with the incorrect information
 INVALID_CREDENTIALS_CODE = 400518024
 
-WAIT_TIMEOUT_SECS = 180
+WAIT_TIMEOUT_SECS = 90
 
 JSON = Dict[str, Any]
 
@@ -150,13 +151,16 @@ class WebDriver:
             # Alternative user agent used if login fails
             user_agent = "Mozilla/5.0 (Android 15; Mobile; rv:68.0) Gecko/68.0 Firefox/130.0"
 
+        # Create a new temporary directory for Chrome profile
+        temp_dir = tempfile.mkdtemp()
+
         logger.debug("Starting webdriver for current session")
         try:
             driver = Driver(
                 binary_location=browser_path,
                 driver_version=driver_version,
                 agent=user_agent,
-                page_load_strategy="none",
+                user_data_dir=temp_dir,
                 headed=is_docker,
                 headless=not is_docker,
                 uc_cdp_events=True,
@@ -170,10 +174,11 @@ class WebDriver:
                 driver.add_cdp_listener("Network.requestWillBeSent", self._headers_listener)
 
             logger.debug("Loading Southwest check-in page (this may take a moment)")
-            driver.uc_open_with_reconnect(BASE_URL, 2)
+            driver.uc_open(BASE_URL)
             time.sleep(random_sleep_duration(2, 5))
             self._take_debug_screenshot(driver, "after_page_load.png")
             driver.uc_click("//*[@alt='Check in banner']", timeout=30)
+            time.sleep(random_sleep_duration(1, 2))
 
             return driver
 
@@ -182,7 +187,7 @@ class WebDriver:
             return None
         finally:
             if "driver" in locals() and driver is not None:
-                shutil.rmtree(driver.user_data_dir, ignore_errors=True)
+                shutil.rmtree(temp_dir, ignore_errors=True)
 
     def _check_cached_headers(self) -> None:
         current_time = datetime.now()
@@ -235,7 +240,6 @@ class WebDriver:
         logger.debug(
             "Waiting for '%s' to be set (timeout: %d seconds)", attribute, WAIT_TIMEOUT_SECS
         )
-
         end_time = time.time() + WAIT_TIMEOUT_SECS
         while time.time() < end_time:
             if getattr(self, attribute, None):

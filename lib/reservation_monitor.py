@@ -36,7 +36,7 @@ class ReservationMonitor:
         self.checkin_scheduler = CheckInScheduler(self)
         self.monitor_event = multiprocessing.Event()
 
-    def start(self, is_last_account: bool) -> None:
+    def start(self, is_last_monitor: bool) -> None:
         """
         Start each reservation monitor in a separate process to run them in parallel,
         waiting 20 seconds between the launches of each monitor, except for the last one.
@@ -45,8 +45,8 @@ class ReservationMonitor:
         process.start()
         self.monitor_event.wait()
 
-        if not is_last_account:
-            logger.debug(f"Waiting {MONITOR_WAIT_TIME} seconds to start next monitoring account")
+        if not is_last_monitor:
+            logger.debug(f"Waiting {MONITOR_WAIT_TIME} seconds to start next monitor")
             time.sleep(MONITOR_WAIT_TIME)
 
     def monitor(self) -> None:
