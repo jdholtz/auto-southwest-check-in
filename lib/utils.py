@@ -60,7 +60,8 @@ def make_request(
     attempts = 0
     while attempts < max_attempts:
         attempts += 1
-        if method == "POST":
+
+        if method.upper() == "POST":
             response = requests.post(url, headers=headers, json=info)
         else:
             response = requests.get(url, headers=headers, params=info)
@@ -69,9 +70,9 @@ def make_request(
             logger.debug("Successfully made request after %d attempts", attempts)
             return response.json()
 
-        # Request did not succeed
+        # Handle unsuccessful responses
         response_body = response.content.decode()
-        error_msg = response.reason + " " + str(response.status_code)
+        error_msg = f"{response.reason} ({response.status_code})"
         error = RequestError(error_msg, response_body)
 
         try:
