@@ -13,7 +13,7 @@ from .utils import DriverTimeoutError, FlightChangeError, LoginError, RequestErr
 from .webdriver import WebDriver
 
 TOO_MANY_REQUESTS_CODE = 429
-MONITOR_WAIT_TIME = 20
+WAIT_TIME = 20
 
 logger = get_logger(__name__)
 
@@ -46,8 +46,8 @@ class ReservationMonitor:
         self.monitor_event.wait()
 
         if not is_last_monitor:
-            logger.debug(f"Waiting {MONITOR_WAIT_TIME} seconds to start next monitor")
-            time.sleep(MONITOR_WAIT_TIME)
+            logger.debug(f"Waiting {WAIT_TIME} seconds to start next monitor")
+            time.sleep(WAIT_TIME)
 
     def monitor(self) -> None:
         try:
@@ -198,7 +198,7 @@ class AccountMonitor(ReservationMonitor):
         # this scope
         return False
 
-    def _get_reservations(self, max_retries: int = 2) -> Tuple[List[Dict[str, Any]], bool]:
+    def _get_reservations(self, max_retries: int = 1) -> Tuple[List[Dict[str, Any]], bool]:
         """
         Attempts to retrieve a list of reservations and returns a tuple containing the list
         of reservations and a boolean indicating whether reservation scheduling should be skipped.
@@ -209,7 +209,7 @@ class AccountMonitor(ReservationMonitor):
         """
         logger.debug("Retrieving reservations for account")
 
-        for attempt in range(max_retries):
+        for attempt in range(max_retries + 1):
             webdriver = WebDriver(self.checkin_scheduler)
 
             try:
@@ -224,6 +224,8 @@ class AccountMonitor(ReservationMonitor):
             except DriverTimeoutError:
                 if attempt < max_retries:
                     logger.debug("Timeout while retrieving reservations during login. Retrying")
+                    logger.debug("Wait for %d seconds before retrying", WAIT_TIME)
+                    time.sleep(WAIT_TIME)
                 else:
                     logger.debug("Timeout persisted after retries. Skipping reservation retrieval")
                     self.notification_handler.timeout_during_retrieval("account")
@@ -234,6 +236,8 @@ class AccountMonitor(ReservationMonitor):
                         logger.debug(
                             "Encountered a Too Many Requests error while logging in. Retrying"
                         )
+                        logger.debug("Wait for %d seconds before retrying", WAIT_TIME)
+                        time.sleep(WAIT_TIME)
                     else:
                         logger.debug(
                             "Too Many Requests error persists. Skipping reservation retrieval"
