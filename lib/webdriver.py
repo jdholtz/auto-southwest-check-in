@@ -7,6 +7,7 @@ import sys
 import time
 from typing import TYPE_CHECKING, Any, Dict, List
 
+from sbvirtualdisplay import Display
 from seleniumbase import Driver
 from seleniumbase.fixtures import page_actions as seleniumbase_actions
 
@@ -52,6 +53,7 @@ class WebDriver:
         self.checkin_scheduler = checkin_scheduler
         self.headers_set = False
         self.debug_screenshots = self._should_take_screenshots()
+        self.display = None
 
         # For account login
         self.login_request_id = None
@@ -88,7 +90,7 @@ class WebDriver:
         self._wait_for_attribute("headers_set")
         self._take_debug_screenshot(driver, "post_headers.png")
 
-        driver.quit()
+        self._quit_driver(driver)
 
     def get_reservations(self, account_monitor: AccountMonitor) -> List[JSON]:
         """
@@ -121,26 +123,31 @@ class WebDriver:
         # instead of requesting again later
         reservations = self._fetch_reservations(driver)
 
-        driver.quit()
+        self._quit_driver(driver)
         return reservations
 
     def _get_driver(self) -> Driver:
         logger.debug("Starting webdriver for current session")
         browser_path = self.checkin_scheduler.reservation_monitor.config.browser_path
 
+        # This environment variable is set in the Docker image
+        is_docker = os.environ.get("AUTO_SOUTHWEST_CHECK_IN_DOCKER") == "1"
+
         driver_version = "mlatest"
-        if os.environ.get("AUTO_SOUTHWEST_CHECK_IN_DOCKER") == "1":
-            # This environment variable is set in the Docker image. Makes sure a new driver
-            # is not downloaded as the Docker image already has the correct driver
+        if is_docker:
+            self._start_display()
+            # Make sure a new driver is not downloaded as the Docker image
+            # already has the correct driver
             driver_version = "keep"
 
         driver = Driver(
             binary_location=browser_path,
             driver_version=driver_version,
-            headless=True,
+            headed=is_docker,
+            headless=not is_docker,
             uc_cdp_events=True,
             undetectable=True,
-            is_mobile=True,
+            incognito=True,
         )
         logger.debug("Using browser version: %s", driver.caps["browserVersion"])
 
@@ -204,7 +211,7 @@ class WebDriver:
 
         # Handle login errors
         if self.login_status_code != 200:
-            driver.quit()
+            self._quit_driver(driver)
             error = self._handle_login_error(login_response)
             raise error
 
@@ -273,3 +280,23 @@ class WebDriver:
             f"Successfully logged in to {account_monitor.first_name} "
             f"{account_monitor.last_name}'s account\n"
         )  # Don't log as it contains sensitive information
+
+    def _quit_driver(self, driver: Driver) -> None:
+        driver.quit()
+        self._stop_display()
+
+    def _start_display(self) -> None:
+        try:
+            self.display = Display(visible=0, size=(1440, 1880))
+            self.display.start()
+            if self.display.is_alive():
+                logger.debug("Started virtual display successfully")
+            else:
+                logger.debug("Started virtual display but is not active")
+        except Exception as e:
+            logger.debug(f"Failed to start display: {e}")
+
+    def _stop_display(self) -> None:
+        if self.display is not None:
+            self.display.stop()
+            logger.debug("Stopped virtual display successfully")
