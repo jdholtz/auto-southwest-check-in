@@ -5,7 +5,8 @@ import os
 import re
 import sys
 import time
-from typing import TYPE_CHECKING, Any, Dict, List
+from datetime import datetime, timedelta
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from seleniumbase import Driver
 from seleniumbase.fixtures import page_actions as seleniumbase_actions
@@ -52,6 +53,10 @@ class WebDriver:
         self.checkin_scheduler = checkin_scheduler
         self.headers_set = False
         self.debug_screenshots = self._should_take_screenshots()
+        self.headers_listener_enabled = True
+        self.cached_headers_path = os.path.join(os.getcwd(), "cached_headers.json")
+        self.cache_duration = timedelta(minutes=30)  # Duration to keep headers cached
+        self.cached_data = self._cached_headers_manager()
 
         # For account login
         self.login_request_id = None
@@ -144,7 +149,9 @@ class WebDriver:
         )
         logger.debug("Using browser version: %s", driver.caps["browserVersion"])
 
-        driver.add_cdp_listener("Network.requestWillBeSent", self._headers_listener)
+        self._check_cached_headers()
+        if self.headers_listener_enabled:
+            driver.add_cdp_listener("Network.requestWillBeSent", self._headers_listener)
 
         logger.debug("Loading Southwest home page (this may take a moment)")
         driver.open(BASE_URL)
@@ -152,14 +159,37 @@ class WebDriver:
         driver.click("(//div[@data-qa='placement-link'])[2]")
         return driver
 
+    def _check_cached_headers(self) -> None:
+        current_time = datetime.now()
+        if (
+            not self.cached_data
+            or self.cached_data.get("login_failed", False)
+            or self._is_cache_expired(self.cached_data.get("timestamp", ""), current_time)
+        ):
+            logger.debug("Retrieving new headers")
+            self.headers_listener_enabled = True
+            self.headers_set = False
+        else:
+            logger.debug("Applying cached headers")
+            self.checkin_scheduler.headers = self.cached_data.get("headers", {})
+            self.headers_listener_enabled = False
+            self.headers_set = True
+
     def _headers_listener(self, data: JSON) -> None:
         """
-        Wait for the correct URL request has gone through. Once it has, set the headers
-        in the checkin_scheduler.
+        Wait for the correct URL request to go through. Once it has, set the headers
+        in the checkin_scheduler. If it's the first request, if the cached headers
+        have expired, or if the login failed, update the headers in the JSON file.
         """
         request = data["params"]["request"]
         if request["url"] == HEADERS_URL:
             self.checkin_scheduler.headers = self._get_needed_headers(request["headers"])
+            self._cached_headers_manager(
+                current_time=datetime.now(),
+                login_failed=False,
+                headers=self.checkin_scheduler.headers,
+            )
+            self.headers_listener_enabled = False
             self.headers_set = True
 
     def _login_listener(self, data: JSON) -> None:
@@ -204,6 +234,7 @@ class WebDriver:
 
         # Handle login errors
         if self.login_status_code != 200:
+            self._cached_headers_manager(login_failed=True)
             driver.quit()
             error = self._handle_login_error(login_response)
             raise error
@@ -259,6 +290,43 @@ class WebDriver:
                 headers[header] = request_headers[header]
 
         return headers
+
+    def _is_cache_expired(self, cached_time_str: str, current_time: datetime) -> bool:
+        try:
+            cached_time = datetime.fromisoformat(cached_time_str)
+            return current_time - cached_time > self.cache_duration
+        except ValueError:
+            logger.error(f"Invalid timestamp format: {cached_time_str}")
+            return True
+
+    def _cached_headers_manager(
+        self,
+        current_time: Optional[datetime] = None,
+        login_failed: Optional[bool] = None,
+        headers: Optional[JSON] = None,
+    ) -> JSON:
+        """
+        Read existing cached data from JSON file or update it with new values.
+        """
+        if os.path.exists(self.cached_headers_path):
+            with open(self.cached_headers_path, "r") as file:
+                cached_data = json.load(file)
+        else:
+            cached_data = {}
+
+        # Update cached data if new values are provided
+        if current_time:
+            cached_data["timestamp"] = current_time.isoformat()
+        if login_failed is not None:
+            cached_data["login_failed"] = login_failed
+        if headers:
+            cached_data["headers"] = headers
+
+        # Write the updated data back to the JSON file
+        with open(self.cached_headers_path, "w") as file:
+            json.dump(cached_data, file, indent=4)
+
+        return cached_data
 
     def _set_account_name(self, account_monitor: AccountMonitor, response: JSON) -> None:
         if account_monitor.first_name:
