@@ -287,14 +287,15 @@ class WebDriver:
 
     def _start_display(self) -> None:
         try:
-            self.display = Display(visible=0, size=(1440, 1880))
+            self.display = Display(size=(1440, 1880))
             self.display.start()
+
             if self.display.is_alive():
                 logger.debug("Started virtual display successfully")
             else:
                 logger.debug("Started virtual display but is not active")
         except Exception as e:
-            logger.debug(f"Failed to start display: {e}")
+            logger.debug("Failed to start display: %s", e)
 
     def _stop_display(self) -> None:
         if self.display is not None:

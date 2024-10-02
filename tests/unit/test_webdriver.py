@@ -84,15 +84,22 @@ class TestWebDriver:
 
         assert mock_chrome.call_args.kwargs.get("driver_version") == "mlatest"
 
-    def test_get_driver_keeps_driver_version_in_docker(self, mock_chrome: mock.Mock) -> None:
+    def test_get_driver_keeps_is_correctly_configured_in_docker(
+        self, mocker: MockerFixture, mock_chrome: mock.Mock
+    ) -> None:
+        """The driver version should be kept and the virtual display should be started"""
+
         # This env variable will be set in the Docker image
         os.environ["AUTO_SOUTHWEST_CHECK_IN_DOCKER"] = "1"
+
+        mock_start_display = mocker.patch.object(self.driver, "_start_display")
 
         driver = self.driver._get_driver()
         driver.add_cdp_listener.assert_called_once()
         driver.open.assert_called_once()
 
         assert mock_chrome.call_args.kwargs.get("driver_version") == "keep"
+        mock_start_display.assert_called_once()
 
     def test_headers_listener_sets_headers_when_correct_url(self, mocker: MockerFixture) -> None:
         mocker.patch.object(self.driver, "_get_needed_headers", return_value={"test": "headers"})
@@ -272,3 +279,43 @@ class TestWebDriver:
 
         assert mock_account_monitor.first_name == "John"
         assert mock_account_monitor.last_name == "Doe"
+
+    def test_quit_driver_cleans_up_webdriver(
+        self, mocker: MockerFixture, mock_chrome: mock.Mock
+    ) -> None:
+        mock_stop_display = mocker.patch.object(self.driver, "_stop_display")
+        self.driver._quit_driver(mock_chrome)
+
+        mock_chrome.quit.assert_called_once()
+        mock_stop_display.assert_called_once()
+
+    # Make sure start_display handles the virtual display both being alive and not
+    @pytest.mark.parametrize("is_alive", [True, False])
+    def test_start_display_starts_virtual_display(
+        self, mocker: MockerFixture, is_alive: bool
+    ) -> None:
+        mock_display = mocker.patch("lib.webdriver.Display")
+        mock_display.return_value.is_alive.return_value = is_alive
+
+        self.driver._start_display()
+        mock_display.assert_called_once()
+
+    def test_start_display_ignores_error_when_display_fails_to_start(
+        self, mocker: MockerFixture
+    ) -> None:
+        mocker.patch("lib.webdriver.Display", side_effect=Exception)
+        self.driver._start_display()
+
+    def test_stop_display_stops_virtual_display(self, mocker: MockerFixture) -> None:
+        mock_display = mocker.patch("lib.webdriver.Display")
+        self.driver.display = mock_display
+
+        self.driver._stop_display()
+        mock_display.stop.assert_called_once()
+
+    def test_stop_display_ignores_if_display_is_not_set(self, mocker: MockerFixture) -> None:
+        mock_display = mocker.patch("lib.webdriver.Display")
+        self.driver.display = None
+
+        self.driver._stop_display()
+        mock_display.stop.assert_not_called()
