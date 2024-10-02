@@ -287,7 +287,7 @@ class WebDriver:
 
     def _start_display(self) -> None:
         try:
-            self.display = Display(size=(1440, 1880))
+            self.display = Display(size=(1440, 1880), backend="xvfb")
             self.display.start()
 
             if self.display.is_alive():
