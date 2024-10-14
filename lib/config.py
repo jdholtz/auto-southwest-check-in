@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 from .log import get_logger
-from .utils import NotificationLevel, is_truthy
+from .utils import CheckFaresOption, NotificationLevel, is_truthy
 
 # Type alias for JSON
 JSON = Dict[str, Any]
@@ -23,7 +23,7 @@ class Config:
     def __init__(self) -> None:
         # Default values are set
         self.browser_path = None
-        self.check_fares = True
+        self.check_fares = CheckFaresOption.SAME_FLIGHT
         self.notification_24_hour_time = False
         self.notification_level = NotificationLevel.INFO
         self.notification_urls = []
@@ -56,11 +56,21 @@ class Config:
         invalid values are found.
         """
         if "check_fares" in config:
-            self.check_fares = config["check_fares"]
-            logger.debug("Setting check fares to %s", self.check_fares)
+            check_fares = config["check_fares"]
 
-            if not isinstance(self.check_fares, bool):
-                raise ConfigError("'check_fares' must be a boolean")
+            # check_fares can be true, false, or a specific string
+            if isinstance(check_fares, bool):
+                if check_fares:
+                    check_fares = CheckFaresOption.SAME_FLIGHT
+                else:
+                    check_fares = CheckFaresOption.NO
+
+            try:
+                self.check_fares = CheckFaresOption(check_fares)
+            except ValueError as err:
+                raise ConfigError(f"'{check_fares}' is not a valid check fares option") from err
+
+            logger.debug("Setting check fares to %s", repr(self.check_fares))
 
         if "healthchecks_url" in config:
             self.healthchecks_url = config["healthchecks_url"]
@@ -99,6 +109,7 @@ class Config:
 
         if "notification_level" in config:
             notification_level = config["notification_level"]
+
             try:
                 self.notification_level = NotificationLevel(notification_level)
             except ValueError as err:
@@ -177,8 +188,9 @@ class GlobalConfig(Config):
         if check_fares := os.getenv("AUTO_SOUTHWEST_CHECK_IN_CHECK_FARES"):
             try:
                 config["check_fares"] = is_truthy(check_fares)
-            except ValueError as err:
-                raise ConfigError("Error parsing 'AUTO_SOUTHWEST_CHECK_IN_CHECK_FARES'") from err
+            except ValueError:
+                # check_fares can be a boolean or a specific string
+                config["check_fares"] = check_fares
 
         # Browser Path
         if browser_path := os.getenv("AUTO_SOUTHWEST_CHECK_IN_BROWSER_PATH"):

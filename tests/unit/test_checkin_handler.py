@@ -21,7 +21,7 @@ class TestCheckInHandler:
         mock_checkin_scheduler = mocker.patch("lib.checkin_scheduler.CheckInScheduler")
         mock_lock = mocker.patch("multiprocessing.Lock")
 
-        # pylint: disable=attribute-defined-outside-init
+        # pylint: disable-next=attribute-defined-outside-init
         self.handler = CheckInHandler(mock_checkin_scheduler, test_flight, mock_lock)
         # This would usually be set in schedule_check_in, but that won't be run for every test
         self.handler.pid = 0

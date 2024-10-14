@@ -13,7 +13,7 @@ class TestNotificationHandler:
     @pytest.fixture(autouse=True)
     def notification_handler(self, mocker: MockerFixture) -> None:
         mock_reservation_monitor = mocker.patch("lib.reservation_monitor.ReservationMonitor")
-        # pylint: disable=attribute-defined-outside-init
+        # pylint: disable-next=attribute-defined-outside-init
         self.handler = NotificationHandler(mock_reservation_monitor)
 
     def test_send_nofication_does_not_send_notifications_if_level_is_too_low(
