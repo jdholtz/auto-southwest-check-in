@@ -20,6 +20,8 @@ from .utils import (
 from .webdriver import WebDriver
 
 TOO_MANY_REQUESTS_CODE = 429
+INTERNAL_SERVER_ERROR_CODE = 500
+
 RETRY_WAIT_SECONDS = 20
 
 logger = get_logger(__name__)
@@ -228,21 +230,24 @@ class AccountMonitor(ReservationMonitor):
                     self.notification_handler.timeout_during_retrieval("account")
 
             except LoginError as err:
-                if err.status_code == TOO_MANY_REQUESTS_CODE:
+                if err.status_code in {TOO_MANY_REQUESTS_CODE, INTERNAL_SERVER_ERROR_CODE}:
                     if attempt < max_retries:
                         logger.debug(
-                            "Encountered a Too Many Requests error while logging in. Retrying"
+                            "Encountered an error (status: %d) while logging in. Retrying",
+                            err.status_code,
                         )
                         logger.debug("Wait for %d seconds before retrying", RETRY_WAIT_SECONDS)
                         time.sleep(RETRY_WAIT_SECONDS)
                     else:
                         logger.debug(
-                            "Too Many Requests error persists. Skipping reservation retrieval"
+                            "Error (status: %d) persists. Skipping reservation retrieval",
+                            err.status_code,
                         )
                         self.notification_handler.too_many_requests_during_login()
                 else:
                     logger.debug("Error logging in. %s. Exiting", err)
                     self.notification_handler.failed_login(err)
+                    time.sleep(1)
                     sys.exit(1)
 
         return [], True
