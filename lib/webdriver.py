@@ -25,7 +25,7 @@ if TYPE_CHECKING:
 BASE_URL = "https://mobile.southwest.com"
 LOGIN_URL = BASE_URL + "/api/security/v4/security/token"
 TRIPS_URL = BASE_URL + "/api/mobile-misc/v1/mobile-misc/page/upcoming-trips"
-HEADERS_URL = BASE_URL + "/api/chase/v2/chase/offers"
+HEADERS_URL = BASE_URL + "/api/mobile-air-booking/v1/mobile-air-booking/feature/shopping-details"
 
 # Southwest's code when logging in with the incorrect information
 INVALID_CREDENTIALS_CODE = 400518024
@@ -146,11 +146,6 @@ class WebDriver:
             # already has the correct driver
             driver_version = "keep"
 
-        user_agent = "Mozilla/5.0 (Android 12; Mobile; rv:109.0) Gecko/109.0 Firefox/109.0"
-        if self.cached_data and self.cached_data.get("login_failed", True):
-            # Alternative user agent used if login fails
-            user_agent = "Mozilla/5.0 (Android 15; Mobile; rv:68.0) Gecko/68.0 Firefox/130.0"
-
         # Create a new temporary directory for Chrome profile
         temp_dir = tempfile.mkdtemp()
 
@@ -159,7 +154,6 @@ class WebDriver:
             driver = Driver(
                 binary_location=browser_path,
                 driver_version=driver_version,
-                agent=user_agent,
                 user_data_dir=temp_dir,
                 headed=is_docker,
                 headless=not is_docker,
