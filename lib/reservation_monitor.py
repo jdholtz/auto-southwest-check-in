@@ -20,6 +20,7 @@ from .utils import (
 from .webdriver import WebDriver
 
 TOO_MANY_REQUESTS_CODE = 429
+WAIT_TIME = 20
 
 logger = get_logger(__name__)
 
@@ -40,11 +41,20 @@ class ReservationMonitor:
         self.lock = lock
         self.notification_handler = NotificationHandler(self)
         self.checkin_scheduler = CheckInScheduler(self)
+        self.monitor_event = multiprocessing.Event()
 
-    def start(self) -> None:
-        """Start each reservation monitor in a separate process to run them in parallel"""
+    def start(self, is_last_monitor: bool) -> None:
+        """
+        Start each reservation monitor in a separate process to run them in parallel,
+        waiting 20 seconds between the launches of each monitor, except for the last one.
+        """
         process = multiprocessing.Process(target=self.monitor)
         process.start()
+        self.monitor_event.wait()
+
+        if not is_last_monitor:
+            logger.debug(f"Waiting {WAIT_TIME} seconds to start next monitor")
+            time.sleep(WAIT_TIME)
 
     def monitor(self) -> None:
         try:
@@ -149,6 +159,7 @@ class ReservationMonitor:
         time_taken = (current_time - previous_time).total_seconds()
         sleep_time = self.config.retrieval_interval - time_taken
         logger.debug("Sleeping for %d seconds", sleep_time)
+        self.monitor_event.set()
         time.sleep(sleep_time)
 
     def _stop_checkins(self) -> None:
@@ -194,42 +205,57 @@ class AccountMonitor(ReservationMonitor):
         # this scope
         return False
 
-    def _get_reservations(self) -> Tuple[List[Dict[str, Any]], bool]:
+    def _get_reservations(self, max_retries: int = 1) -> Tuple[List[Dict[str, Any]], bool]:
         """
-        Returns a list of reservations and a boolean indicating if reservation
-        scheduling should be skipped.
+        Attempts to retrieve a list of reservations and returns a tuple containing the list
+        of reservations and a boolean indicating whether reservation scheduling should be skipped.
 
-        Reservation scheduling will be skipped if a Too Many Requests error or timeout occurs
-        because new headers might not be valid and a list of reservations could not be retrieved.
+        The method will retry fetching reservations once in case of a timeout
+        or a Too Many Requests error. If the retry fails, reservation scheduling will be
+        skipped until the next scheduled attempt.
         """
         logger.debug("Retrieving reservations for account")
-        webdriver = WebDriver(self.checkin_scheduler)
 
-        try:
-            reservations = webdriver.get_reservations(self)
-        except DriverTimeoutError:
-            logger.debug(
-                "Timeout while retrieving reservations during login. Skipping reservation retrieval"
-            )
-            self.notification_handler.timeout_during_retrieval("account")
-            return [], True
-        except LoginError as err:
-            if err.status_code == TOO_MANY_REQUESTS_CODE:
-                # Don't exit when a Too Many Requests error happens. Instead, just skip the
-                # retrieval until the next time.
+        for attempt in range(max_retries + 1):
+            webdriver = WebDriver(self.checkin_scheduler)
+
+            try:
+                reservations = webdriver.get_reservations(self)
                 logger.debug(
-                    "Encountered a Too Many Requests error while logging in. Skipping reservation "
-                    "retrieval"
+                    "Successfully retrieved %d reservations after %d attempts",
+                    len(reservations),
+                    attempt + 1,
                 )
-                self.notification_handler.too_many_requests_during_login()
-                return [], True
+                return reservations, False
 
-            logger.debug("Error logging in. %s. Exiting", err)
-            self.notification_handler.failed_login(err)
-            sys.exit(1)
+            except DriverTimeoutError:
+                if attempt < max_retries:
+                    logger.debug("Timeout while retrieving reservations during login. Retrying")
+                    logger.debug("Wait for %d seconds before retrying", WAIT_TIME)
+                    time.sleep(WAIT_TIME)
+                else:
+                    logger.debug("Timeout persisted after retries. Skipping reservation retrieval")
+                    self.notification_handler.timeout_during_retrieval("account")
 
-        logger.debug("Successfully retrieved %d reservations", len(reservations))
-        return reservations, False
+            except LoginError as err:
+                if err.status_code == TOO_MANY_REQUESTS_CODE:
+                    if attempt < max_retries:
+                        logger.debug(
+                            "Encountered a Too Many Requests error while logging in. Retrying"
+                        )
+                        logger.debug("Wait for %d seconds before retrying", WAIT_TIME)
+                        time.sleep(WAIT_TIME)
+                    else:
+                        logger.debug(
+                            "Too Many Requests error persists. Skipping reservation retrieval"
+                        )
+                        self.notification_handler.too_many_requests_during_login()
+                else:
+                    logger.debug("Error logging in. %s. Exiting", err)
+                    self.notification_handler.failed_login(err)
+                    sys.exit(1)
+
+        return [], True
 
     def _stop_monitoring(self) -> None:
         print(f"\nStopping monitoring for account with username {self.username}")

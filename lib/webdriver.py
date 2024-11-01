@@ -3,12 +3,16 @@ from __future__ import annotations
 import json
 import os
 import re
+import shutil
 import sys
+import tempfile
 import time
-from typing import TYPE_CHECKING, Any, Dict, List
+from datetime import datetime, timedelta
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from sbvirtualdisplay import Display
 from seleniumbase import Driver
+from seleniumbase.common.exceptions import WebDriverException
 from seleniumbase.fixtures import page_actions as seleniumbase_actions
 
 from .log import LOGS_DIRECTORY, get_logger
@@ -26,7 +30,7 @@ HEADERS_URL = BASE_URL + "/api/mobile-air-booking/v1/mobile-air-booking/feature/
 # Southwest's code when logging in with the incorrect information
 INVALID_CREDENTIALS_CODE = 400518024
 
-WAIT_TIMEOUT_SECS = 180
+WAIT_TIMEOUT_SECS = 90
 
 JSON = Dict[str, Any]
 
@@ -54,6 +58,10 @@ class WebDriver:
         self.headers_set = False
         self.debug_screenshots = self._should_take_screenshots()
         self.display = None
+        self.headers_listener_enabled = True
+        self.cached_headers_path = os.path.join(os.getcwd(), "cached_headers.json")
+        self.cache_duration = timedelta(minutes=30)  # Duration to keep headers cached
+        self.cached_data = self._cached_headers_manager()
 
         # For account login
         self.login_request_id = None
@@ -107,8 +115,7 @@ class WebDriver:
         seleniumbase_actions.wait_for_element_not_visible(driver, ".dimmer")
         self._take_debug_screenshot(driver, "pre_login.png")
 
-        driver.click(".login-button--box")
-        time.sleep(random_sleep_duration(1, 5))
+        driver.uc_click(".login-button--box")
         driver.type('input[name="userNameOrAccountNumber"]', account_monitor.username)
 
         # Use quote_plus to workaround a x-www-form-urlencoded encoding bug on the mobile site
@@ -127,7 +134,6 @@ class WebDriver:
         return reservations
 
     def _get_driver(self) -> Driver:
-        logger.debug("Starting webdriver for current session")
         browser_path = self.checkin_scheduler.reservation_monitor.config.browser_path
 
         # This environment variable is set in the Docker image
@@ -140,33 +146,75 @@ class WebDriver:
             # already has the correct driver
             driver_version = "keep"
 
-        driver = Driver(
-            binary_location=browser_path,
-            driver_version=driver_version,
-            headed=is_docker,
-            headless=not is_docker,
-            uc_cdp_events=True,
-            undetectable=True,
-            incognito=True,
-        )
-        logger.debug("Using browser version: %s", driver.caps["browserVersion"])
+        # Create a new temporary directory for Chrome profile
+        temp_dir = tempfile.mkdtemp()
 
-        driver.add_cdp_listener("Network.requestWillBeSent", self._headers_listener)
+        logger.debug("Starting webdriver for current session")
+        try:
+            driver = Driver(
+                binary_location=browser_path,
+                driver_version=driver_version,
+                user_data_dir=temp_dir,
+                headed=is_docker,
+                headless=not is_docker,
+                uc_cdp_events=True,
+                undetectable=True,
+                incognito=True,
+                mobile=True,
+            )
+            logger.debug("Using browser version: %s", driver.caps["browserVersion"])
 
-        logger.debug("Loading Southwest home page (this may take a moment)")
-        driver.open(BASE_URL)
-        self._take_debug_screenshot(driver, "after_page_load.png")
-        driver.click("(//div[@data-qa='placement-link'])[2]")
-        return driver
+            self._check_cached_headers()
+            if self.headers_listener_enabled:
+                driver.add_cdp_listener("Network.requestWillBeSent", self._headers_listener)
+
+            logger.debug("Loading Southwest check-in page (this may take a moment)")
+            driver.uc_open(BASE_URL)
+            time.sleep(random_sleep_duration(2, 5))
+            self._take_debug_screenshot(driver, "after_page_load.png")
+            driver.uc_click("//*[@alt='Check in banner']", timeout=30)
+            time.sleep(random_sleep_duration(1, 2))
+
+            return driver
+
+        except WebDriverException as e:
+            logger.error(f"WebDriver initialization failed: {str(e)}")
+            return None
+        finally:
+            if "driver" in locals() and driver is not None:
+                shutil.rmtree(temp_dir, ignore_errors=True)
+
+    def _check_cached_headers(self) -> None:
+        current_time = datetime.now()
+        if (
+            not self.cached_data
+            or self.cached_data.get("login_failed", False)
+            or self._is_cache_expired(self.cached_data.get("timestamp", ""), current_time)
+        ):
+            logger.debug("Retrieving new headers")
+            self.headers_listener_enabled = True
+            self.headers_set = False
+        else:
+            logger.debug("Applying cached headers")
+            self.checkin_scheduler.headers = self.cached_data.get("headers", {})
+            self.headers_listener_enabled = False
+            self.headers_set = True
 
     def _headers_listener(self, data: JSON) -> None:
         """
-        Wait for the correct URL request has gone through. Once it has, set the headers
-        in the checkin_scheduler.
+        Wait for the correct URL request to go through. Once it has, set the headers
+        in the checkin_scheduler. If it's the first request, if the cached headers
+        have expired, or if the login failed, update the headers in the JSON file.
         """
         request = data["params"]["request"]
         if request["url"] == HEADERS_URL:
             self.checkin_scheduler.headers = self._get_needed_headers(request["headers"])
+            self._cached_headers_manager(
+                current_time=datetime.now(),
+                login_failed=False,
+                headers=self.checkin_scheduler.headers,
+            )
+            self.headers_listener_enabled = False
             self.headers_set = True
 
     def _login_listener(self, data: JSON) -> None:
@@ -184,21 +232,21 @@ class WebDriver:
             self.trips_request_id = data["params"]["requestId"]
 
     def _wait_for_attribute(self, attribute: str) -> None:
-        logger.debug("Waiting for %s to be set (timeout: %d seconds)", attribute, WAIT_TIMEOUT_SECS)
-        poll_interval = 0.5
+        logger.debug(
+            "Waiting for '%s' to be set (timeout: %d seconds)", attribute, WAIT_TIMEOUT_SECS
+        )
+        end_time = time.time() + WAIT_TIMEOUT_SECS
+        while time.time() < end_time:
+            if getattr(self, attribute, None):
+                logger.debug("'%s' set successfully", attribute)
+                return
+            time.sleep(0.5)
 
-        attempts = 0
-        max_attempts = WAIT_TIMEOUT_SECS / poll_interval
-        while not getattr(self, attribute) and attempts < max_attempts:
-            time.sleep(poll_interval)
-            attempts += 1
-
-        if attempts >= max_attempts:
-            timeout_err = DriverTimeoutError(f"Timeout waiting for the '{attribute}' attribute")
-            logger.debug(timeout_err)
-            raise timeout_err
-
-        logger.debug("%s set successfully", attribute)
+        timeout_err = DriverTimeoutError(
+            f"Timeout waiting for the '{attribute}' attribute after {WAIT_TIMEOUT_SECS} seconds"
+        )
+        logger.debug("%s: current value is '%s'", timeout_err, getattr(self, attribute, None))
+        raise timeout_err
 
     def _wait_for_login(self, driver: Driver, account_monitor: AccountMonitor) -> None:
         """
@@ -206,11 +254,13 @@ class WebDriver:
         Handles login errors, if necessary.
         """
         self._click_login_button(driver)
+        time.sleep(random_sleep_duration(1, 2))
         self._wait_for_attribute("login_request_id")
         login_response = self._get_response_body(driver, self.login_request_id)
 
         # Handle login errors
         if self.login_status_code != 200:
+            self._cached_headers_manager(login_failed=True)
             self._quit_driver(driver)
             error = self._handle_login_error(login_response)
             raise error
@@ -233,7 +283,7 @@ class WebDriver:
             seleniumbase_actions.wait_for_element_not_visible(driver, login_button, timeout=5)
         except Exception:
             logger.debug("Login form failed to submit. Clicking login button again")
-            driver.click(login_button)
+            driver.uc_click(login_button)
 
     def _fetch_reservations(self, driver: Driver) -> List[JSON]:
         """
@@ -266,6 +316,43 @@ class WebDriver:
                 headers[header] = request_headers[header]
 
         return headers
+
+    def _is_cache_expired(self, cached_time_str: str, current_time: datetime) -> bool:
+        try:
+            cached_time = datetime.fromisoformat(cached_time_str)
+            return current_time - cached_time > self.cache_duration
+        except ValueError:
+            logger.error(f"Invalid timestamp format: {cached_time_str}")
+            return True
+
+    def _cached_headers_manager(
+        self,
+        current_time: Optional[datetime] = None,
+        login_failed: Optional[bool] = None,
+        headers: Optional[JSON] = None,
+    ) -> JSON:
+        """
+        Read existing cached data from JSON file or update it with new values.
+        """
+        if os.path.exists(self.cached_headers_path):
+            with open(self.cached_headers_path, "r") as file:
+                cached_data = json.load(file)
+        else:
+            cached_data = {}
+
+        # Update cached data if new values are provided
+        if current_time:
+            cached_data["timestamp"] = current_time.isoformat()
+        if login_failed is not None:
+            cached_data["login_failed"] = login_failed
+        if headers:
+            cached_data["headers"] = headers
+
+        # Write the updated data back to the JSON file
+        with open(self.cached_headers_path, "w") as file:
+            json.dump(cached_data, file, indent=4)
+
+        return cached_data
 
     def _set_account_name(self, account_monitor: AccountMonitor, response: JSON) -> None:
         if account_monitor.first_name:
