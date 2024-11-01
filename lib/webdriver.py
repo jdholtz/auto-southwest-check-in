@@ -160,6 +160,7 @@ class WebDriver:
                 uc_cdp_events=True,
                 undetectable=True,
                 incognito=True,
+                mobile=True,
             )
             logger.debug("Using browser version: %s", driver.caps["browserVersion"])
 
