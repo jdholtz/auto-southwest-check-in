@@ -250,7 +250,6 @@ class AccountMonitor(ReservationMonitor):
                 else:
                     logger.debug("Error logging in. %s. Exiting", err)
                     self.notification_handler.failed_login(err)
-                    time.sleep(1)
                     sys.exit(1)
 
         return [], True

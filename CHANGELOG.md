@@ -3,6 +3,12 @@ When upgrading to a new version, make sure to follow the directions under the "U
 If there is no "Upgrading" header for that version, no post-upgrade actions need to be performed.
 
 
+## Upcoming
+### Improvements
+- Logins that fail due to 'Too Many Requests' or 'Internal Server Error' errors will now be retried once
+([#311](https://github.com/jdholtz/auto-southwest-check-in/pull/311) by [@dmytrokoren](https://github.com/dmytorkoren))
+
+
 ## 8.1 (2024-11-03)
 ### New Features
 - Fare drops can now be checked for all flights on the same day or all nonstop flights on the same day

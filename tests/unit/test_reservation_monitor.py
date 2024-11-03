@@ -282,7 +282,6 @@ class TestAccountMonitor:
         mock_too_many_requests_notif.assert_called_once()
 
     def test_get_reservations_exits_on_login_error(self, mocker: MockerFixture) -> None:
-        mocker.patch("time.sleep")
         mocker.patch.object(WebDriver, "get_reservations", side_effect=LoginError("", 400))
         mock_failed_login = mocker.patch.object(NotificationHandler, "failed_login")
 
