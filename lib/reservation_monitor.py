@@ -206,7 +206,7 @@ class AccountMonitor(ReservationMonitor):
         or a Too Many Requests error. If the retry fails, reservation scheduling will be
         skipped until the next scheduled attempt.
         """
-        logger.debug("Retrieving reservations for account")
+        logger.debug("Retrieving reservations for account (max retries: %d)", max_retries)
 
         for attempt in range(max_retries + 1):
             webdriver = WebDriver(self.checkin_scheduler)
@@ -223,20 +223,23 @@ class AccountMonitor(ReservationMonitor):
             except DriverTimeoutError:
                 if attempt < max_retries:
                     logger.debug("Timeout while retrieving reservations during login. Retrying")
-                    logger.debug("Wait for %d seconds before retrying", RETRY_WAIT_SECONDS)
+                    logger.debug("Waiting for %d seconds before retrying", RETRY_WAIT_SECONDS)
                     time.sleep(RETRY_WAIT_SECONDS)
                 else:
-                    logger.debug("Timeout persisted after retries. Skipping reservation retrieval")
+                    logger.debug(
+                        "Timeout persisted after %d retries. Skipping reservation retrieval",
+                        max_retries,
+                    )
                     self.notification_handler.timeout_during_retrieval("account")
 
             except LoginError as err:
-                if err.status_code in {TOO_MANY_REQUESTS_CODE, INTERNAL_SERVER_ERROR_CODE}:
+                if err.status_code in [TOO_MANY_REQUESTS_CODE, INTERNAL_SERVER_ERROR_CODE]:
                     if attempt < max_retries:
                         logger.debug(
                             "Encountered an error (status: %d) while logging in. Retrying",
                             err.status_code,
                         )
-                        logger.debug("Wait for %d seconds before retrying", RETRY_WAIT_SECONDS)
+                        logger.debug("Waiting for %d seconds before retrying", RETRY_WAIT_SECONDS)
                         time.sleep(RETRY_WAIT_SECONDS)
                     else:
                         logger.debug(
