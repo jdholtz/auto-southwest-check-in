@@ -254,6 +254,7 @@ class TestAccountMonitor:
     def test_get_reservations_skips_retrieval_on_driver_timeout(
         self, mocker: MockerFixture
     ) -> None:
+        mocker.patch("time.sleep")
         mocker.patch.object(WebDriver, "get_reservations", side_effect=DriverTimeoutError)
         mock_timeout_notif = mocker.patch.object(NotificationHandler, "timeout_during_retrieval")
 
@@ -266,6 +267,7 @@ class TestAccountMonitor:
     def test_get_reservations_skips_retrieval_on_too_many_requests_error(
         self, mocker: MockerFixture
     ) -> None:
+        mocker.patch("time.sleep")
         mocker.patch.object(
             WebDriver, "get_reservations", side_effect=LoginError("", TOO_MANY_REQUESTS_CODE)
         )
@@ -280,6 +282,7 @@ class TestAccountMonitor:
         mock_too_many_requests_notif.assert_called_once()
 
     def test_get_reservations_exits_on_login_error(self, mocker: MockerFixture) -> None:
+        mocker.patch("time.sleep")
         mocker.patch.object(WebDriver, "get_reservations", side_effect=LoginError("", 400))
         mock_failed_login = mocker.patch.object(NotificationHandler, "failed_login")
 
