@@ -8,6 +8,7 @@ import time
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
+from sbvirtualdisplay import Display
 from seleniumbase import Driver
 from seleniumbase.fixtures import page_actions as seleniumbase_actions
 
@@ -21,7 +22,7 @@ if TYPE_CHECKING:
 BASE_URL = "https://mobile.southwest.com"
 LOGIN_URL = BASE_URL + "/api/security/v4/security/token"
 TRIPS_URL = BASE_URL + "/api/mobile-misc/v1/mobile-misc/page/upcoming-trips"
-HEADERS_URL = BASE_URL + "/api/chase/v2/chase/offers"
+HEADERS_URL = BASE_URL + "/api/mobile-air-booking/v1/mobile-air-booking/feature/shopping-details"
 
 # Southwest's code when logging in with the incorrect information
 INVALID_CREDENTIALS_CODE = 400518024
@@ -53,6 +54,7 @@ class WebDriver:
         self.checkin_scheduler = checkin_scheduler
         self.headers_set = False
         self.debug_screenshots = self._should_take_screenshots()
+        self.display = None
         self.headers_listener_enabled = True
         self.cached_headers_path = os.path.join(os.getcwd(), "cached_headers.json")
         self.cache_duration = timedelta(minutes=30)  # Duration to keep headers cached
@@ -93,7 +95,7 @@ class WebDriver:
         self._wait_for_attribute("headers_set")
         self._take_debug_screenshot(driver, "post_headers.png")
 
-        driver.quit()
+        self._quit_driver(driver)
 
     def get_reservations(self, account_monitor: AccountMonitor) -> List[JSON]:
         """
@@ -126,26 +128,31 @@ class WebDriver:
         # instead of requesting again later
         reservations = self._fetch_reservations(driver)
 
-        driver.quit()
+        self._quit_driver(driver)
         return reservations
 
     def _get_driver(self) -> Driver:
         logger.debug("Starting webdriver for current session")
         browser_path = self.checkin_scheduler.reservation_monitor.config.browser_path
 
+        # This environment variable is set in the Docker image
+        is_docker = os.environ.get("AUTO_SOUTHWEST_CHECK_IN_DOCKER") == "1"
+
         driver_version = "mlatest"
-        if os.environ.get("AUTO_SOUTHWEST_CHECK_IN_DOCKER") == "1":
-            # This environment variable is set in the Docker image. Makes sure a new driver
-            # is not downloaded as the Docker image already has the correct driver
+        if is_docker:
+            self._start_display()
+            # Make sure a new driver is not downloaded as the Docker image
+            # already has the correct driver
             driver_version = "keep"
 
         driver = Driver(
             binary_location=browser_path,
             driver_version=driver_version,
-            headless=True,
+            headed=is_docker,
+            headless=not is_docker,
             uc_cdp_events=True,
             undetectable=True,
-            is_mobile=True,
+            incognito=True,
         )
         logger.debug("Using browser version: %s", driver.caps["browserVersion"])
 
@@ -235,7 +242,7 @@ class WebDriver:
         # Handle login errors
         if self.login_status_code != 200:
             self._cached_headers_manager(login_failed=True)
-            driver.quit()
+            self._quit_driver(driver)
             error = self._handle_login_error(login_response)
             raise error
 
@@ -341,3 +348,24 @@ class WebDriver:
             f"Successfully logged in to {account_monitor.first_name} "
             f"{account_monitor.last_name}'s account\n"
         )  # Don't log as it contains sensitive information
+
+    def _quit_driver(self, driver: Driver) -> None:
+        driver.quit()
+        self._stop_display()
+
+    def _start_display(self) -> None:
+        try:
+            self.display = Display(size=(1440, 1880), backend="xvfb")
+            self.display.start()
+
+            if self.display.is_alive():
+                logger.debug("Started virtual display successfully")
+            else:
+                logger.debug("Started virtual display but is not active")
+        except Exception as e:
+            logger.debug("Failed to start display: %s", e)
+
+    def _stop_display(self) -> None:
+        if self.display is not None:
+            self.display.stop()
+            logger.debug("Stopped virtual display successfully")

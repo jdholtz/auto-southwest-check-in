@@ -4,6 +4,12 @@ If there is no "Upgrading" header for that version, no post-upgrade actions need
 
 
 ## Upcoming
+### Improvements
+- Logins that fail due to 'Too Many Requests' or 'Internal Server Error' errors will now be retried once
+([#311](https://github.com/jdholtz/auto-southwest-check-in/pull/311) by [@dmytrokoren](https://github.com/dmytorkoren))
+
+
+## 8.1 (2024-11-03)
 ### New Features
 - Fare drops can now be checked for all flights on the same day or all nonstop flights on the same day
 ([#303](https://github.com/jdholtz/auto-southwest-check-in/pulls/303))
@@ -15,6 +21,15 @@ If there is no "Upgrading" header for that version, no post-upgrade actions need
 ### Improvements
 - Potentially speed up the check-in process
     - Check-ins now start exactly 24 hours before a flight (instead of 24 hours and 5 seconds)
+- Improve detection evasion in the Docker image by using a virtual display
+([#307](https://github.com/jdholtz/auto-southwest-check-in/pull/307) by [@dmytrokoren](https://github.com/dmytrokoren))
+
+### Bug Fixes
+- Fix headers not being retrieved, causing a webdriver timeout
+([#314](https://github.com/jdholtz/auto-southwest-check-in/pulls/314) by [@sephamorr](https://github.com/sephamorr))
+
+### Upgrading
+- Upgrade the dependencies to the latest versions by running `pip install -r requirements.txt`
 
 
 ## 8.0 (2024-08-17)
