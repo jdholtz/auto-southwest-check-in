@@ -19,6 +19,7 @@ if TYPE_CHECKING:
     from .reservation_monitor import AccountMonitor
 
 BASE_URL = "https://mobile.southwest.com"
+CHECKIN_URL = BASE_URL + "/air/check-in/"
 LOGIN_URL = BASE_URL + "/api/security/v4/security/token"
 TRIPS_URL = BASE_URL + "/api/mobile-misc/v1/mobile-misc/page/upcoming-trips"
 HEADERS_URL = BASE_URL + "/api/mobile-air-booking/v1/mobile-air-booking/feature/shopping-details"
@@ -148,15 +149,15 @@ class WebDriver:
             uc_cdp_events=True,
             undetectable=True,
             incognito=True,
+            mobile=True,
         )
         logger.debug("Using browser version: %s", driver.caps["browserVersion"])
 
         driver.add_cdp_listener("Network.requestWillBeSent", self._headers_listener)
 
-        logger.debug("Loading Southwest home page (this may take a moment)")
-        driver.open(BASE_URL)
+        logger.debug("Loading Southwest check-in page (this may take a moment)")
+        driver.open(CHECKIN_URL)
         self._take_debug_screenshot(driver, "after_page_load.png")
-        driver.click("(//div[@data-qa='placement-link'])[2]")
         return driver
 
     def _headers_listener(self, data: JSON) -> None:
