@@ -1,0 +1,166 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "$schema": {},
+    "check_fares": { "$ref": "#/$defs/check_fares" },
+    "notification_urls": { "$ref": "#/$defs/notification_urls" },
+    "notification_level": { "$ref": "#/$defs/notification_level" },
+    "notification_24_hour_time": {
+      "type": "boolean",
+      "description": "Display flight times in notifications and console messages in 24-hour format instead of 12-hour format.",
+      "default": false
+    },
+    "browser_path": {
+      "type": "string",
+      "description": "Path to your Chromium-based browser executable (if not using Chrome or Chromium)"
+    },
+    "retrieval_interval": { "$ref": "#/$defs/retrieval_interval" },
+    "accounts": {
+      "type": "array",
+      "description": "List of accounts",
+      "default": [],
+      "items": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string",
+            "description": "Account username",
+            "minLength": 1
+          },
+          "password": {
+            "type": "string",
+            "description": "Account password",
+            "minLength": 1
+          },
+          "check_fares": { "$ref": "#/$defs/check_fares" },
+          "healthchecks_url": { "$ref": "#/$defs/healthchecks_url" },
+          "notification_urls": { "$ref": "#/$defs/notification_urls" },
+          "notification_level": { "$ref": "#/$defs/notification_level" },
+          "retrieval_interval": { "$ref": "#/$defs/retrieval_interval" }
+        },
+        "required": ["username", "password"],
+        "additionalProperties": false
+      }
+    },
+    "reservations": {
+      "type": "array",
+      "description": "List of reservations",
+      "default": [],
+      "items": {
+        "type": "object",
+        "properties": {
+          "confirmationNumber": {
+            "type": "string",
+            "description": "Reservation confirmation number",
+            "minLength": 1
+          },
+          "firstName": {
+            "type": "string",
+            "description": "First name of the passenger",
+            "minLength": 1
+          },
+          "lastName": {
+            "type": "string",
+            "description": "Last name of the passenger",
+            "minLength": 1
+          },
+          "check_fares": { "$ref": "#/$defs/check_fares" },
+          "healthchecks_url": { "$ref": "#/$defs/healthchecks_url" },
+          "notification_urls": { "$ref": "#/$defs/notification_urls" },
+          "notification_level": { "$ref": "#/$defs/notification_level" },
+          "retrieval_interval": { "$ref": "#/$defs/retrieval_interval" }
+        },
+        "required": ["confirmationNumber", "firstName", "lastName"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "check_fares": {
+      "description": "Configure fare checking behavior",
+      "oneOf": [
+        {
+          "type": "boolean",
+          "const": false,
+          "description": "Do not check for lower fares"
+        },
+        {
+          "type": "boolean",
+          "const": true,
+          "description": "Check for lower fares on the same flight"
+        },
+        {
+          "type": "string",
+          "const": "no",
+          "description": "Do not check for lower fares"
+        },
+        {
+          "type": "string",
+          "const": "same_flight",
+          "description": "Check for lower fares on the same flight"
+        },
+        {
+          "type": "string",
+          "const": "same_day_nonstop",
+          "description": "Check for lower fares on all nonstop flights on the same day as the flight"
+        },
+        {
+          "type": "string",
+          "const": "same_day",
+          "description": "Check for lower fares on all flights on the same day as the flight"
+        }
+      ],
+      "default": true
+    },
+    "notification_urls": {
+      "description": "List of notification URLs in the Apprise format",
+      "oneOf": [
+        {
+          "type": "string",
+          "description": "A single notification URL"
+        },
+        {
+          "type": "array",
+          "description": "A list of notification URLs",
+          "items": {
+            "type": "string"
+          }
+        }
+      ],
+      "default": []
+    },
+    "notification_level": {
+      "description": "The level of notifications you want to receive",
+      "oneOf": [
+        {
+          "type": "integer",
+          "const": 1,
+          "description": "Level 1: Receive notices of skipped reservation retrievals due to driver timeouts and Too Many Requests errors during logins as well as all messages in later levels."
+        },
+        {
+          "type": "integer",
+          "const": 2,
+          "description": "Level 2: Receive successful scheduling and check-in messages, lower fare messages, and all messages in later levels."
+        },
+        {
+          "type": "integer",
+          "const": 3,
+          "description": "Level 3: Receive only error messages (failed scheduling and check-ins)."
+        }
+      ],
+      "default": 2
+    },
+    "retrieval_interval": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "How often the script checks for lower fares on scheduled flights (in hours). Set to 0 to disable account/fare monitoring.",
+      "default": 24
+    },
+    "healthchecks_url": {
+      "type": "string",
+      "description": "Healthchecks.io URL to monitor successful and failed fare checks"
+    }
+  }
+}
