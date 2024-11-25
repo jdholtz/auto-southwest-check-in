@@ -11,7 +11,7 @@ reservation-specific configurations).
 ## Table of Contents
 - [Check Fares](#check-fares)
 - [Notifications](#notifications)
-    * [Notification URLS](#notification-urls)
+    * [Notification URLs](#notification-urls)
     * [Notification Level](#notification-level)
     * [Notification 24 Hour Time](#notification-24-hour-time)
     * [Test The Notifications](#test-the-notifications)
@@ -187,7 +187,7 @@ Setting specific configuration values for an account or reservation allows you t
 monitored by the script. Here is a list of configuration values that can be applied to an individual account or reservation:
 - [Check Fares](#check-fares)
 - [Healthchecks URL](#healthchecks-url)
-- [Notification URLS](#notification-urls)
+- [Notification URLs](#notification-urls)
 - [Notification Level](#notification-level)
 - [Retrieval Interval](#retrieval-interval)
 
