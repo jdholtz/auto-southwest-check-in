@@ -36,6 +36,7 @@ def test_handle_southwest_error_code_handles_all_special_codes(
     response_body = json.dumps({"code": code})
     request_err = RequestError("", response_body)
     with pytest.raises(error):
+        # pylint: disable-next=protected-access
         utils._handle_southwest_error_code(request_err)
 
 

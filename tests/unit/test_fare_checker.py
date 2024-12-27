@@ -1,4 +1,4 @@
-from typing import Any, Callable, Dict, List
+from typing import Any, Callable
 
 import pytest
 from pytest_mock import MockerFixture
@@ -14,7 +14,7 @@ from lib.utils import CheckFaresOption, FlightChangeError
 # This needs to be accessed to be tested
 # pylint: disable=protected-access
 
-JSON = Dict[str, Any]
+JSON = dict[str, Any]
 
 
 @pytest.fixture
@@ -151,9 +151,7 @@ class TestFareChecker:
         assert call_args[1] == fare_checker.BOOKING_URL + "test_link"
         assert call_args[3] == "query_body"
 
-    def test_get_change_flight_page_raises_exception_when_flight_cannot_be_changed(
-        self, mocker: MockerFixture
-    ) -> None:
+    def test_get_change_flight_page_raises_exception_when_flight_cannot_be_changed(self) -> None:
         reservation_info = {
             "greyBoxMessage": None,
             "bounds": ["bound_one", "bound_two"],
@@ -290,7 +288,7 @@ class TestFareChecker:
     # An empty list of flights should never be returned from Southwest, but test just in case
     @pytest.mark.parametrize("flights", [[], [{"fares": "fare1"}]])
     def test_get_lowest_fare_returns_zero_when_no_matching_fares(
-        self, mocker: MockerFixture, test_flight: Flight, flights: List[JSON]
+        self, mocker: MockerFixture, test_flight: Flight, flights: list[JSON]
     ) -> None:
         self.checker.filter = fare_checker.any_flight_filter
         mocker.patch.object(FareChecker, "_get_matching_fare", return_value=None)
@@ -316,7 +314,7 @@ class TestFareChecker:
 
     @pytest.mark.parametrize("fares", [None, [], [{"_meta": {"fareProductId": "right_fare"}}]])
     def test_get_matching_fare_returns_nothing_when_price_is_not_available(
-        self, fares: List[JSON]
+        self, fares: list[JSON]
     ) -> None:
         assert self.checker._get_matching_fare(fares, "right_fare") is None
 

@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Union
+from typing import Any, Union
 
 import pytest
 from pytest_mock import MockerFixture
@@ -8,7 +8,7 @@ from pytest_mock import MockerFixture
 from lib.config import AccountConfig, Config, ConfigError, GlobalConfig, ReservationConfig
 from lib.utils import CheckFaresOption, NotificationLevel
 
-JSON = Dict[str, Any]
+JSON = dict[str, Any]
 
 # This needs to be accessed to be tested
 # pylint: disable=protected-access
@@ -122,7 +122,7 @@ class TestConfig:
         [(["test_url"], ["test_url"]), ("test_url", ["test_url"]), ("", [])],
     )
     def test_parse_config_sets_the_correct_notification_urls(
-        self, notification_urls: Union[List[str], str], expected_urls: [List[str]]
+        self, notification_urls: Union[list[str], str], expected_urls: [list[str]]
     ) -> None:
         test_config = Config()
         test_config._parse_config({"notification_urls": notification_urls})

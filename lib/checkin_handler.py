@@ -5,7 +5,7 @@ import signal
 import time
 from datetime import datetime, timedelta
 from multiprocessing import Lock, Process
-from typing import TYPE_CHECKING, Any, Dict
+from typing import TYPE_CHECKING, Any
 
 from .flight import Flight
 from .log import get_logger
@@ -21,7 +21,7 @@ if TYPE_CHECKING:
     from .checkin_scheduler import CheckInScheduler
 
 # Type alias for JSON
-JSON = Dict[str, Any]
+JSON = dict[str, Any]
 
 CHECKIN_URL = "mobile-air-operations/v1/mobile-air-operations/page/check-in/"
 MANUAL_CHECKIN_URL = "https://mobile.southwest.com/check-in"
@@ -119,7 +119,7 @@ class CheckInHandler:
         logger.debug("Sleeping until check-in: %d seconds...", sleep_time)
         time.sleep(sleep_time)
 
-    def _safe_sleep(self, total_sleep_time: int) -> None:
+    def _safe_sleep(self, total_sleep_time: float) -> None:
         """
         If the total sleep time is too long, an overflow error could occur.
         Therefore, the script will continuously sleep in two week periods

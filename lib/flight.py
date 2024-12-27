@@ -4,11 +4,11 @@ import json
 import os
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 import pytz
 
-JSON = Dict[str, Any]
+JSON = dict[str, Any]
 
 TZ_FILE_PATH = "utils/airport_timezones.json"
 

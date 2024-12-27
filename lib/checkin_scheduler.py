@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import timedelta
-from typing import TYPE_CHECKING, Any, Dict, List
+from typing import TYPE_CHECKING, Any
 
 from .checkin_handler import CheckInHandler
 from .flight import Flight
@@ -32,7 +32,7 @@ class CheckInScheduler:
         self.flights = []
         self.checkin_handlers = []
 
-    def process_reservations(self, confirmation_numbers: List[str]) -> None:
+    def process_reservations(self, confirmation_numbers: list[str]) -> None:
         """
         Flights from all confirmation numbers are retrieved. Then, any new
         flights are scheduled and any flights now longer found are removed.
@@ -49,7 +49,7 @@ class CheckInScheduler:
         webdriver = WebDriver(self)
         webdriver.set_headers()
 
-    def _get_flights(self, confirmation_number: str) -> List[Flight]:
+    def _get_flights(self, confirmation_number: str) -> list[Flight]:
         """Get all flights booked on a single reservation"""
         reservation_info = self._get_reservation_info(confirmation_number)
         bounds = reservation_info.get("bounds", [])
@@ -69,7 +69,7 @@ class CheckInScheduler:
 
         return flights
 
-    def _get_reservation_info(self, confirmation_number: str) -> Dict[str, Any]:
+    def _get_reservation_info(self, confirmation_number: str) -> dict[str, Any]:
         info = {
             "firstName": self.reservation_monitor.first_name,
             "lastName": self.reservation_monitor.last_name,
@@ -94,14 +94,14 @@ class CheckInScheduler:
         logger.debug("Successfully retrieved reservation information")
         return response["viewReservationViewPage"]
 
-    def _set_same_day_flight(self, flight: Flight, previous_flights: List[Flight]) -> None:
+    def _set_same_day_flight(self, flight: Flight, previous_flights: list[Flight]) -> None:
         for prev_flight in previous_flights:
             if flight.departure_time - prev_flight.departure_time <= timedelta(hours=24):
                 logger.debug("Flight is on the same day")
                 flight.is_same_day = True
                 break
 
-    def _update_scheduled_flights(self, flights: List[Flight]) -> None:
+    def _update_scheduled_flights(self, flights: list[Flight]) -> None:
         """
         Responsible for three tasks to update scheduled flights:
           1. Schedule check-ins for any new flights
@@ -127,7 +127,7 @@ class CheckInScheduler:
 
         self._remove_old_flights(flights)
 
-    def _schedule_flights(self, flights: List[Flight]) -> None:
+    def _schedule_flights(self, flights: list[Flight]) -> None:
         logger.debug("Scheduling %d flights for check-in", len(flights))
         for flight in flights:
             checkin_handler = CheckInHandler(self, flight, self.reservation_monitor.lock)
@@ -138,7 +138,7 @@ class CheckInScheduler:
 
         self.notification_handler.new_flights(flights)
 
-    def _remove_old_flights(self, flights: List[Flight]) -> None:
+    def _remove_old_flights(self, flights: list[Flight]) -> None:
         """Remove all scheduled flights that are not in the current flight list"""
         logger.debug("%d flights are currently scheduled. Removing old flights", len(self.flights))
 

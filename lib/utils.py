@@ -4,7 +4,7 @@ import socket
 import time
 from datetime import datetime, timezone
 from enum import Enum, IntEnum
-from typing import Any, Dict, Union
+from typing import Any, Union
 
 import ntplib
 import requests
@@ -12,7 +12,7 @@ import requests
 from .log import get_logger
 
 # Type alias for JSON
-JSON = Dict[str, Any]
+JSON = dict[str, Any]
 
 BASE_URL = "https://mobile.southwest.com/api/"
 NTP_SERVER = "time.nist.gov"

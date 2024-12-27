@@ -2,7 +2,6 @@
 """Entrypoint into the script where the arguments are passed to lib.main"""
 
 import sys
-from typing import List
 
 __version__ = "v8.1"
 
@@ -33,7 +32,7 @@ def print_usage() -> None:
     print(__doc__)
 
 
-def check_flags(arguments: List[str]) -> None:
+def check_flags(arguments: list[str]) -> None:
     """Checks for version and help flags and exits the script on success"""
     if "--version" in arguments or "-V" in arguments:
         print_version()
@@ -43,7 +42,7 @@ def check_flags(arguments: List[str]) -> None:
         sys.exit()
 
 
-def init(arguments: List[str]) -> None:
+def init(arguments: list[str]) -> None:
     check_flags(arguments)
 
     # Imported here to avoid needing dependencies to retrieve the script's

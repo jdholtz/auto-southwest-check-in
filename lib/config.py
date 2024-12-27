@@ -2,13 +2,13 @@ import json
 import os
 import sys
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 from .log import get_logger
 from .utils import CheckFaresOption, NotificationLevel, is_truthy
 
 # Type alias for JSON
-JSON = Dict[str, Any]
+JSON = dict[str, Any]
 
 CONFIG_FILE_NAME = "config.json"
 logger = get_logger(__name__)
@@ -139,7 +139,7 @@ class GlobalConfig(Config):
         self.accounts = []
         self.reservations = []
 
-    def initialize(self) -> JSON:
+    def initialize(self) -> None:
         logger.debug("Initializing configuration file")
 
         try:
@@ -151,14 +151,14 @@ class GlobalConfig(Config):
             print(err)
             sys.exit(1)
 
-    def create_account_config(self, accounts: List[JSON]) -> None:
+    def create_account_config(self, accounts: list[JSON]) -> None:
         logger.debug("Creating configurations for %d accounts", len(accounts))
         for account_json in accounts:
             account_config = AccountConfig()
             account_config.create(account_json, self)
             self.accounts.append(account_config)
 
-    def create_reservation_config(self, reservations: List[JSON]) -> None:
+    def create_reservation_config(self, reservations: list[JSON]) -> None:
         logger.debug("Creating configurations for %d reservations", len(reservations))
         for reservation_json in reservations:
             reservation_config = ReservationConfig()

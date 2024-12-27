@@ -1,6 +1,6 @@
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 from unittest import mock
 
 import pytest
@@ -92,7 +92,7 @@ class TestFlight:
         ],
     )
     def test_flights_with_different_flight_numbers_or_departure_times_are_not_equal(
-        self, mocker: MockerFixture, flight_info: Dict[str, Any], departure_time: datetime
+        self, mocker: MockerFixture, flight_info: dict[str, Any], departure_time: datetime
     ) -> None:
         mocker.patch.object(Flight, "_set_flight_time")
         new_flight = Flight(flight_info, {}, "")
@@ -145,7 +145,7 @@ class TestFlight:
         [(["WN100"], "100"), (["WN100", "WN101"], "100\u200b/\u200b101")],
     )
     def test_get_flight_number_creates_flight_number_correctly(
-        self, numbers: List[str], expected_num: str
+        self, numbers: list[str], expected_num: str
     ) -> None:
         flights = [{"number": num} for num in numbers]
         assert self.flight._get_flight_number(flights) == expected_num

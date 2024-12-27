@@ -3,7 +3,6 @@ Runs the fare checker through various scenarios that could happen while checking
 """
 
 import copy
-from typing import List
 from unittest import mock
 
 import pytest
@@ -238,7 +237,7 @@ def test_flight_error_when_no_change_link_exists(
     "fare", [None, [{"_meta": {"fareProductId": "TEST"}}], [{"_meta": {"fareProductId": "WGA"}}]]
 )
 def test_unavailable_fares(
-    requests_mock: RequestMocker, monitor: ReservationMonitor, flight: Flight, fare: List
+    requests_mock: RequestMocker, monitor: ReservationMonitor, flight: Flight, fare: list
 ) -> None:
     flights = copy.deepcopy(FLIGHT_CARDS)
     flights[2]["fares"] = fare

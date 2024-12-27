@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import multiprocessing
 import sys
-from typing import List
 
 from lib import log
 
@@ -16,7 +15,7 @@ LOG_FILE = "logs/auto-southwest-check-in.log"
 logger = log.get_logger(__name__)
 
 
-def get_notification_urls(config: GlobalConfig) -> List[str]:
+def get_notification_urls(config: GlobalConfig) -> list[str]:
     """
     Get all notification URLS in the global config, each account, and each
     reservation. Removes duplicates so notifications are not sent twice to
@@ -63,7 +62,7 @@ def set_up_reservations(config: GlobalConfig, lock: multiprocessing.Lock) -> Non
         reservation_monitor.start()
 
 
-def set_up_check_in(arguments: List[str]) -> None:
+def set_up_check_in(arguments: list[str]) -> None:
     """
     Initialize reservation and account monitoring based on the configuration
     and arguments passed in
@@ -108,7 +107,7 @@ def set_up_check_in(arguments: List[str]) -> None:
         process.join()
 
 
-def main(arguments: List[str], version: str) -> None:
+def main(arguments: list[str], version: str) -> None:
     log.init_main_logging()
     logger.debug("Auto-Southwest Check-In %s", version)
 
