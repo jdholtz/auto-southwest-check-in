@@ -1,10 +1,10 @@
-from datetime import datetime
+import zoneinfo
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 from unittest import mock
 
 import pytest
-import pytz
 from pytest_mock import MockerFixture
 
 from lib.flight import Flight
@@ -106,8 +106,8 @@ class TestFlight:
     def test_get_display_time_formats_time_correctly(
         self, twenty_four_hr: bool, expected_time: str
     ) -> None:
-        tz = pytz.timezone("Asia/Calcutta")
-        self.flight._local_departure_time = tz.localize(datetime(1999, 12, 31, 13, 59))
+        tz = zoneinfo.ZoneInfo("Asia/Calcutta")
+        self.flight._local_departure_time = datetime(1999, 12, 31, 13, 59, tzinfo=tz)
         assert self.flight.get_display_time(twenty_four_hr) == f"1999-12-31 {expected_time} IST"
 
     def test_set_flight_time_sets_the_correct_time(self, mocker: MockerFixture) -> None:
@@ -130,15 +130,15 @@ class TestFlight:
     def test_get_airport_timezone_returns_the_correct_timezone(self, mocker: MockerFixture) -> None:
         mocker.patch.object(Path, "read_text")
         mocker.patch("json.loads", return_value={"test_code": "Asia/Calcutta"})
-        timezone = self.flight._get_airport_timezone("test_code")
-        assert timezone == pytz.timezone("Asia/Calcutta")
+        tz = self.flight._get_airport_timezone("test_code")
+        assert tz == zoneinfo.ZoneInfo("Asia/Calcutta")
 
     def test_convert_to_utc_converts_local_time_to_utc(self) -> None:
-        tz = pytz.timezone("Asia/Calcutta")
+        tz = zoneinfo.ZoneInfo("Asia/Calcutta")
         utc_flight_time = self.flight._convert_to_utc("1999-12-31 23:59", tz)
 
-        assert utc_flight_time == datetime(1999, 12, 31, 18, 29)
-        assert self.flight._local_departure_time == tz.localize(datetime(1999, 12, 31, 23, 59))
+        assert utc_flight_time == datetime(1999, 12, 31, 18, 29, tzinfo=timezone.utc)
+        assert self.flight._local_departure_time == datetime(1999, 12, 31, 23, 59, tzinfo=tz)
 
     @pytest.mark.parametrize(
         ["numbers", "expected_num"],
