@@ -13,7 +13,7 @@ RUN chown -R auto-southwest-check-in:auto-southwest-check-in /app
 USER auto-southwest-check-in
 
 COPY requirements.txt ./
-RUN pip3 install --upgrade pip && pip3 install --no-cache-dir -r requirements.txt
+RUN pip3 install --upgrade pip && pip3 install --no-cache-dir -r requirements.txt && rm -r /app/.cache
 
 COPY . .
 

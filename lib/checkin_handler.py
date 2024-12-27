@@ -167,7 +167,11 @@ class CheckInHandler:
         in until both flights have checked in.
         """
         logger.debug("Attempting to check in")
-        expected_flights = 2 if self.flight.is_same_day else 1
+
+        expected_flights = 1
+        if self.flight.is_same_day:
+            logger.debug("Checking in same-day flight")
+            expected_flights = 2
 
         attempts = 0
         while attempts < MAX_CHECK_IN_ATTEMPTS:
