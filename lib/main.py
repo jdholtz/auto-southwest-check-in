@@ -94,9 +94,13 @@ def set_up_check_in(arguments: list[str]) -> None:
     num_accounts = len(config.accounts)
     num_reservations = len(config.reservations)
     logger.info(
-        f"Monitoring {num_accounts} {pluralize('account', num_accounts)} and {num_reservations} "
-        f"{pluralize('reservation', num_reservations)}\n"
+        "Monitoring %s %s and %s %s\n",
+        num_accounts,
+        pluralize("account", num_accounts),
+        num_reservations,
+        pluralize("reservation", num_reservations),
     )
+
     lock = multiprocessing.Lock()
     set_up_accounts(config, lock)
     set_up_reservations(config, lock)

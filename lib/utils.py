@@ -88,8 +88,10 @@ def make_request(
             sleep_time = 0.5
 
         logger.debug(
-            f"Request error on attempt {attempts}: {error_msg}. Sleeping for {sleep_time:.2f} "
-            "seconds until next attempt"
+            "Request error on attempt %d: %s. Sleeping for %.2f seconds until next attempt",
+            attempts,
+            error_msg,
+            sleep_time,
         )
         time.sleep(sleep_time)
 
