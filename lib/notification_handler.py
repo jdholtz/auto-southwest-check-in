@@ -117,7 +117,7 @@ class NotificationHandler:
                     )
 
         logger.debug("Sending successful check-in notification...")
-        self.send_notification(success_message, NotificationLevel.INFO)
+        self.send_notification(success_message, NotificationLevel.CHECKIN)
 
     def failed_checkin(self, error: RequestError, flight: Flight) -> None:
         error_message = (
