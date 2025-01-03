@@ -2,13 +2,12 @@ from __future__ import annotations
 
 import json
 import os
+import zoneinfo
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
-import pytz
-
-JSON = Dict[str, Any]
+JSON = dict[str, Any]
 
 TZ_FILE_PATH = "utils/airport_timezones.json"
 
@@ -67,14 +66,14 @@ class Flight:
         tz_file = project_dir / TZ_FILE_PATH
         airport_timezones = json.loads(tz_file.read_text())
 
-        airport_timezone = pytz.timezone(airport_timezones[airport_code])
+        airport_timezone = zoneinfo.ZoneInfo(airport_timezones[airport_code])
         return airport_timezone
 
     def _convert_to_utc(self, flight_date: str, airport_timezone: Any) -> datetime:
         flight_date = datetime.strptime(flight_date, "%Y-%m-%d %H:%M")
-        self._local_departure_time = airport_timezone.localize(flight_date)
+        self._local_departure_time = flight_date.replace(tzinfo=airport_timezone)
 
-        utc_time = self._local_departure_time.astimezone(timezone.utc).replace(tzinfo=None)
+        utc_time = self._local_departure_time.astimezone(timezone.utc)
         return utc_time
 
     def _get_flight_number(self, flights: JSON) -> str:
@@ -86,7 +85,7 @@ class Flight:
         flight_number = ""
         for flight in flights:
             # Remove the 'WN' prefix from each flight number
-            flight_number += flight["number"].replace("WN", "", 1)
+            flight_number += flight["number"].removeprefix("WN")
             # Add a slash with a zero-width space on either side
             flight_number += "\u200b/\u200b"
 

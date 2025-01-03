@@ -2,7 +2,7 @@ import multiprocessing
 import sys
 import time
 from datetime import datetime
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any, Union
 
 from .checkin_scheduler import CheckInScheduler
 from .config import AccountConfig, ReservationConfig
@@ -106,7 +106,7 @@ class ReservationMonitor:
         self._check_flight_fares()
         return False
 
-    def _schedule_reservations(self, reservations: List[Dict[str, Any]]) -> None:
+    def _schedule_reservations(self, reservations: list[dict[str, Any]]) -> None:
         logger.debug("Scheduling flight check-ins for %d reservations", len(reservations))
         confirmation_numbers = [reservation["confirmationNumber"] for reservation in reservations]
         self.checkin_scheduler.process_reservations(confirmation_numbers)
@@ -197,7 +197,7 @@ class AccountMonitor(ReservationMonitor):
         # this scope
         return False
 
-    def _get_reservations(self, max_retries: int = 1) -> Tuple[List[Dict[str, Any]], bool]:
+    def _get_reservations(self, max_retries: int = 1) -> tuple[list[dict[str, Any]], bool]:
         """
         Attempts to retrieve a list of reservations and returns a tuple containing the list
         of reservations and a boolean indicating whether reservation scheduling should be skipped.

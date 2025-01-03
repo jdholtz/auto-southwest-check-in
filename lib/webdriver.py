@@ -5,7 +5,7 @@ import os
 import re
 import sys
 import time
-from typing import TYPE_CHECKING, Any, Dict, List
+from typing import TYPE_CHECKING, Any
 
 from sbvirtualdisplay import Display
 from seleniumbase import Driver
@@ -29,7 +29,7 @@ INVALID_CREDENTIALS_CODE = 400518024
 
 WAIT_TIMEOUT_SECS = 180
 
-JSON = Dict[str, Any]
+JSON = dict[str, Any]
 
 logger = get_logger(__name__)
 
@@ -93,7 +93,7 @@ class WebDriver:
 
         self._quit_driver(driver)
 
-    def get_reservations(self, account_monitor: AccountMonitor) -> List[JSON]:
+    def get_reservations(self, account_monitor: AccountMonitor) -> list[JSON]:
         """
         Logs into the account being monitored to retrieve a list of reservations. Since
         valid headers are produced, they are also grabbed and updated in the check-in scheduler.
@@ -236,7 +236,7 @@ class WebDriver:
             logger.debug("Login form failed to submit. Clicking login button again")
             driver.click(login_button)
 
-    def _fetch_reservations(self, driver: Driver) -> List[JSON]:
+    def _fetch_reservations(self, driver: Driver) -> list[JSON]:
         """
         Waits for the reservations request to go through and returns only reservations
         that are flights.

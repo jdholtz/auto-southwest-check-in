@@ -1,5 +1,6 @@
 apprise==1.9.0
 ntplib==0.4.0
-pytz==2024.1  # Remove when this script only supports Python 3.9+
 requests==2.32.3
 seleniumbase==4.32.6
+# Only needed for Windows systems, as they don't have an IANA database by default
+tzdata>=2024.2; platform_system == "Windows"

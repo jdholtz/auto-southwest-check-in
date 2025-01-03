@@ -1,5 +1,3 @@
-from typing import List
-
 import pytest
 from pytest_mock import MockerFixture
 
@@ -34,7 +32,7 @@ def test_check_flags_prints_version_when_version_flag_is_passed(
 @pytest.mark.parametrize("arguments", [["-h"], ["--help"]])
 def test_check_flags_prints_usage_when_help_flag_is_passed(
     mocker: MockerFixture,
-    arguments: List[str],
+    arguments: list[str],
 ) -> None:
     mock_print_usage = mocker.patch("southwest.print_usage")
 

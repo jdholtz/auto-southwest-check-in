@@ -36,6 +36,7 @@ def test_handle_southwest_error_code_handles_all_special_codes(
     response_body = json.dumps({"code": code})
     request_err = RequestError("", response_body)
     with pytest.raises(error):
+        # pylint: disable-next=protected-access
         utils._handle_southwest_error_code(request_err)
 
 
@@ -133,7 +134,7 @@ def test_get_current_time_returns_a_datetime_from_ntp_server(mocker: MockerFixtu
     ntp_stats.tx_timestamp = 3155673599
     mocker.patch("ntplib.NTPClient.request", return_value=ntp_stats)
 
-    assert utils.get_current_time() == datetime(1999, 12, 31, 23, 59, 59)
+    assert utils.get_current_time() == datetime(1999, 12, 31, 23, 59, 59, tzinfo=timezone.utc)
 
 
 def test_get_current_time_returns_a_datetime_from_backup_ntp_server(mocker: MockerFixture) -> None:
@@ -141,18 +142,20 @@ def test_get_current_time_returns_a_datetime_from_backup_ntp_server(mocker: Mock
     ntp_stats.tx_timestamp = 3155673599
     mocker.patch("ntplib.NTPClient.request", side_effect=[ntplib.NTPException, ntp_stats])
 
-    assert utils.get_current_time() == datetime(1999, 12, 31, 23, 59, 59)
+    assert utils.get_current_time() == datetime(1999, 12, 31, 23, 59, 59, tzinfo=timezone.utc)
 
 
 @pytest.mark.parametrize("exception", [socket.gaierror, ntplib.NTPException])
 def test_get_current_time_returns_local_datetime_on_failed_requests(
     mocker: MockerFixture, exception: Exception
 ) -> None:
+    expected_time = datetime(1999, 12, 31, 18, 59, 59, tzinfo=timezone.utc)
+
     mocker.patch("ntplib.NTPClient.request", side_effect=exception)
     mock_datetime = mocker.patch("lib.utils.datetime")
-    mock_datetime.now.return_value = datetime(1999, 12, 31, 18, 59, 59, tzinfo=timezone.utc)
+    mock_datetime.now.return_value = expected_time
 
-    assert utils.get_current_time() == datetime(1999, 12, 31, 18, 59, 59)
+    assert utils.get_current_time() == expected_time
 
 
 @pytest.mark.parametrize(

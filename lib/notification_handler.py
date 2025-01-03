@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, List
+from typing import TYPE_CHECKING, Any, Union
 
 import apprise
 import requests
@@ -10,7 +10,7 @@ from .log import get_logger
 from .utils import LoginError, NotificationLevel, RequestError
 
 if TYPE_CHECKING:
-    from .reservation_monitor import ReservationMonitor
+    from .reservation_monitor import AccountMonitor, ReservationMonitor
 
 MANUAL_CHECKIN_URL = "https://mobile.southwest.com/check-in"
 MANAGE_RESERVATION_URL_MOBILE = "https://mobile.southwest.com/view-reservation"
@@ -22,7 +22,7 @@ logger = get_logger(__name__)
 class NotificationHandler:
     """Handles all notifications that will be sent to the user either via Apprise or the console"""
 
-    def __init__(self, reservation_monitor: ReservationMonitor) -> None:
+    def __init__(self, reservation_monitor: Union[AccountMonitor, ReservationMonitor]) -> None:
         self.reservation_monitor = reservation_monitor
         self.notification_urls = reservation_monitor.config.notification_urls
         self.notification_level = reservation_monitor.config.notification_level
@@ -40,7 +40,7 @@ class NotificationHandler:
         apobj = apprise.Apprise(self.notification_urls)
         apobj.notify(title=title, body=body, body_format=apprise.NotifyFormat.TEXT)
 
-    def new_flights(self, flights: List[Flight]) -> None:
+    def new_flights(self, flights: list[Flight]) -> None:
         # Don't send notifications if no new flights are scheduled
         if len(flights) == 0:
             return
@@ -102,7 +102,7 @@ class NotificationHandler:
         logger.debug("Sending failed login notification...")
         self.send_notification(error_message, NotificationLevel.ERROR)
 
-    def successful_checkin(self, boarding_pass: Dict[str, Any], flight: Flight) -> None:
+    def successful_checkin(self, boarding_pass: dict[str, Any], flight: Flight) -> None:
         success_message = (
             f"Successfully checked in to flight from '{flight.departure_airport}' to "
             f"'{flight.destination_airport}' for {self._get_account_name()}!\n"

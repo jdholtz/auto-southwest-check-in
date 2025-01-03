@@ -1,6 +1,6 @@
 import os
 import sys
-from typing import Any, Dict
+from typing import Any
 from unittest import mock
 
 import pytest
@@ -253,7 +253,7 @@ class TestWebDriver:
         ],
     )
     def test_get_needed_headers_returns_matching_headers(
-        self, original_headers: Dict[str, Any], expected_headers: Dict[str, Any]
+        self, original_headers: dict[str, Any], expected_headers: dict[str, Any]
     ) -> None:
         headers = self.driver._get_needed_headers(original_headers)
         assert headers == expected_headers

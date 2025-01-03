@@ -1,5 +1,4 @@
 import logging
-from typing import List
 
 import pytest
 from pytest_mock import MockerFixture
@@ -77,7 +76,7 @@ def test_set_up_check_in_sends_test_notifications_when_flag_passed(mocker: Mocke
     ],
 )
 def test_set_up_check_in_sets_up_account_and_reservation_with_arguments(
-    mocker: MockerFixture, arguments: List[str], accounts_len: int, reservations_len: int
+    mocker: MockerFixture, arguments: list[str], accounts_len: int, reservations_len: int
 ) -> None:
     mock_process = mocker.patch("multiprocessing.Process")
     mock_processes = [mock_process] * (accounts_len + reservations_len)

@@ -4,7 +4,7 @@ import socket
 import time
 from datetime import datetime, timezone
 from enum import Enum, IntEnum
-from typing import Any, Dict, Union
+from typing import Any, Union
 
 import ntplib
 import requests
@@ -12,7 +12,7 @@ import requests
 from .log import get_logger
 
 # Type alias for JSON
-JSON = Dict[str, Any]
+JSON = dict[str, Any]
 
 BASE_URL = "https://mobile.southwest.com/api/"
 NTP_SERVER = "time.nist.gov"
@@ -88,8 +88,10 @@ def make_request(
             sleep_time = 0.5
 
         logger.debug(
-            f"Request error on attempt {attempts}: {error_msg}. Sleeping for {sleep_time:.2f} "
-            "seconds until next attempt"
+            "Request error on attempt %d: %s. Sleeping for %.2f seconds until next attempt",
+            attempts,
+            error_msg,
+            sleep_time,
         )
         time.sleep(sleep_time)
 
@@ -118,9 +120,9 @@ def get_current_time() -> datetime:
             response = c.request(NTP_BACKUP_SERVER, version=3, timeout=10)
         except (socket.gaierror, ntplib.NTPException):
             logger.debug("Error requesting time from NTP servers. Using local time")
-            return datetime.now(timezone.utc).replace(tzinfo=None)
+            return datetime.now(timezone.utc)
 
-    return datetime.fromtimestamp(response.tx_time, timezone.utc).replace(tzinfo=None)
+    return datetime.fromtimestamp(response.tx_time, timezone.utc)
 
 
 class RequestError(Exception):

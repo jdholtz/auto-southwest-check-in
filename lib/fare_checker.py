@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Callable
 
 from .flight import Flight
 from .log import get_logger
@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from .reservation_monitor import ReservationMonitor
 
 # Type alias for JSON
-JSON = Dict[str, Any]
+JSON = dict[str, Any]
 
 BOOKING_URL = "mobile-air-booking/"
 logger = get_logger(__name__)
@@ -49,7 +49,7 @@ class FareChecker:
         lowest_fare = self._get_lowest_fare(flight, flights, fare_type)
         return lowest_fare
 
-    def _get_matching_flights(self, flight: Flight) -> Tuple[List[JSON], str]:
+    def _get_matching_flights(self, flight: Flight) -> tuple[list[JSON], str]:
         """
         Get all of the flights that match the current flight's departure airport,
         arrival airport, and departure date.
@@ -82,7 +82,7 @@ class FareChecker:
         response = make_request("POST", site, self.headers, query, max_attempts=7)
         return response["changeShoppingPage"]["flights"][bound_page]["cards"], fare_type
 
-    def _get_change_flight_page(self, reservation_info: JSON) -> Tuple[JSON, List[JSON]]:
+    def _get_change_flight_page(self, reservation_info: JSON) -> tuple[JSON, list[JSON]]:
         fare_type_bounds = reservation_info["bounds"]
 
         # Ensure the flight does not have a companion pass connected to it
@@ -131,7 +131,7 @@ class FareChecker:
         if grey_box_message and "companion" in (grey_box_message.get("body") or ""):
             raise FlightChangeError("Fare check is not supported with companion passes")
 
-    def _get_lowest_fare(self, flight: Flight, flights: List[JSON], fare_type: str) -> JSON:
+    def _get_lowest_fare(self, flight: Flight, flights: list[JSON], fare_type: str) -> JSON:
         """
         Get the lowest fare for the queried flights based on the filter being used. If no fare is
         available for the specific fare type, a 0 USD difference will be returned.
@@ -158,7 +158,7 @@ class FareChecker:
 
         return lowest_fare
 
-    def _get_matching_fare(self, fares: List[JSON], fare_type: str) -> Optional[JSON]:
+    def _get_matching_fare(self, fares: list[JSON], fare_type: str) -> JSON | None:
         """
         Get the fare that matches the fare type. If a fare exists, the amount will be returned, as
         an integer, and the currency code (USD or points). If no fare exists, nothing will be
