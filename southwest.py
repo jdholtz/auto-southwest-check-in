@@ -13,12 +13,12 @@ Log into your account:
     python3 southwest.py [options] USERNAME PASSWORD
 
 Options:
-    --test-notifications Test the notification URLs configuration and exit
-    --debug-screenshots  Take screenshots of the browser for debugging purposes. Screenshots
-                         will be stored in the 'logs/' directory
-    -v, --verbose        Display debug messages
-    -h, --help           Display this help and exit
-    -V, --version        Display version information and exit
+    --test-notifications   Test the notification URLs configuration and exit
+    --debug-screenshots    Take screenshots of the browser for debugging purposes. Screenshots
+                           will be stored in the 'logs/' directory
+    -v, --verbose          Display debug messages
+    -h, --help             Display this help and exit
+    -V, --version          Display version information and exit
 
 For more information, check out https://github.com/jdholtz/auto-southwest-check-in#readme"""
 
