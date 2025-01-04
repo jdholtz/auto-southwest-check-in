@@ -15,33 +15,23 @@ LOG_FILE = "logs/auto-southwest-check-in.log"
 logger = log.get_logger(__name__)
 
 
-def get_notification_urls(config: GlobalConfig) -> list[str]:
+def test_notifications(config: GlobalConfig) -> None:
     """
-    Get all notification URLS in the global config, each account, and each
-    reservation. Removes duplicates so notifications are not sent twice to
-    the same source.
+    Send a test notification to all configured sources. The notification configs for every account
+    and reservation are merged to ensure only one test notification is sent to each source, even
+    if a URL is specified for multiple accounts or reservations.
     """
-    notification_urls = config.notification_urls
-
     for account in config.accounts:
-        notification_urls.extend(account.notification_urls)
+        config.merge_notification_config(account)
 
     for reservation in config.reservations:
-        notification_urls.extend(reservation.notification_urls)
-
-    # Remove duplicates
-    notification_urls = list(set(notification_urls))
-    return notification_urls
-
-
-def test_notifications(config: GlobalConfig) -> None:
-    notification_urls = get_notification_urls(config)
+        config.merge_notification_config(reservation)
 
     new_config = ReservationConfig()
-    new_config.notification_urls = notification_urls
+    new_config.notifications = config.notifications
     reservation_monitor = ReservationMonitor(new_config)
 
-    logger.info("Sending test notifications to %d sources", len(notification_urls))
+    logger.info("Sending test notifications to %d sources", len(new_config.notifications))
     reservation_monitor.notification_handler.send_notification("This is a test message")
 
 

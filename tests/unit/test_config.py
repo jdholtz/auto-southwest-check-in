@@ -44,6 +44,15 @@ class TestConfig:
         mock_merge_globals.assert_called_once_with(global_config)
         mock_parse_config.assert_called_once_with({"test": "config"})
 
+    def test_create_only_merges_when_global_config_provided(self, mocker: MockerFixture) -> None:
+        mock_merge_globals = mocker.patch.object(Config, "_merge_globals")
+        mocker.patch.object(Config, "_parse_config")
+
+        test_config = Config()
+        test_config.create({"test": "config"})
+
+        mock_merge_globals.assert_not_called()
+
     def test_merge_globals_merges_all_global_config_options(self) -> None:
         global_config = GlobalConfig()
         test_config = Config()
@@ -55,7 +64,6 @@ class TestConfig:
                 "healthchecks_url": "global_healthchecks",
                 "notifications": [
                     {"url": "url1", "24_hour_time": True},
-                    {"url": "url2", "24_hour_time": True},
                 ],
                 "retrieval_interval": 20,
             }
@@ -73,18 +81,60 @@ class TestConfig:
 
         test_config._merge_globals(global_config)
 
+        assert test_config.browser_path == global_config.browser_path
         assert test_config.check_fares == global_config.check_fares
         assert test_config.retrieval_interval == global_config.retrieval_interval
 
-        # Ensure the notifications were merged correctly, with the test config taking precedence
-        assert len(test_config.notifications) == 2
+        # Notification configs should not be merged in merge_globals
+        assert len(test_config.notifications) == 1
         notif1 = test_config.notifications[0]
         self._assert_notification_config_matches(notif1, "url1", NotificationLevel.ERROR, False)
-        notif2 = test_config.notifications[1]
-        self._assert_notification_config_matches(notif2, "url2", NotificationLevel.INFO, True)
 
         # Ensure only global configs are merged, not account/reservation-specific configs
         assert test_config.healthchecks_url == "test_healthchecks"
+
+    def test_merge_notification_config_merges_notifications_not_in_current_config(self) -> None:
+        merging_config = Config()
+        test_config = Config()
+
+        merging_config._parse_config(
+            {
+                "browser_path": "test/browser_path",
+                "check_fares": True,
+                "healthchecks_url": "global_healthchecks",
+                "notifications": [
+                    {"url": "url1", "24_hour_time": True},
+                    {"url": "url2", "24_hour_time": True},
+                ],
+                "retrieval_interval": 20,
+            }
+        )
+
+        test_config._parse_config(
+            {
+                "browser_path": "test/browser_path2",
+                "check_fares": False,
+                "healthchecks_url": "test_healthchecks",
+                "notifications": [
+                    {"url": "url1", "level": NotificationLevel.ERROR},
+                    {"url": "url3"},
+                ],
+                "retrieval_interval": 10,
+            }
+        )
+
+        test_config.merge_notification_config(merging_config)
+
+        assert len(test_config.notifications) == 3
+        self._assert_notification_config_matches(
+            test_config.notifications[0], "url1", NotificationLevel.ERROR, False
+        )
+        self._assert_notification_config_matches(
+            test_config.notifications[1], "url3", NotificationLevel.INFO, False
+        )
+        self._assert_notification_config_matches(
+            test_config.notifications[2], "url2", NotificationLevel.INFO, True
+        )
 
     @pytest.mark.parametrize(
         "config_content",

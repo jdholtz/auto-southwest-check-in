@@ -34,24 +34,45 @@ class Config:
         # Cached for easier parsing. Internal only
         self._notification_urls = []
 
-    def create(self, config_json: JSON, global_config: "GlobalConfig") -> None:
-        self._merge_globals(global_config)
+    def create(self, config_json: JSON, global_config: "GlobalConfig" = None) -> None:
+        """
+        Create a config by merging any global configurations and then parsing the config JSON.
+        Merging is done first so configurations specific to an account and reservation take
+        precedence. Notification config merging is done after so notifications with the same URL
+        use the account's configuration, not the global configuration.
+        """
+        # Occasionally, we just want to parse the config without merging a global config (e.g. for
+        # notification configs)
+        if global_config is not None:
+            self._merge_globals(global_config)
+
         self._parse_config(config_json)
+
+        if global_config is not None:
+            self.merge_notification_config(global_config)
 
     def _merge_globals(self, global_config: "GlobalConfig") -> None:
         """
         Each account and reservation config inherits the global
         configuration first. If specific options are set for an account
         or reservation, those will override the global configuration.
+
+        Merging notification configs is done separately as an account or reservation config will
+        use both globally configured notifications and account/reservation-specific notifications.
         """
         self.browser_path = global_config.browser_path
         self.check_fares = global_config.check_fares
         self.retrieval_interval = global_config.retrieval_interval
 
-        # Only add notifications that are not already in the account or reservation config
-        for notification in global_config.notifications:
+    def merge_notification_config(self, merging_config: "Config") -> None:
+        """
+        Merge notification configs from another configuration. Only merges notification URLs that
+        are not already present in the current configuration.
+        """
+        for notification in merging_config.notifications:
             if notification.url not in self._notification_urls:
                 self.notifications.append(notification)
+                self._notification_urls.append(notification.url)
 
     def _parse_config(self, config: JSON) -> None:
         """
@@ -112,7 +133,7 @@ class Config:
         logger.debug("Creating configurations for %d notifications", len(notifications))
         for notification_json in notifications:
             notification_config = NotificationConfig()
-            notification_config.create(notification_json, self)
+            notification_config.create(notification_json)
             self.notifications.append(notification_config)
             self._notification_urls.append(notification_config.url)
 

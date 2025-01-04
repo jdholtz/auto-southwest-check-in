@@ -15,25 +15,30 @@ def mock_config(mocker: MockerFixture) -> None:
     mocker.patch("lib.config.GlobalConfig._read_config")
 
 
-def test_get_notification_urls_gets_all_urls() -> None:
+def test_test_notifications_sends_to_every_url_in_config(mocker: MockerFixture) -> None:
+    # pylint: disable=protected-access
+    # Accessing protected methods is just used to not need to provide a full config object
+    # to parse
+
     config = GlobalConfig()
     config.accounts = [AccountConfig()]
     config.reservations = [ReservationConfig()]
-    config.notification_urls = ["url1"]
-    config.accounts[0].notification_urls = ["url1", "url2"]
-    config.reservations[0].notification_urls = ["url1", "url3"]
+    config._create_notification_config([{"url": "url1"}])
 
-    notification_urls = main.get_notification_urls(config)
+    config.accounts[0]._create_notification_config([{"url": "url1"}])
+    config.accounts[0]._create_notification_config([{"url": "url2"}])
 
-    # Sort because order is not important
-    assert sorted(notification_urls) == ["url1", "url2", "url3"]
+    config.reservations[0]._create_notification_config([{"url": "url3"}])
+    config.reservations[0]._create_notification_config([{"url": "url1"}])
 
-
-def test_test_notifications_sends_to_every_url_in_config(mocker: MockerFixture) -> None:
     mock_send_notification = mocker.patch.object(NotificationHandler, "send_notification")
 
-    config = GlobalConfig()
     main.test_notifications(config)
+
+    # Make sure the configs were merged correctly so all of the URLs are only sent one test
+    # notification each
+    assert len(config.notifications) == 3
+
     mock_send_notification.assert_called_once()
 
 
