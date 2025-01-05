@@ -154,6 +154,10 @@ class GlobalConfig(Config):
         except (ConfigError, json.decoder.JSONDecodeError) as err:
             print("Error in configuration file:")
             print(err)
+            if err.__cause__ is not None:
+                # Also print the error that caused the ConfigError, if it exists
+                print(err.__cause__)
+
             sys.exit(1)
 
     def create_account_config(self, accounts: list[JSON]) -> None:
@@ -235,36 +239,46 @@ class GlobalConfig(Config):
         return config
 
     def _read_notification_env_vars(self, config: JSON) -> JSON:
-        # Notification 24-hour time
-        if notification_24_hour_time := os.getenv(
-            "AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_24_HOUR_TIME"
-        ):
+        url = os.getenv("AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_URL")
+        level = os.getenv("AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_LEVEL")
+        twenty_four_hour_time = os.getenv("AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_24_HOUR_TIME")
+
+        if not url:
+            # A URL is needed for a specific notification config, so stop here if no URL is
+            # provided. Warn users so we don't blindly ignore these environment variables
+            if level:
+                logger.warning(
+                    "'AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_LEVEL' was provided but will not take "
+                    "effect as 'AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_URL was not specified"
+                )
+            if twenty_four_hour_time:
+                logger.warning(
+                    "'AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_24_HOUR_TIME' was provided but will not "
+                    "take effect as 'AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_URL was not specified"
+                )
+
+            return config
+
+        new_notification = {"url": url}
+
+        if level:
             try:
-                config["notification_24_hour_time"] = is_truthy(notification_24_hour_time)
+                new_notification["level"] = NotificationLevel(int(level))
+            except ValueError as err:
+                raise ConfigError(
+                    "'AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_LEVEL' is not a valid notification level"
+                ) from err
+
+        if twenty_four_hour_time:
+            try:
+                new_notification["24_hour_time"] = is_truthy(twenty_four_hour_time)
             except ValueError as err:
                 raise ConfigError(
                     "Error parsing 'AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_24_HOUR_TIME'"
                 ) from err
 
-        # Notification URL
-        if notification_url := os.getenv("AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_URL"):
-            config.setdefault("notification_urls", [])
-            if isinstance(config["notification_urls"], str):
-                config["notification_urls"] = [config["notification_urls"]]
-            if not isinstance(config["notification_urls"], list):
-                raise ConfigError("'notification_urls' must be a string or a list")
-            if notification_url not in config["notification_urls"]:
-                config["notification_urls"].append(notification_url)
-
-        # Notification Level
-        if notification_level := os.getenv("AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_LEVEL"):
-            try:
-                config["notification_level"] = int(notification_level)
-            except ValueError as err:
-                raise ConfigError(
-                    "'AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_LEVEL' must be an integer"
-                ) from err
-
+        config.setdefault("notifications", [])
+        config["notifications"].append(new_notification)
         return config
 
     def _parse_config(self, config: JSON) -> None:

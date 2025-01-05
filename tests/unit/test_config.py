@@ -218,6 +218,10 @@ class TestGlobalConfig:
     def test_config_exits_on_error_in_config_file(
         self, mocker: MockerFixture, exception: Exception
     ) -> None:
+        if isinstance(exception, ConfigError):
+            # Many times, a ConfigError is raised as a result of an underlying exception
+            exception.__cause__ = ValueError()
+
         mocker.patch.object(GlobalConfig, "_read_config", side_effect=exception)
 
         config = GlobalConfig()
@@ -284,28 +288,30 @@ class TestGlobalConfig:
 
         assert config_content == {"check_fares": True}
 
-    def test_read_env_vars_notification_24_hr_time_successful(self, mocker: MockerFixture) -> None:
-        mocker.patch.dict(
-            "os.environ", {"AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_24_HOUR_TIME": "true"}
-        )
+    @pytest.mark.parametrize(
+        ["level", "twenty_four_hr_time"],
+        [(None, None), (1, None), (None, True)],
+    )
+    def test_read_notification_env_vars_no_url_specified(
+        self, mocker: MockerFixture, level: int, twenty_four_hr_time: bool
+    ) -> None:
+        if level:
+            mocker.patch.dict(
+                "os.environ", {"AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_LEVEL": str(level)}
+            )
+        if twenty_four_hr_time is not None:
+            mocker.patch.dict(
+                "os.environ",
+                {"AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_24_HOUR_TIME": str(twenty_four_hr_time)},
+            )
+
         test_config = GlobalConfig()
         config_content = test_config._read_env_vars({})
 
-        assert config_content == {"notification_24_hour_time": True}
+        assert not config_content
 
-    def test_read_env_vars_notification_24_hr_time_override_json_config(
-        self, mocker: MockerFixture
-    ) -> None:
-        mocker.patch.dict(
-            "os.environ", {"AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_24_HOUR_TIME": "true"}
-        )
-        test_config = GlobalConfig()
-        base_config = {"notification_24_hour_time": False}
-        config_content = test_config._read_env_vars(base_config)
-
-        assert config_content == {"notification_24_hour_time": True}
-
-    def test_read_env_vars_notification_24_hr_time_invalid(self, mocker: MockerFixture) -> None:
+    def test_read_notification_env_vars_24_hr_time_invalid(self, mocker: MockerFixture) -> None:
+        mocker.patch.dict("os.environ", {"AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_URL": "test_url"})
         mocker.patch.dict(
             "os.environ", {"AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_24_HOUR_TIME": "invalid"}
         )
@@ -313,56 +319,46 @@ class TestGlobalConfig:
         with pytest.raises(ConfigError):
             test_config._read_env_vars({})
 
-    def test_read_env_vars_notification_url_successful(self, mocker: MockerFixture) -> None:
+    def test_read_notification_env_vars_level_invalid(self, mocker: MockerFixture) -> None:
         mocker.patch.dict("os.environ", {"AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_URL": "test_url"})
-        test_config = GlobalConfig()
-        config_content = test_config._read_env_vars({})
-
-        assert config_content == {"notification_urls": ["test_url"]}
-
-    def test_read_env_vars_notification_url_duplicate(self, mocker: MockerFixture) -> None:
-        mocker.patch.dict("os.environ", {"AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_URL": "test_url"})
-        test_config = GlobalConfig()
-        base_config = {"notification_urls": ["test_url"]}
-        config_content = test_config._read_env_vars(base_config)
-
-        assert config_content == {"notification_urls": ["test_url"]}
-
-    def test_read_env_vars_notification_url_additional(self, mocker: MockerFixture) -> None:
-        mocker.patch.dict("os.environ", {"AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_URL": "test_url2"})
-        test_config = GlobalConfig()
-        base_config = {"notification_urls": ["test_url1"]}
-        config_content = test_config._read_env_vars(base_config)
-
-        assert config_content == {"notification_urls": ["test_url1", "test_url2"]}
-
-    def test_read_env_vars_notification_url_base_string(self, mocker: MockerFixture) -> None:
-        mocker.patch.dict("os.environ", {"AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_URL": "test_url2"})
-        test_config = GlobalConfig()
-        base_config = {"notification_urls": "test_url"}
-        config_content = test_config._read_env_vars(base_config)
-
-        assert config_content == {"notification_urls": ["test_url", "test_url2"]}
-
-    def test_read_env_vars_notification_url_base_invalid(self, mocker: MockerFixture) -> None:
-        mocker.patch.dict("os.environ", {"AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_URL": "test_url2"})
-        test_config = GlobalConfig()
-        base_config = {"notification_urls": 0}
-        with pytest.raises(ConfigError):
-            test_config._read_env_vars(base_config)
-
-    def test_read_env_vars_notification_level_successful(self, mocker: MockerFixture) -> None:
-        mocker.patch.dict("os.environ", {"AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_LEVEL": "1"})
-        test_config = GlobalConfig()
-        config_content = test_config._read_env_vars({})
-
-        assert config_content == {"notification_level": 1}
-
-    def test_read_env_vars_notification_level_invalid(self, mocker: MockerFixture) -> None:
         mocker.patch.dict("os.environ", {"AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_LEVEL": "invalid"})
         test_config = GlobalConfig()
         with pytest.raises(ConfigError):
             test_config._read_env_vars({})
+
+    def test_read_notification_env_vars_only_notification_url(self, mocker: MockerFixture) -> None:
+        mocker.patch.dict("os.environ", {"AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_URL": "test_url"})
+        test_config = GlobalConfig()
+        config_content = test_config._read_env_vars({})
+
+        assert config_content == {"notifications": [{"url": "test_url"}]}
+
+    def test_read_notification_env_vars_notification_full(self, mocker: MockerFixture) -> None:
+        mocker.patch.dict("os.environ", {"AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_URL": "test_url"})
+        mocker.patch.dict("os.environ", {"AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_LEVEL": "2"})
+        mocker.patch.dict(
+            "os.environ", {"AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_24_HOUR_TIME": "true"}
+        )
+
+        test_config = GlobalConfig()
+        config_content = test_config._read_env_vars({})
+
+        assert config_content == {
+            "notifications": [{"url": "test_url", "level": 2, "24_hour_time": True}]
+        }
+
+    def test_read_notification_env_vars_notification_url_additional(
+        self, mocker: MockerFixture
+    ) -> None:
+        mocker.patch.dict("os.environ", {"AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_URL": "test_url2"})
+        mocker.patch.dict("os.environ", {"AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_LEVEL": "2"})
+        test_config = GlobalConfig()
+        base_config = {"notifications": [{"url": "test_url1"}]}
+        config_content = test_config._read_env_vars(base_config)
+
+        assert config_content == {
+            "notifications": [{"url": "test_url1"}, {"url": "test_url2", "level": 2}]
+        }
 
     def test_read_env_vars_browser_path_successful(self, mocker: MockerFixture) -> None:
         mocker.patch.dict("os.environ", {"AUTO_SOUTHWEST_CHECK_IN_BROWSER_PATH": "test_path"})
