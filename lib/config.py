@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import os
 import sys
@@ -34,7 +36,7 @@ class Config:
         # Cached for easier parsing. Internal only
         self._notification_urls = []
 
-    def create(self, config_json: JSON, global_config: "GlobalConfig" = None) -> None:
+    def create(self, config_json: JSON, global_config: GlobalConfig = None) -> None:
         """
         Create a config by merging any global configurations and then parsing the config JSON.
         Merging is done first so configurations specific to an account and reservation take
@@ -51,7 +53,7 @@ class Config:
         if global_config is not None:
             self.merge_notification_config(global_config)
 
-    def _merge_globals(self, global_config: "GlobalConfig") -> None:
+    def _merge_globals(self, global_config: GlobalConfig) -> None:
         """
         Each account and reservation config inherits the global
         configuration first. If specific options are set for an account
@@ -64,7 +66,7 @@ class Config:
         self.check_fares = global_config.check_fares
         self.retrieval_interval = global_config.retrieval_interval
 
-    def merge_notification_config(self, merging_config: "Config") -> None:
+    def merge_notification_config(self, merging_config: Config) -> None:
         """
         Merge notification configs from another configuration. Only merges notification URLs that
         are not already present in the current configuration.
