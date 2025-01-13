@@ -9,10 +9,17 @@ If there is no "Upgrading" header for that version, no post-upgrade actions need
 ([#320](https://github.com/jdholtz/auto-southwest-check-in/pull/320) by [@kaveet](https://github.com/kaveet))
     - If you want to use this schema, you'll need to add the following line to your `config.json` file:
     `"$schema": "config.schema.json"`
+- Official support for Python 3.13
+    - Support for Python 3.8 has been dropped
 
 ### Improvements
 - Logins that fail due to 'Too Many Requests' or 'Internal Server Error' errors will now be retried once
 ([#311](https://github.com/jdholtz/auto-southwest-check-in/pull/311) by [@dmytrokoren](https://github.com/dmytorkoren))
+
+### Upgrading
+- Upgrade the dependencies to the latest versions by running `pip install -r requirements.txt`
+- The script no longer works on Python 3.8. If you are using Python 3.8, you will need to upgrade to
+a newer version
 
 
 ## 8.1 (2024-11-03)
