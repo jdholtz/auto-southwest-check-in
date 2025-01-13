@@ -3,7 +3,7 @@ When upgrading to a new version, make sure to follow the directions under the "U
 If there is no "Upgrading" header for that version, no post-upgrade actions need to be performed.
 
 
-## Upcoming
+## 8.2 (2025-01-12)
 ### New Features
 - A [JSON Schema](https://json-schema.org/) definition was added to help users validate their configuration files through updates
 ([#320](https://github.com/jdholtz/auto-southwest-check-in/pull/320) by [@kaveet](https://github.com/kaveet))
