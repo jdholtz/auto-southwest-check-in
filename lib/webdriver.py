@@ -10,6 +10,9 @@ from typing import TYPE_CHECKING, Any
 from sbvirtualdisplay import Display
 from seleniumbase import Driver
 from seleniumbase.fixtures import page_actions as seleniumbase_actions
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 from .log import LOGS_DIRECTORY, get_logger
 from .utils import DriverTimeoutError, LoginError, random_sleep_duration
@@ -108,6 +111,24 @@ class WebDriver:
         seleniumbase_actions.wait_for_element_not_visible(driver, ".dimmer")
         self._take_debug_screenshot(driver, "pre_login.png")
 
+        # Click to remove the error popup
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, ".confirm-button"))
+        )
+        logger.debug("Popup detected. Dismissing it.")
+        self._take_debug_screenshot(driver, "popup-detected.png")
+
+        # Click the "OK" button to dismiss the popup
+        ok_button = driver.find_element(By.CSS_SELECTOR, ".confirm-button")
+        ok_button.click()
+        self._take_debug_screenshot(driver, "after-click-error.png")
+
+        # Wait for the backdrop to disappear
+        WebDriverWait(driver, 10).until(
+            EC.invisibility_of_element_located((By.CLASS_NAME, "backdrop"))
+        )
+        logger.debug("Backdrop dismissed successfully.")
+
         driver.click(".login-button--box")
         time.sleep(random_sleep_duration(1, 5))
         driver.type('input[name="userNameOrAccountNumber"]', account_monitor.username)
@@ -157,6 +178,7 @@ class WebDriver:
 
         logger.debug("Loading Southwest check-in page (this may take a moment)")
         driver.open(CHECKIN_URL)
+        time.sleep(random_sleep_duration(1, 5))
         self._take_debug_screenshot(driver, "after_page_load.png")
         return driver
 
