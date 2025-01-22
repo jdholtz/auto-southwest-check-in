@@ -8,11 +8,11 @@ import time
 from typing import TYPE_CHECKING, Any
 
 from sbvirtualdisplay import Display
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
 from seleniumbase import Driver
 from seleniumbase.fixtures import page_actions as seleniumbase_actions
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
 
 from .log import LOGS_DIRECTORY, get_logger
 from .utils import DriverTimeoutError, LoginError, random_sleep_duration
