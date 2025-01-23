@@ -108,6 +108,10 @@ class WebDriver:
         seleniumbase_actions.wait_for_element_not_visible(driver, ".dimmer")
         self._take_debug_screenshot(driver, "pre_login.png")
 
+        # If a popup came up with an error, click "OK" to remove it.
+        # See https://github.com/jdholtz/auto-southwest-check-in/issues/226
+        driver.click_if_visible(".button-popup.confirm-button")
+
         driver.click(".login-button--box")
         time.sleep(random_sleep_duration(1, 5))
         driver.type('input[name="userNameOrAccountNumber"]', account_monitor.username)
