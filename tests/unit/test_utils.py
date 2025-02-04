@@ -28,6 +28,7 @@ def test_random_sleep_duration_respects_min_and_max_durations(mocker: MockerFixt
         (utils.INVALID_CONFIRMATION_NUMBER_LENGTH_CODE, RequestError),
         (utils.PASSENGER_NOT_FOUND_CODE, RequestError),
         (utils.RESERVATION_NOT_FOUND_CODE, RequestError),
+        (utils.RESERVATION_CANCELLED_CODE, RequestError),
     ],
 )
 def test_handle_southwest_error_code_handles_all_special_codes(

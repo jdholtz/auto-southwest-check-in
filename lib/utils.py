@@ -21,6 +21,7 @@ NTP_BACKUP_SERVER = "time.cloudflare.com"
 AIRPORT_CHECKIN_REQUIRED_CODE = 400511206
 INVALID_CONFIRMATION_NUMBER_LENGTH_CODE = 400310456
 PASSENGER_NOT_FOUND_CODE = 400620480
+RESERVATION_CANCELLED_CODE = 400520414
 RESERVATION_NOT_FOUND_CODE = 400620389
 
 logger = get_logger(__name__)
@@ -42,6 +43,9 @@ def _handle_southwest_error_code(error: "RequestError") -> None:
 
     if error.southwest_code == RESERVATION_NOT_FOUND_CODE:
         raise RequestError("Reservation not found")
+
+    if error.southwest_code == RESERVATION_CANCELLED_CODE:
+        raise RequestError("Reservation has been cancelled")
 
 
 def make_request(
