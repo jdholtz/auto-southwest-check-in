@@ -147,8 +147,7 @@ class CheckInScheduler:
             if flight in flights:
                 continue
 
-            # Use 12-hour format time for the user as this is just printed to the console, not sent
-            # in a notification
+            # Print console messages with a 12-hour time format
             flight_time = flight.get_display_time(False)
             print(
                 f"Flight from {flight.departure_airport} to {flight.destination_airport} on "

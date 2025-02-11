@@ -37,8 +37,11 @@ class NotificationHandler:
 
         The flights parameter is necessary so the flight time format of each service is respected.
         """
+        flights = flights or []
 
-        print(body)  # This isn't logged as it contains sensitive information
+        # Print console messages with a 12-hour time format
+        printed_body = self._format_flight_times(body, flights, False)
+        print(printed_body)  # This isn't logged as it contains sensitive information
 
         title = "Auto Southwest Check-in Script"
         flights = flights or []

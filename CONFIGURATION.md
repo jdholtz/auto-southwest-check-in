@@ -80,7 +80,8 @@ during logins as well as all messages in later levels.\
 Default: false \
 Type: Boolean
 
-Display flight times in notifications and console messages in 24-hour format instead of 12-hour format.
+Display flight times in notifications in 24-hour format instead of 12-hour format. Console messages
+will always display in 12-hour format.
 
 ### Test The Notifications
 To test if the notification URLs work, you can run the following command
