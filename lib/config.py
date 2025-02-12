@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import os
 import sys
@@ -24,31 +26,55 @@ class Config:
         # Default values are set
         self.browser_path = None
         self.check_fares = CheckFaresOption.SAME_FLIGHT
-        self.notification_24_hour_time = False
-        self.notification_level = NotificationLevel.INFO
-        self.notification_urls = []
+        self.notifications = []
         self.retrieval_interval = 24 * 60 * 60
 
-        # Account and reservation-specific config (parsed in _parse_config, but not merged into
+        # Account and reservation-specific configs (parsed in _parse_config, but not merged into
         # the global configuration).
         self.healthchecks_url = None
 
-    def create(self, config_json: JSON, global_config: "GlobalConfig") -> None:
-        self._merge_globals(global_config)
+        # Cached for easier parsing. Internal only
+        self._notification_urls = []
+
+    def create(self, config_json: JSON, global_config: GlobalConfig = None) -> None:
+        """
+        Create a config by merging any global configurations and then parsing the config JSON.
+        Merging is done first so configurations specific to an account and reservation take
+        precedence. Notification config merging is done after so notifications with the same URL
+        use the account's configuration, not the global configuration.
+        """
+        # Occasionally, we just want to parse the config without merging a global config (e.g. for
+        # notification configs)
+        if global_config is not None:
+            self._merge_globals(global_config)
+
         self._parse_config(config_json)
 
-    def _merge_globals(self, global_config: "GlobalConfig") -> None:
+        if global_config is not None:
+            self.merge_notification_config(global_config)
+
+    def _merge_globals(self, global_config: GlobalConfig) -> None:
         """
         Each account and reservation config inherits the global
         configuration first. If specific options are set for an account
         or reservation, those will override the global configuration.
+
+        Merging notification configs is done separately as an account or reservation config will
+        use both globally configured notifications and account/reservation-specific notifications.
         """
         self.browser_path = global_config.browser_path
         self.check_fares = global_config.check_fares
-        self.notification_24_hour_time = global_config.notification_24_hour_time
-        self.notification_level = global_config.notification_level
-        self.notification_urls.extend(global_config.notification_urls)
         self.retrieval_interval = global_config.retrieval_interval
+
+    def merge_notification_config(self, merging_config: Config) -> None:
+        """
+        Merge notification configs from another configuration. Only merges notification URLs that
+        are not already present in the current configuration.
+        """
+        for notification in merging_config.notifications:
+            if notification.url not in self._notification_urls:
+                self.notifications.append(notification)
+                self._notification_urls.append(notification.url)
 
     def _parse_config(self, config: JSON) -> None:
         """
@@ -97,40 +123,21 @@ class Config:
             # Convert hours to seconds
             self.retrieval_interval *= 3600
 
-        self._parse_notification_config(config)
+        if "notifications" in config:
+            notifications = config["notifications"]
 
-    def _parse_notification_config(self, config: JSON) -> None:
-        if "notification_24_hour_time" in config:
-            self.notification_24_hour_time = config["notification_24_hour_time"]
-            logger.debug("Setting notification 24 hour time to %s", self.notification_24_hour_time)
+            if not isinstance(notifications, list):
+                raise ConfigError("'notifications' must be a list")
 
-            if not isinstance(self.notification_24_hour_time, bool):
-                raise ConfigError("'notification_24_hour_time' must be a boolean")
+            self._create_notification_config(notifications)
 
-        if "notification_level" in config:
-            notification_level = config["notification_level"]
-
-            try:
-                self.notification_level = NotificationLevel(notification_level)
-            except ValueError as err:
-                raise ConfigError(
-                    f"'{notification_level}' is not a valid notification level"
-                ) from err
-
-            logger.debug("Setting notification level to %s", repr(self.notification_level))
-
-        if "notification_urls" in config:
-            notification_urls = config["notification_urls"]
-
-            if not isinstance(notification_urls, (list, str)):
-                raise ConfigError("'notification_urls' must be a list or string")
-
-            # Make sure that empty strings don't get added to the list
-            if isinstance(notification_urls, str) and len(notification_urls) > 0:
-                notification_urls = [notification_urls]
-
-            self.notification_urls.extend(notification_urls)
-            logger.debug("Using %d notification services", len(self.notification_urls))
+    def _create_notification_config(self, notifications: list[JSON]) -> None:
+        logger.debug("Creating configurations for %d notifications", len(notifications))
+        for notification_json in notifications:
+            notification_config = NotificationConfig()
+            notification_config.create(notification_json)
+            self.notifications.append(notification_config)
+            self._notification_urls.append(notification_config.url)
 
 
 class GlobalConfig(Config):
@@ -149,6 +156,10 @@ class GlobalConfig(Config):
         except (ConfigError, json.decoder.JSONDecodeError) as err:
             print("Error in configuration file:")
             print(err)
+            if err.__cause__ is not None:
+                # Also print the error that caused the ConfigError, if it exists
+                print(err.__cause__)
+
             sys.exit(1)
 
     def create_account_config(self, accounts: list[JSON]) -> None:
@@ -230,36 +241,46 @@ class GlobalConfig(Config):
         return config
 
     def _read_notification_env_vars(self, config: JSON) -> JSON:
-        # Notification 24-hour time
-        if notification_24_hour_time := os.getenv(
-            "AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_24_HOUR_TIME"
-        ):
+        url = os.getenv("AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_URL")
+        level = os.getenv("AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_LEVEL")
+        twenty_four_hour_time = os.getenv("AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_24_HOUR_TIME")
+
+        if not url:
+            # A URL is needed for a specific notification config, so stop here if no URL is
+            # provided. Warn users so we don't blindly ignore these environment variables
+            if level:
+                logger.warning(
+                    "'AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_LEVEL' was provided but will not take "
+                    "effect as 'AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_URL was not specified"
+                )
+            if twenty_four_hour_time:
+                logger.warning(
+                    "'AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_24_HOUR_TIME' was provided but will not "
+                    "take effect as 'AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_URL was not specified"
+                )
+
+            return config
+
+        new_notification = {"url": url}
+
+        if level:
             try:
-                config["notification_24_hour_time"] = is_truthy(notification_24_hour_time)
+                new_notification["level"] = NotificationLevel(int(level))
+            except ValueError as err:
+                raise ConfigError(
+                    "'AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_LEVEL' is not a valid notification level"
+                ) from err
+
+        if twenty_four_hour_time:
+            try:
+                new_notification["24_hour_time"] = is_truthy(twenty_four_hour_time)
             except ValueError as err:
                 raise ConfigError(
                     "Error parsing 'AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_24_HOUR_TIME'"
                 ) from err
 
-        # Notification URL
-        if notification_url := os.getenv("AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_URL"):
-            config.setdefault("notification_urls", [])
-            if isinstance(config["notification_urls"], str):
-                config["notification_urls"] = [config["notification_urls"]]
-            if not isinstance(config["notification_urls"], list):
-                raise ConfigError("'notification_urls' must be a string or a list")
-            if notification_url not in config["notification_urls"]:
-                config["notification_urls"].append(notification_url)
-
-        # Notification Level
-        if notification_level := os.getenv("AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_LEVEL"):
-            try:
-                config["notification_level"] = int(notification_level)
-            except ValueError as err:
-                raise ConfigError(
-                    "'AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_LEVEL' must be an integer"
-                ) from err
-
+        config.setdefault("notifications", [])
+        config["notifications"].append(new_notification)
         return config
 
     def _parse_config(self, config: JSON) -> None:
@@ -333,3 +354,38 @@ class ReservationConfig(Config):
         self.confirmation_number = config["confirmationNumber"]
         self.first_name = config["firstName"]
         self.last_name = config["lastName"]
+
+
+class NotificationConfig(Config):
+    def __init__(self) -> None:
+        super().__init__()
+        self.url = None
+        self.level = NotificationLevel.INFO
+        self.twenty_four_hour_time = False
+
+    def _parse_config(self, config: JSON) -> None:
+        super()._parse_config(config)
+
+        # First, parse the URL. This must be present in every notification config.
+        if "url" not in config:
+            raise ConfigError("'url' must be in every notification")
+
+        if not isinstance(config["url"], str):
+            raise ConfigError("'url' in notification must be a string")
+
+        self.url = config["url"]
+
+        # Next, parse the other keys. These are optional.
+        if "level" in config:
+            level = config["level"]
+
+            try:
+                self.level = NotificationLevel(level)
+            except ValueError as err:
+                raise ConfigError(f"'{level}' is not a valid notification level") from err
+
+        if "24_hour_time" in config:
+            self.twenty_four_hour_time = config["24_hour_time"]
+
+            if not isinstance(self.twenty_four_hour_time, bool):
+                raise ConfigError("'24_hour_time' must be a boolean")

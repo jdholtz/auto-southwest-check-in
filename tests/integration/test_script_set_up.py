@@ -50,12 +50,12 @@ def test_help_is_printed(flag: str, capsys: pytest.CaptureFixture[str]) -> None:
 
 def test_notifications_are_tested(mocker: MockerFixture) -> None:
     config = {
-        "notification_urls": ["test_global_1", "test_global_2"],
+        "notifications": [{"url": "test_global_1"}, {"url": "test_global_2"}],
         "accounts": [
             {
                 "username": "test_user",
                 "password": "test_pass",
-                "notification_urls": "test_account_1",
+                "notifications": [{"url": "test_account_1"}],
             },
         ],
         "reservations": [
@@ -63,7 +63,7 @@ def test_notifications_are_tested(mocker: MockerFixture) -> None:
                 "confirmationNumber": "TEST",
                 "firstName": "Mererid",
                 "lastName": "Marian",
-                "notification_urls": ["test_global_1", "test_reservation_1"],
+                "notifications": [{"url": "test_global_1"}, {"url": "test_reservation_1"}],
             },
         ],
     }
@@ -75,14 +75,14 @@ def test_notifications_are_tested(mocker: MockerFixture) -> None:
     with pytest.raises(SystemExit):
         main.main(["--test-notifications"], "test_version")
 
-    mock_apprise.assert_called_once()
+    assert mock_apprise.call_count == 4
+    assert mock_apprise.return_value.notify.call_count == 4
 
+    # Ensure all URLs are sent one notification
     expected_urls = ["test_global_1", "test_global_2", "test_account_1", "test_reservation_1"]
-    called_urls = mock_apprise.call_args[0][0]
-
-    assert len(called_urls) == 4
-    assert all(url in called_urls for url in expected_urls)
-    mock_apprise.return_value.notify.assert_called_once()
+    for call in mock_apprise.call_args_list:
+        assert call[0][0] in expected_urls
+        expected_urls.remove(call[0][0])
 
 
 @pytest.mark.parametrize("verbose_flag", ["-v", "--verbose"])

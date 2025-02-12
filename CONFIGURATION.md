@@ -11,9 +11,6 @@ reservation-specific configurations).
 ## Table of Contents
 - [Check Fares](#check-fares)
 - [Notifications](#notifications)
-    * [Notification URLs](#notification-urls)
-    * [Notification Level](#notification-level)
-    * [Notification 24 Hour Time](#notification-24-hour-time)
     * [Test The Notifications](#test-the-notifications)
 - [Browser Path](#browser-path)
 - [Retrieval Interval](#retrieval-interval)
@@ -45,61 +42,46 @@ In addition to automatically checking in, flights can be automatically checked f
 - `"same_day"`: Check for lower fares on all flights on the same day as the flight
 
 ## Notifications
-### Notification URLs
 Default: [] \
-Type: String or List \
-Environment Variable: `AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_URL`
-> When using the environment variable, you may only specify a single URL.
-> If you are also using `config.json`, it will append the URL as long as it's not a duplicate.
+Type: List \
+Environment Variables:
+- `AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_URL`
+- `AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_LEVEL`
+- `AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_24_HOUR_TIME`
+> When using the environment variable, you may only specify a single URL. If a level or 24-hour time
+> is specified, but no URL is specified, it will have no effect.
+> If you are also using `config.json`, it will add the notification service as long as the URL is not a duplicate.
 
-Users can be notified on successful and failed check-ins. This is done through the [Apprise library].
-To start, first gather the service URL you want to send notifications to (information on how to create
-service URLs can be found on the [Apprise Readme]). Then put it in your configuration file.
+Users can be notified on successful and failed check-ins, flight scheduling, and fare drops. This is done through
+the [Apprise library]. Information on how to create notification URLs can be found on the [Apprise Readme]. You can
+optionally include a [notification level](#notification-level) and [24-hour time](#notification-24-hour-time) setting
+for each notification service you use.
 ```json
 {
-  "notification_urls": "service://my_service_url"
-}
-```
-If you have more than one service you want to send notifications to, you can put them in an array:
-```json
-{
-  "notification_urls": [
-    "service://my_first_service_url",
-    "service://my_second_service_url"
+  "notifications": [
+    {"url": "service://my_first_service_url", "level": 3, "24_hour_time": true},
+    {"url": "service://my_second_service_url"}
   ]
 }
-
 ```
 
 ### Notification Level
 Default: 2 \
-Type: Integer \
-Environment Variable: `AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_LEVEL`
-> Using the environment variable will override the applicable setting in `config.json`.
+Type: Integer
 
-You can also select the level of notifications you want to receive.
-```json
-{
-  "notification_level": 2
-}
-```
+The following levels are available: \
 `Level 1`: Receive notices of skipped reservation retrievals due to driver timeouts and Too Many Requests errors
 during logins as well as all messages in later levels.\
-`Level 2`: Receive successful scheduling and check-in messages, lower fare messages, and all messages in later levels.\
-`Level 3`: Receive only error messages (failed scheduling and check-ins).
+`Level 2`: Receive successful scheduling messages, lower fare messages, and all messages in later levels.\
+`Level 3`: Receive successful check-in messages, and all messages in later levels.\
+`Level 4`: Receive only error messages (failed scheduling and check-ins).
 
 ### Notification 24 Hour Time
 Default: false \
-Type: Boolean \
-Environment Variable: `AUTO_SOUTHWEST_CHECK_IN_NOTIFICATION_24_HOUR_TIME`
-> Using the environment variable will override the applicable setting in `config.json`.
+Type: Boolean
 
-Display flight times in notifications and console messages in 24-hour format instead of 12-hour format.
-```json
-{
-  "notification_24_hour_time": true
-}
-```
+Display flight times in notifications in 24-hour format instead of 12-hour format. Console messages
+will always display in 12-hour format.
 
 ### Test The Notifications
 To test if the notification URLs work, you can run the following command
@@ -186,17 +168,17 @@ and/or not provide reservation information as arguments.
 Setting specific configuration values for an account or reservation allows you to fully customize how you want them to be
 monitored by the script. Here is a list of configuration values that can be applied to an individual account or reservation:
 - [Check Fares](#check-fares)
-- [Healthchecks URL](#healthchecks-url)
-- [Notification URLs](#notification-urls)
-- [Notification Level](#notification-level)
+- [Notifications](#notifications)
 - [Retrieval Interval](#retrieval-interval)
+- [Healthchecks URL](#healthchecks-url)
 
 Not all options have to be specified for each account or reservation. If an option is not specified, the top-level value is used
 (or the default value if no top-level value is specified either) with exception to the Healthchecks URL. Any accounts or reservations
 specified through the command line will use all of the top-level values.
 
-An important note about notification URLs: An account or reservation with specific notification URLs will send notifications to those
-URLs as well as URLs specified globally.
+An important note about notification services: An account or reservation with specific notification services will send notifications to those
+services as well as services specified globally. If a service is in both the global and account/reservation configuration, the account/reservation
+configuration will take precedence.
 
 #### Examples
 Here are a few examples of how the configuration options can be specified:
@@ -216,13 +198,13 @@ In this example, `user1`'s account will not check for lower flight fares. Howeve
 In this example, the script will send notifications attached to this reservation to both `top-level.url` and `my-special.url`.
 ```json
 {
-    "notification_urls": "https://top-level.url",
+    "notifications": [{"url": "https://top-level.url"}],
     "reservations": [
         {
             "confirmationNumber": "num1",
             "firstName": "John",
             "lastName": "Doe",
-            "notification_urls": "https://my-special.url"
+            "notifications": [{"url": "https://my-special.url"}]
         }
     ]
 }

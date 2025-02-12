@@ -4,13 +4,7 @@
   "properties": {
     "$schema": {},
     "check_fares": { "$ref": "#/$defs/check_fares" },
-    "notification_urls": { "$ref": "#/$defs/notification_urls" },
-    "notification_level": { "$ref": "#/$defs/notification_level" },
-    "notification_24_hour_time": {
-      "type": "boolean",
-      "description": "Display flight times in notifications and console messages in 24-hour format instead of 12-hour format.",
-      "default": false
-    },
+    "notifications": { "$ref": "#/$defs/notifications" },
     "browser_path": {
       "type": "string",
       "description": "Path to your Chromium-based browser executable (if not using Chrome or Chromium)"
@@ -35,8 +29,7 @@
           },
           "check_fares": { "$ref": "#/$defs/check_fares" },
           "healthchecks_url": { "$ref": "#/$defs/healthchecks_url" },
-          "notification_urls": { "$ref": "#/$defs/notification_urls" },
-          "notification_level": { "$ref": "#/$defs/notification_level" },
+          "notifications": { "$ref": "#/$defs/notifications" },
           "retrieval_interval": { "$ref": "#/$defs/retrieval_interval" }
         },
         "required": ["username", "password"],
@@ -67,8 +60,7 @@
           },
           "check_fares": { "$ref": "#/$defs/check_fares" },
           "healthchecks_url": { "$ref": "#/$defs/healthchecks_url" },
-          "notification_urls": { "$ref": "#/$defs/notification_urls" },
-          "notification_level": { "$ref": "#/$defs/notification_level" },
+          "notifications": { "$ref": "#/$defs/notifications" },
           "retrieval_interval": { "$ref": "#/$defs/retrieval_interval" }
         },
         "required": ["confirmationNumber", "firstName", "lastName"],
@@ -114,6 +106,25 @@
       ],
       "default": true
     },
+    "notifications": {
+      "type": "array",
+      "description": "List of notification services",
+      "default": [],
+      "items": {
+        "type": "object",
+        "properties": {
+          "url": { "$ref": "#/$defs/notification_urls" },
+          "level": { "$ref": "#/$defs/notification_level" },
+          "24_hour_time": {
+            "type": "boolean",
+            "description": "Display flight times in notifications and console messages in 24-hour format instead of 12-hour format.",
+            "default": false
+          }
+        },
+        "required": ["url"],
+        "additionalProperties": false
+      }
+    },
     "notification_urls": {
       "description": "List of notification URLs in the Apprise format",
       "oneOf": [
@@ -142,12 +153,17 @@
         {
           "type": "integer",
           "const": 2,
-          "description": "Level 2: Receive successful scheduling and check-in messages, lower fare messages, and all messages in later levels."
+          "description": "Level 2: Receive successful scheduling messages, lower fare messages, and all messages in later levels."
         },
         {
           "type": "integer",
           "const": 3,
-          "description": "Level 3: Receive only error messages (failed scheduling and check-ins)."
+          "description": "Level 3: Receive successful check-in messages, and all messages in later levels."
+        },
+        {
+          "type": "integer",
+          "const": 4,
+          "description": "Level 4: Receive only error messages (failed scheduling and check-ins)."
         }
       ],
       "default": 2

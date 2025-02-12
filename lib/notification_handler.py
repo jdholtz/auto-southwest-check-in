@@ -16,6 +16,8 @@ MANUAL_CHECKIN_URL = "https://mobile.southwest.com/check-in"
 MANAGE_RESERVATION_URL_MOBILE = "https://mobile.southwest.com/view-reservation"
 MANAGE_RESERVATION_URL_DESKTOP = "https://www.southwest.com/air/manage-reservation/"
 
+FLIGHT_TIME_PLACEHOLDER = "FLIGHT_TIME"
+
 logger = get_logger(__name__)
 
 
@@ -24,21 +26,58 @@ class NotificationHandler:
 
     def __init__(self, reservation_monitor: Union[AccountMonitor, ReservationMonitor]) -> None:
         self.reservation_monitor = reservation_monitor
-        self.notification_urls = reservation_monitor.config.notification_urls
-        self.notification_level = reservation_monitor.config.notification_level
+        self.notifications = reservation_monitor.config.notifications
 
-    def send_notification(self, body: str, level: NotificationLevel = None) -> None:
-        print(body)  # This isn't logged as it contains sensitive information
+    def send_notification(
+        self, body: str, level: NotificationLevel = None, flights: list[Flight] = None
+    ) -> None:
+        """
+        Send a notification to all configured services. The notification will only be sent if the
+        level of the notification is greater than or equal to the level of the notification service.
 
-        # Check the level to see if we still want to send it. If level is none, it means
-        # the message will always be printed. For example, this is used when testing notifications.
-        if level and level < self.notification_level:
-            return
+        The flights parameter is necessary so the flight time format of each service is respected.
+        """
+        flights = flights or []
+
+        # Print console messages with a 12-hour time format
+        printed_body = self._format_flight_times(body, flights, False)
+        print(printed_body)  # This isn't logged as it contains sensitive information
 
         title = "Auto Southwest Check-in Script"
+        flights = flights or []
 
-        apobj = apprise.Apprise(self.notification_urls)
-        apobj.notify(title=title, body=body, body_format=apprise.NotifyFormat.TEXT)
+        for notification in self.notifications:
+            # Only send the notification to levels that are greater than or equal to the level
+            # of the notification. If level is none, it means the message will always be printed.
+            # For example, this is used when the user tests notifications.
+            if level and level < notification.level:
+                continue
+
+            # Replace any flight time placeholder with the actual flight times, according to the
+            # notification's time format
+            formatted_body = self._format_flight_times(
+                body, flights, notification.twenty_four_hour_time
+            )
+
+            # Send each notification separately, as each message may contain different formatted
+            # flight times
+            apobj = apprise.Apprise(notification.url)
+            apobj.notify(title=title, body=formatted_body, body_format=apprise.NotifyFormat.TEXT)
+
+    def _format_flight_times(
+        self, body: str, flights: list[Flight], twenty_four_hr_time: bool
+    ) -> str:
+        """
+        Replace the flight time placeholder with the actual flight times, converting them to 24-hour
+        time if necessary.
+        """
+        formatted_body = body
+        for flight in flights:
+            formatted_body = formatted_body.replace(
+                FLIGHT_TIME_PLACEHOLDER, flight.get_display_time(twenty_four_hr_time), 1
+            )
+
+        return formatted_body
 
     def new_flights(self, flights: list[Flight]) -> None:
         # Don't send notifications if no new flights are scheduled
@@ -46,16 +85,14 @@ class NotificationHandler:
             return
 
         is_international = False
-        twenty_four_hr_time = self.reservation_monitor.config.notification_24_hour_time
         flight_schedule_message = (
             "Successfully scheduled the following flights to check in for "
             f"{self._get_account_name()}:\n"
         )
         for flight in flights:
-            flight_time = flight.get_display_time(twenty_four_hr_time)
             flight_schedule_message += (
                 f"Flight from {flight.departure_airport} to {flight.destination_airport} on "
-                f"{flight_time}\n"
+                f"{FLIGHT_TIME_PLACEHOLDER}\n"
             )
             if flight.is_international:
                 is_international = True
@@ -69,7 +106,7 @@ class NotificationHandler:
             )
 
         logger.debug("Sending new flights notification")
-        self.send_notification(flight_schedule_message, NotificationLevel.INFO)
+        self.send_notification(flight_schedule_message, NotificationLevel.INFO, flights)
 
     def failed_reservation_retrieval(self, error: RequestError, confirmation_number: str) -> None:
         error_message = (
@@ -117,7 +154,7 @@ class NotificationHandler:
                     )
 
         logger.debug("Sending successful check-in notification...")
-        self.send_notification(success_message, NotificationLevel.INFO)
+        self.send_notification(success_message, NotificationLevel.CHECKIN)
 
     def failed_checkin(self, error: RequestError, flight: Flight) -> None:
         error_message = (
@@ -137,29 +174,23 @@ class NotificationHandler:
         self.send_notification(error_message, NotificationLevel.ERROR)
 
     def timeout_before_checkin(self, flight: Flight) -> None:
-        twenty_four_hr_time = self.reservation_monitor.config.notification_24_hour_time
-        flight_time = flight.get_display_time(twenty_four_hr_time)
-
         error_message = (
             "Error: Timed out waiting for headers before check-in. Check-in to flight "
-            f"{flight.confirmation_number} for {self._get_account_name()} at {flight_time} may "
-            "fail.\n"
+            f"{flight.confirmation_number} for {self._get_account_name()} at "
+            f"{FLIGHT_TIME_PLACEHOLDER} may fail.\n"
         )
         logger.debug("Sending timeout before check-in notification...")
-        self.send_notification(error_message, NotificationLevel.ERROR)
+        self.send_notification(error_message, NotificationLevel.ERROR, [flight])
 
     def lower_fare(self, flight: Flight, price_info: str) -> None:
-        twenty_four_hr_time = self.reservation_monitor.config.notification_24_hour_time
-        flight_time = flight.get_display_time(twenty_four_hr_time)
-
         message = (
             f"Found lower fare of {price_info} for flight {flight.confirmation_number} "
-            f"from '{flight.departure_airport}' to '{flight.destination_airport}' on {flight_time} "
-            f"for {self._get_account_name()}!\nManage your reservation here: "
-            f"{MANAGE_RESERVATION_URL_MOBILE} or {MANAGE_RESERVATION_URL_DESKTOP}\n"
+            f"from '{flight.departure_airport}' to '{flight.destination_airport}' on "
+            f"{FLIGHT_TIME_PLACEHOLDER} for {self._get_account_name()}!\nManage your reservation "
+            f"here: {MANAGE_RESERVATION_URL_MOBILE} or {MANAGE_RESERVATION_URL_DESKTOP}\n"
         )
         logger.debug("Sending lower fare notification...")
-        self.send_notification(message, NotificationLevel.INFO)
+        self.send_notification(message, NotificationLevel.INFO, [flight])
 
     def healthchecks_success(self, data: str) -> None:
         if self.reservation_monitor.config.healthchecks_url is not None:

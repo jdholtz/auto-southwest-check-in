@@ -166,7 +166,8 @@ class DriverTimeoutError(Exception):
 class NotificationLevel(IntEnum):
     NOTICE = 1
     INFO = 2
-    ERROR = 3
+    CHECKIN = 3
+    ERROR = 4
 
 
 # Switch to StrEnum when Python 3.10 support is dropped
