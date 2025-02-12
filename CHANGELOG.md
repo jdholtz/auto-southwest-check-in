@@ -3,6 +3,19 @@ When upgrading to a new version, make sure to follow the directions under the "U
 If there is no "Upgrading" header for that version, no post-upgrade actions need to be performed.
 
 
+## Upcoming
+### Improvements
+- The notification configuration has been redone. This allows users to specify the notification
+level and time format individually for each service. See the [notification configuration](CONFIGURATION.md#notifications)
+for more information as well as how to update your configuration file
+([#328](https://github.com/jdholtz/auto-southwest-check-in/pull/328))
+- Use a specific error message when handling canceled reservations
+
+### Upgrading
+- Due to the changes in the notification configuration, you will need to update your configuration file to the new
+format. See the [notification configuration](CONFIGURATION.md#notifications) for how to do so
+
+
 ## 8.2 (2025-01-12)
 ### New Features
 - A [JSON Schema](https://json-schema.org/) definition was added to help users validate their configuration files through updates
