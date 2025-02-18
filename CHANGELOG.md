@@ -5,6 +5,8 @@ If there is no "Upgrading" header for that version, no post-upgrade actions need
 
 ## Upcoming
 ### Improvements
+- Set local timezone in Docker container to avoid 403/429 errors
+([#342](https://github.com/jdholtz/auto-southwest-check-in/pull/342) by [@dmytrokoren](https://github.com/dmytrokoren))
 - The notification configuration has been redone. This allows users to specify the notification
 level and time format individually for each service. See the [notification configuration](CONFIGURATION.md#notifications)
 for more information as well as how to update your configuration file
@@ -27,7 +29,7 @@ format. See the [notification configuration](CONFIGURATION.md#notifications) for
 
 ### Improvements
 - Logins that fail due to 'Too Many Requests' or 'Internal Server Error' errors will now be retried once
-([#311](https://github.com/jdholtz/auto-southwest-check-in/pull/311) by [@dmytrokoren](https://github.com/dmytorkoren))
+([#311](https://github.com/jdholtz/auto-southwest-check-in/pull/311) by [@dmytrokoren](https://github.com/dmytrokoren))
 
 ### Upgrading
 - Upgrade the dependencies to the latest versions by running `pip install -r requirements.txt`

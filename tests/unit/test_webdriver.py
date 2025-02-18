@@ -1,4 +1,3 @@
-import os
 import sys
 from typing import Any
 from unittest import mock
@@ -89,8 +88,8 @@ class TestWebDriver:
     ) -> None:
         """The driver version should be kept and the virtual display should be started"""
 
-        # This env variable will be set in the Docker image
-        os.environ["AUTO_SOUTHWEST_CHECK_IN_DOCKER"] = "1"
+        # This variable will be set in the Docker image
+        mocker.patch("lib.webdriver.IS_DOCKER", True)
 
         mock_start_display = mocker.patch.object(self.driver, "_start_display")
 

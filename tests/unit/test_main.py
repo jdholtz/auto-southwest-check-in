@@ -2,6 +2,7 @@ import logging
 
 import pytest
 from pytest_mock import MockerFixture
+from requests_mock.mocker import Mocker as RequestMocker
 
 from lib import main
 from lib.config import AccountConfig, GlobalConfig, ReservationConfig
@@ -13,6 +14,16 @@ from lib.reservation_monitor import AccountMonitor, ReservationMonitor
 def mock_config(mocker: MockerFixture) -> None:
     """The config file shouldn't actually be read for these tests"""
     mocker.patch("lib.config.GlobalConfig._read_config")
+
+
+def test_get_timezone_fetches_timezone_from_request(requests_mock: RequestMocker) -> None:
+    requests_mock.get(main.IP_TIMEZONE_URL, text="Asia/Tokyo")
+    assert main.get_timezone() == "Asia/Tokyo"
+
+
+def test_get_timezone_returns_utc_when_request_fails(requests_mock: RequestMocker) -> None:
+    requests_mock.get(main.IP_TIMEZONE_URL, status_code=500)
+    assert main.get_timezone() == "UTC"
 
 
 def test_test_notifications_sends_to_every_url_in_config(mocker: MockerFixture) -> None:
@@ -114,13 +125,27 @@ def test_set_up_check_in_sends_error_message_when_arguments_are_invalid(
 def test_main_sets_up_the_script(mocker: MockerFixture) -> None:
     mock_init_main_logging = mocker.patch("lib.log.init_main_logging")
     mock_set_up_check_in = mocker.patch("lib.main.set_up_check_in")
-    arguments = ["test", "arguments", "--verbose", "-v"]
+    mock_get_timezone = mocker.patch("lib.main.get_timezone")
 
+    arguments = ["test", "arguments", "--verbose", "-v"]
     main.main(arguments, "test_version")
     mock_init_main_logging.assert_called_once()
 
     # Ensure the '--verbose' and '-v' flags are removed
     mock_set_up_check_in.assert_called_once_with(arguments[:2])
+
+    mock_get_timezone.assert_not_called()
+
+
+def test_main_fetches_timezone_if_docker(mocker: MockerFixture) -> None:
+    mocker.patch("lib.log.init_main_logging")
+    mocker.patch("lib.main.set_up_check_in")
+
+    mock_get_timezone = mocker.patch("lib.main.get_timezone", return_value="UTC")
+    mocker.patch("lib.main.IS_DOCKER", return_value=True)
+
+    main.main([], "test_version")
+    mock_get_timezone.assert_called_once()
 
 
 def test_main_exits_on_keyboard_interrupt(mocker: MockerFixture) -> None:

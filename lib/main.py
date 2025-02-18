@@ -13,10 +13,22 @@ from lib import log
 from .config import IS_DOCKER, GlobalConfig, ReservationConfig
 from .reservation_monitor import AccountMonitor, ReservationMonitor
 
-LOG_FILE = "logs/auto-southwest-check-in.log"
 IP_TIMEZONE_URL = "https://ipinfo.io/timezone"
+LOG_FILE = "logs/auto-southwest-check-in.log"
 
 logger = log.get_logger(__name__)
+
+
+def get_timezone() -> str:
+    """Fetches the local timezone based on the system's IP address"""
+    try:
+        logger.debug("Fetching local timezone")
+        response = requests.get(IP_TIMEZONE_URL, timeout=5)
+        response.raise_for_status()
+        return response.text.strip()
+    except requests.RequestException:
+        logger.debug("Timezone request failed, reverting to UTC")
+        return "UTC"
 
 
 def test_notifications(config: GlobalConfig) -> None:
@@ -103,18 +115,6 @@ def set_up_check_in(arguments: list[str]) -> None:
     # keyboard interrupts
     for process in multiprocessing.active_children():
         process.join()
-
-
-def get_timezone() -> str:
-    """Fetches the local timezone based on the system's IP address"""
-    try:
-        logger.debug("Fetching local timezone")
-        response = requests.get(IP_TIMEZONE_URL, timeout=5)
-        response.raise_for_status()
-        return response.text.strip()
-    except requests.RequestException:
-        logger.debug("Timezone request failed, reverting to UTC")
-        return "UTC"
 
 
 def main(arguments: list[str], version: str) -> None:
