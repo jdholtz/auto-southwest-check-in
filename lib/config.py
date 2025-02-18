@@ -16,7 +16,7 @@ CONFIG_FILE_NAME = "config.json"
 logger = get_logger(__name__)
 
 # This environment variable is set in the Docker image
-is_docker = os.environ.get("AUTO_SOUTHWEST_CHECK_IN_DOCKER") == "1"
+IS_DOCKER = os.environ.get("AUTO_SOUTHWEST_CHECK_IN_DOCKER") == "1"
 
 
 # A custom exception for type or value errors in the configuration file

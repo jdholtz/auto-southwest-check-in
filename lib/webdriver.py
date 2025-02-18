@@ -11,7 +11,7 @@ from sbvirtualdisplay import Display
 from seleniumbase import Driver
 from seleniumbase.fixtures import page_actions as seleniumbase_actions
 
-from .config import is_docker
+from .config import IS_DOCKER
 from .log import LOGS_DIRECTORY, get_logger
 from .utils import DriverTimeoutError, LoginError, random_sleep_duration
 
@@ -137,7 +137,7 @@ class WebDriver:
         browser_path = self.checkin_scheduler.reservation_monitor.config.browser_path
 
         driver_version = "mlatest"
-        if is_docker:
+        if IS_DOCKER:
             self._start_display()
             # Make sure a new driver is not downloaded as the Docker image
             # already has the correct driver
@@ -146,8 +146,8 @@ class WebDriver:
         driver = Driver(
             binary_location=browser_path,
             driver_version=driver_version,
-            headed=is_docker,
-            headless=not is_docker,
+            headed=IS_DOCKER,
+            headless=not IS_DOCKER,
             uc_cdp_events=True,
             undetectable=True,
             incognito=True,
