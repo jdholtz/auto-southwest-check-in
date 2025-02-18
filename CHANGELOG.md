@@ -7,6 +7,7 @@ If there is no "Upgrading" header for that version, no post-upgrade actions need
 ### Improvements
 - Set local timezone in Docker container to avoid 403/429 errors
 ([#342](https://github.com/jdholtz/auto-southwest-check-in/pull/342) by [@dmytrokoren](https://github.com/dmytrokoren))
+    - The idea to set the timezone in Docker comes from [@yunhao-jiang](https://github.com/yunhao-jiang)
 - The notification configuration has been redone. This allows users to specify the notification
 level and time format individually for each service. See the [notification configuration](CONFIGURATION.md#notifications)
 for more information as well as how to update your configuration file
