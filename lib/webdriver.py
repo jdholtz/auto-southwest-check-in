@@ -11,6 +11,7 @@ from sbvirtualdisplay import Display
 from seleniumbase import Driver
 from seleniumbase.fixtures import page_actions as seleniumbase_actions
 
+from .config import is_docker
 from .log import LOGS_DIRECTORY, get_logger
 from .utils import DriverTimeoutError, LoginError, random_sleep_duration
 
@@ -135,9 +136,6 @@ class WebDriver:
         logger.debug("Starting webdriver for current session")
         browser_path = self.checkin_scheduler.reservation_monitor.config.browser_path
 
-        # This environment variable is set in the Docker image
-        is_docker = os.environ.get("AUTO_SOUTHWEST_CHECK_IN_DOCKER") == "1"
-
         driver_version = "mlatest"
         if is_docker:
             self._start_display()
@@ -153,7 +151,6 @@ class WebDriver:
             uc_cdp_events=True,
             undetectable=True,
             incognito=True,
-            mobile=True,
         )
         logger.debug("Using browser version: %s", driver.caps["browserVersion"])
 

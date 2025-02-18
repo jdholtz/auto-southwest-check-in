@@ -3,14 +3,18 @@
 from __future__ import annotations
 
 import multiprocessing
+import os
 import sys
+
+import requests
 
 from lib import log
 
-from .config import GlobalConfig, ReservationConfig
+from .config import GlobalConfig, ReservationConfig, is_docker
 from .reservation_monitor import AccountMonitor, ReservationMonitor
 
 LOG_FILE = "logs/auto-southwest-check-in.log"
+IP_TIMEZONE_URL = "https://ipinfo.io/timezone"
 
 logger = log.get_logger(__name__)
 
@@ -101,9 +105,24 @@ def set_up_check_in(arguments: list[str]) -> None:
         process.join()
 
 
+def get_timezone() -> str:
+    """Fetches the local timezone based on the system's IP address"""
+    try:
+        response = requests.get(IP_TIMEZONE_URL, timeout=5)
+        response.raise_for_status()
+        return response.text.strip()
+    except requests.RequestException:
+        return "UTC"  # Fallback to UTC if the request fails
+
+
 def main(arguments: list[str], version: str) -> None:
     log.init_main_logging()
     logger.debug("Auto-Southwest Check-In %s", version)
+
+    if is_docker:
+        timezone = get_timezone()
+        os.environ["TZ"] = timezone
+        logger.debug(f"Docker timezone: '{timezone}'")
 
     # Remove flags now that they are not needed (and will mess up parsing)
     flags_to_remove = ["--debug-screenshots", "-v", "--verbose"]
