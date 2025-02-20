@@ -146,8 +146,7 @@ class WebDriver:
         driver = Driver(
             binary_location=browser_path,
             driver_version=driver_version,
-            headed=IS_DOCKER,
-            headless=not IS_DOCKER,
+            headless=True,
             uc_cdp_events=True,
             undetectable=True,
             incognito=True,
