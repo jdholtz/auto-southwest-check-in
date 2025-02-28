@@ -95,7 +95,7 @@ def test_account_from_command_line_with_verbose(
     args = ["test_user", "test_pass", verbose_flag]
     # sys.argv is used instead of the args passed in to the log module (it also would have
     # southwest.py prepended to it in real use)
-    mocker.patch("sys.argv", ["test_file"] + args)
+    mocker.patch("sys.argv", ["test_file", *args])
 
     main.main(args, "test_version")
 
@@ -114,7 +114,7 @@ def test_reservation_from_command_line_without_verbose(
     args = ["TEST", "Charli", "Silvester"]
     # sys.argv is used instead of the args passed in to the log module (it also would have
     # southwest.py prepended to it in real use)
-    mocker.patch("sys.argv", ["test_file"] + args)
+    mocker.patch("sys.argv", ["test_file", *args])
 
     main.main(args, "test_version")
 

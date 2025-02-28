@@ -1,14 +1,6 @@
-[tool.black]
-line-length = 100
-target-version = ["py38", "py39", "py310", "py311", "py312"]
-
 [tool.codespell]
 ignore-words-list="checkin,ist"
 skip = "venv,./utils/airport_timezones.json"
-
-[tool.isort]
-line_length = 100
-profile = "black"
 
 [tool.coverage.run]
 branch = true
@@ -29,3 +21,40 @@ exclude_lines = [
 [tool.pytest.ini_options]
 # Don't use the seleniumbase plugin for pytest
 addopts = "-p no:seleniumbase"
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = [
+    # Defaults
+    "E4", "E7", "E9", "F",
+
+    # Extras
+    "ANN",   # flake8-annotations
+    "ARG",   # flake8-unused-arguments
+    "E501",  # line-too-long
+    "G",     # flake8-logging-format
+    "I",     # isort
+    "N",     # pep8-naming
+    "PIE",   # flake8-pie
+    "PT",    # flake8-pytest-style
+    "RUF",   # Ruff-specific rules
+    "SLF",   # flake8-self
+    "TC",    # flake8-type-checking
+]
+
+ignore = [
+    # Disable disallowing the Any type
+    "ANN401", # any-type
+
+    # Some Pytest functions catch broad exceptions on purpose
+    "PT011", # pytest-raises-too-broad
+]
+
+[tool.ruff.lint.flake8-annotations]
+suppress-dummy-args = true
+
+[tool.ruff.lint.per-file-ignores]
+# Don't check private-member-access in test files
+"tests/*" = ["SLF001"]

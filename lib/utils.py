@@ -49,7 +49,12 @@ def _handle_southwest_error_code(error: "RequestError") -> None:
 
 
 def make_request(
-    method: str, site: str, headers: JSON, info: JSON, max_attempts=20, random_sleep=True
+    method: str,
+    site: str,
+    headers: JSON,
+    info: JSON,
+    max_attempts: int = 20,
+    random_sleep: bool = True,
 ) -> JSON:
     """
     Makes a request to the Southwest servers. For increased reliability, the request is performed

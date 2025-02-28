@@ -1,15 +1,15 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 import apprise
 import requests
 
-from .flight import Flight
 from .log import get_logger
 from .utils import LoginError, NotificationLevel, RequestError
 
 if TYPE_CHECKING:
+    from .flight import Flight
     from .reservation_monitor import AccountMonitor, ReservationMonitor
 
 MANUAL_CHECKIN_URL = "https://mobile.southwest.com/check-in"
@@ -29,7 +29,7 @@ class NotificationHandler:
         self.notifications = reservation_monitor.config.notifications
 
     def send_notification(
-        self, body: str, level: NotificationLevel = None, flights: list[Flight] = None
+        self, body: str, level: NotificationLevel = None, flights: Optional[list[Flight]] = None
     ) -> None:
         """
         Send a notification to all configured services. The notification will only be sent if the

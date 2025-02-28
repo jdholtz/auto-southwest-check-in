@@ -8,9 +8,6 @@ from pytest_mock import MockerFixture
 from lib.utils import DriverTimeoutError, LoginError
 from lib.webdriver import HEADERS_URL, INVALID_CREDENTIALS_CODE, LOGIN_URL, TRIPS_URL, WebDriver
 
-# This needs to be accessed to be tested
-# pylint: disable=protected-access
-
 
 @pytest.fixture(autouse=True)
 def mock_chrome(mocker: MockerFixture) -> mock.Mock:
@@ -27,11 +24,10 @@ class TestWebDriver:
     def _set_up_webdriver(self, mocker: MockerFixture) -> None:
         mock_checkin_scheduler = mocker.patch("lib.checkin_scheduler.CheckInScheduler")
         mock_checkin_scheduler.headers = {}
-        # pylint: disable-next=attribute-defined-outside-init
         self.driver = WebDriver(mock_checkin_scheduler)
 
     @pytest.mark.parametrize(
-        ["arg", "take_screenshots"], [("--debug-screenshots", True), ("--no-screenshots", False)]
+        ("arg", "take_screenshots"), [("--debug-screenshots", True), ("--no-screenshots", False)]
     )
     def test_should_take_screenshots_detects_debug_screenshots_argument(
         self, arg: str, take_screenshots: bool
@@ -242,7 +238,7 @@ class TestWebDriver:
         assert "Status code: 429" in str(error)
 
     @pytest.mark.parametrize(
-        ["original_headers", "expected_headers"],
+        ("original_headers", "expected_headers"),
         [
             ({"unnecessary": "header"}, {}),
             ({"X-API-Key": "API Key"}, {"X-API-Key": "API Key"}),

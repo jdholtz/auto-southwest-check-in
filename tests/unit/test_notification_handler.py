@@ -6,9 +6,6 @@ from lib.config import NotificationConfig
 from lib.notification_handler import FLIGHT_TIME_PLACEHOLDER, NotificationHandler
 from lib.utils import NotificationLevel
 
-# This needs to be accessed to be tested
-# pylint: disable=protected-access
-
 
 class TestNotificationHandler:
     def _get_notification_config(self) -> list[NotificationConfig]:
@@ -23,7 +20,6 @@ class TestNotificationHandler:
     @pytest.fixture(autouse=True)
     def notification_handler(self, mocker: MockerFixture) -> None:
         mock_reservation_monitor = mocker.patch("lib.reservation_monitor.ReservationMonitor")
-        # pylint: disable-next=attribute-defined-outside-init
         self.handler = NotificationHandler(mock_reservation_monitor)
 
     def test_send_nofication_does_not_send_notifications_if_level_is_too_low(
@@ -196,7 +192,7 @@ class TestNotificationHandler:
         self.handler.lower_fare(mock_flight, "")
         assert mock_send_notification.call_args[0][1] == NotificationLevel.INFO
 
-    @pytest.mark.parametrize(["url", "expected_calls"], [("http://healthchecks", 1), (None, 0)])
+    @pytest.mark.parametrize(("url", "expected_calls"), [("http://healthchecks", 1), (None, 0)])
     def test_healthchecks_success_pings_url_only_if_configured(
         self, mocker: MockerFixture, url: str, expected_calls: int
     ) -> None:
@@ -206,7 +202,7 @@ class TestNotificationHandler:
         self.handler.healthchecks_success("healthchecks success")
         assert mock_post.call_count == expected_calls
 
-    @pytest.mark.parametrize(["url", "expected_calls"], [("http://healthchecks", 1), (None, 0)])
+    @pytest.mark.parametrize(("url", "expected_calls"), [("http://healthchecks", 1), (None, 0)])
     def test_healthchecks_fail_pings_url_only_if_configured(
         self, mocker: MockerFixture, url: str, expected_calls: int
     ) -> None:

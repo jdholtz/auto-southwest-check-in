@@ -91,7 +91,6 @@ def test_check_in(
         )
 
     handler.flight.is_same_day = same_day_flight
-    # pylint: disable-next=protected-access
     handler._set_check_in()
 
     mock_sleep.assert_has_calls([call(1800), call(1200)])

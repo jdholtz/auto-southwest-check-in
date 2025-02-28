@@ -9,9 +9,6 @@ from pytest_mock import MockerFixture
 
 from lib.flight import Flight
 
-# This needs to be accessed to be tested
-# pylint: disable=protected-access
-
 
 class TestFlight:
     @pytest.fixture(autouse=True)
@@ -28,14 +25,13 @@ class TestFlight:
         with mock.patch.object(Flight, "_set_flight_time"):
             # Reservation info can be left empty as it is only used for caching, but isn't relevant
             # to the functionality of the flight class
-            # pylint: disable-next=attribute-defined-outside-init
             self.flight = Flight(flight_info, {}, "test_num")
 
             # Flight times that would be set if _set_flight_time isn't mocked
             self.flight.departure_time = datetime(1971, 6, 18, 12)
             self.flight._local_departure_time = datetime(1971, 6, 18, 7)
 
-    @pytest.mark.parametrize(["country", "is_international"], [(None, False), ("Mexico", True)])
+    @pytest.mark.parametrize(("country", "is_international"), [(None, False), ("Mexico", True)])
     def test_flight_is_international_when_country_is_specified(
         self, mocker: MockerFixture, country: str, is_international: bool
     ) -> None:
@@ -69,7 +65,7 @@ class TestFlight:
         assert flight1 == flight2
 
     @pytest.mark.parametrize(
-        ["flight_info", "departure_time"],
+        ("flight_info", "departure_time"),
         [
             (
                 {  # Test different flight numbers
@@ -101,7 +97,7 @@ class TestFlight:
         assert self.flight != new_flight
 
     @pytest.mark.parametrize(
-        ["twenty_four_hr", "expected_time"], [(True, "13:59"), (False, "1:59 PM")]
+        ("twenty_four_hr", "expected_time"), [(True, "13:59"), (False, "1:59 PM")]
     )
     def test_get_display_time_formats_time_correctly(
         self, twenty_four_hr: bool, expected_time: str
@@ -141,7 +137,7 @@ class TestFlight:
         assert self.flight._local_departure_time == datetime(1999, 12, 31, 23, 59, tzinfo=tz)
 
     @pytest.mark.parametrize(
-        ["numbers", "expected_num"],
+        ("numbers", "expected_num"),
         [(["WN100"], "100"), (["WN100", "WN101"], "100\u200b/\u200b101")],
     )
     def test_get_flight_number_creates_flight_number_correctly(

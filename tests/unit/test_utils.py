@@ -22,7 +22,7 @@ def test_random_sleep_duration_respects_min_and_max_durations(mocker: MockerFixt
 
 
 @pytest.mark.parametrize(
-    ["code", "error"],
+    ("code", "error"),
     [
         (utils.AIRPORT_CHECKIN_REQUIRED_CODE, AirportCheckInError),
         (utils.INVALID_CONFIRMATION_NUMBER_LENGTH_CODE, RequestError),
@@ -37,7 +37,6 @@ def test_handle_southwest_error_code_handles_all_special_codes(
     response_body = json.dumps({"code": code})
     request_err = RequestError("", response_body)
     with pytest.raises(error):
-        # pylint: disable-next=protected-access
         utils._handle_southwest_error_code(request_err)
 
 
@@ -124,7 +123,7 @@ def test_make_request_correctly_gets_data(requests_mock: RequestMocker) -> None:
     assert last_request.headers["header"] == "test"
 
 
-def test_make_request_handles_malformed_URLs(requests_mock: RequestMocker) -> None:
+def test_make_request_handles_malformed_urls(requests_mock: RequestMocker) -> None:
     mock_post = requests_mock.get(utils.BASE_URL + "test/test2", status_code=200, text="{}")
     utils.make_request("GET", "/test//test2", {}, {})
     assert mock_post.last_request.url == utils.BASE_URL + "test/test2"
@@ -160,7 +159,7 @@ def test_get_current_time_returns_local_datetime_on_failed_requests(
 
 
 @pytest.mark.parametrize(
-    "value, expected",
+    ("value", "expected"),
     [
         (True, True),
         (False, False),

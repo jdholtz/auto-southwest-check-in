@@ -27,7 +27,7 @@ def test_init_main_logging_initializes_the_logging_correctly(logger: logging.Log
 
 
 @pytest.mark.parametrize(
-    ["argument", "verbosity_level"],
+    ("argument", "verbosity_level"),
     [
         ("", logging.INFO),
         ("-v", logging.DEBUG),

@@ -47,7 +47,6 @@ def init(arguments: list[str]) -> None:
 
     # Imported here to avoid needing dependencies to retrieve the script's
     # version or usage
-    # pylint:disable=import-outside-toplevel
     from lib.main import main
 
     main(arguments, __version__)

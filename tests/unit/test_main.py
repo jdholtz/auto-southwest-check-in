@@ -27,7 +27,6 @@ def test_get_timezone_returns_utc_when_request_fails(requests_mock: RequestMocke
 
 
 def test_test_notifications_sends_to_every_url_in_config(mocker: MockerFixture) -> None:
-    # pylint: disable=protected-access
     # Accessing protected methods is just used to not need to provide a full config object
     # to parse
 
@@ -53,7 +52,7 @@ def test_test_notifications_sends_to_every_url_in_config(mocker: MockerFixture) 
     mock_send_notification.assert_called_once()
 
 
-@pytest.mark.parametrize(["expected", "count"], [("tests", 0), ("test", 1), ("tests", 2)])
+@pytest.mark.parametrize(("expected", "count"), [("tests", 0), ("test", 1), ("tests", 2)])
 def test_pluralize_pluralizes_a_word_if_needed(expected: str, count: int) -> None:
     assert main.pluralize("test", count) == expected
 
@@ -84,7 +83,7 @@ def test_set_up_check_in_sends_test_notifications_when_flag_passed(mocker: Mocke
 
 
 @pytest.mark.parametrize(
-    ["arguments", "accounts_len", "reservations_len"],
+    ("arguments", "accounts_len", "reservations_len"),
     [
         ([], 0, 0),
         (["username", "password"], 1, 0),

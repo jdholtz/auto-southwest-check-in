@@ -2,7 +2,7 @@ import multiprocessing
 import sys
 import time
 from datetime import datetime
-from typing import Any, Union
+from typing import Any, Optional, Union
 
 from .checkin_scheduler import CheckInScheduler
 from .config import AccountConfig, ReservationConfig
@@ -34,7 +34,9 @@ class ReservationMonitor:
     """
 
     def __init__(
-        self, config: Union[AccountConfig, ReservationConfig], lock: multiprocessing.Lock = None
+        self,
+        config: Union[AccountConfig, ReservationConfig],
+        lock: Optional[multiprocessing.Lock] = None,
     ) -> None:
         self.first_name = config.first_name
         self.last_name = config.last_name

@@ -11,9 +11,6 @@ from lib.notification_handler import NotificationHandler
 from lib.reservation_monitor import ReservationMonitor
 from lib.utils import CheckFaresOption, FlightChangeError
 
-# This needs to be accessed to be tested
-# pylint: disable=protected-access
-
 JSON = dict[str, Any]
 
 
@@ -34,7 +31,6 @@ def test_flight(mocker: MockerFixture) -> Flight:
 class TestFareChecker:
     @pytest.fixture(autouse=True)
     def _set_up_checker(self) -> None:
-        # pylint: disable-next=attribute-defined-outside-init
         self.checker = FareChecker(ReservationMonitor(ReservationConfig()))
 
     def test_check_flight_price_sends_notification_on_lower_fares(
@@ -320,7 +316,7 @@ class TestFareChecker:
 
 
 @pytest.mark.parametrize(
-    ["option", "expected_filter"],
+    ("option", "expected_filter"),
     [
         (CheckFaresOption.SAME_FLIGHT, fare_checker.same_flight_filter),
         (CheckFaresOption.SAME_DAY_NONSTOP, fare_checker.nonstop_flight_filter),
@@ -339,7 +335,7 @@ def test_get_fare_check_filter_raises_exception_when_option_does_not_match() -> 
 
 
 @pytest.mark.parametrize(
-    ["flight", "filter_out"], [({"flightNumbers": "100"}, True), ({"flightNumbers": "101"}, False)]
+    ("flight", "filter_out"), [({"flightNumbers": "100"}, True), ({"flightNumbers": "101"}, False)]
 )
 def test_same_flight_filter(flight: JSON, filter_out: bool, test_flight: Flight) -> None:
     assert fare_checker.same_flight_filter(test_flight, flight) == filter_out
@@ -350,7 +346,7 @@ def test_any_flight_filter(test_flight: Flight) -> None:
 
 
 @pytest.mark.parametrize(
-    ["flight", "filter_out"],
+    ("flight", "filter_out"),
     [({"stopDescription": "1 Stop, LAX"}, False), ({"stopDescription": "Nonstop"}, True)],
 )
 def test_nonstop_flight_filter(flight: JSON, filter_out: bool) -> None:
