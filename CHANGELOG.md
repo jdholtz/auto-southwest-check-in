@@ -13,6 +13,7 @@ level and time format individually for each service. See the [notification confi
 for more information as well as how to update your configuration file
 ([#328](https://github.com/jdholtz/auto-southwest-check-in/pull/328))
 - Use a specific error message when handling canceled reservations
+- [Development] [Ruff](https://docs.astral.sh/ruff/) is now used to lint and format the project
 
 ### Upgrading
 - Due to the changes in the notification configuration, you will need to update your configuration file to the new

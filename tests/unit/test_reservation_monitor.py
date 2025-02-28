@@ -161,7 +161,7 @@ class TestReservationMonitor:
         mock_fare_checker.assert_not_called()
 
     def test_check_flight_fares_checks_fares_on_all_flights(self, mocker: MockerFixture) -> None:
-        test_flight = mocker.patch("lib.checkin_handler.Flight")
+        test_flight = mocker.patch("lib.flight.Flight")
         mock_check_flight_price = mocker.patch.object(FareChecker, "check_flight_price")
 
         self.monitor.config.check_fares = CheckFaresOption.SAME_FLIGHT
@@ -174,7 +174,7 @@ class TestReservationMonitor:
     def test_check_flight_fares_catches_error_when_checking_fares(
         self, mocker: MockerFixture, exception: Exception
     ) -> None:
-        test_flight = mocker.patch("lib.checkin_handler.Flight")
+        test_flight = mocker.patch("lib.flight.Flight")
         mock_check_flight_price = mocker.patch.object(
             FareChecker, "check_flight_price", side_effect=[None, exception]
         )

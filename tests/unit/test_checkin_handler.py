@@ -14,7 +14,7 @@ class TestCheckInHandler:
 
     @pytest.fixture(autouse=True)
     def _set_up_handler(self, mocker: MockerFixture) -> None:
-        test_flight = mocker.patch("lib.checkin_handler.Flight")
+        test_flight = mocker.patch("lib.flight.Flight")
         mock_checkin_scheduler = mocker.patch("lib.checkin_scheduler.CheckInScheduler")
         mock_lock = mocker.patch("multiprocessing.Lock")
 
