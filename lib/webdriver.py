@@ -21,7 +21,7 @@ from .utils import DriverTimeoutError, LoginError, random_sleep_duration
 
 # Extend the Faker class to include a 'locator' method
 class CustomFaker(Faker):
-    def locator(self, length=6):
+    def locator(self, length: int = 6) -> str:
         result = random.choices(string.digits, k=2) + random.choices(
             string.ascii_uppercase, k=length - 2
         )
