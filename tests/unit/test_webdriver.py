@@ -95,7 +95,7 @@ class TestWebDriver:
 
         driver = self.driver._get_driver()
         driver.add_cdp_listener.assert_called_once()
-        driver.open.assert_called_once()
+        driver.get.assert_called_once()
 
         assert mock_chrome.call_args.kwargs.get("driver_version") == "keep"
         mock_start_display.assert_called_once()
