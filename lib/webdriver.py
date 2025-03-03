@@ -2,11 +2,14 @@ from __future__ import annotations
 
 import json
 import os
+import random
 import re
+import string
 import sys
 import time
 from typing import TYPE_CHECKING, Any
 
+from faker import Faker
 from sbvirtualdisplay import Display
 from seleniumbase import Driver
 from seleniumbase.fixtures import page_actions as seleniumbase_actions
@@ -14,6 +17,23 @@ from seleniumbase.fixtures import page_actions as seleniumbase_actions
 from .config import IS_DOCKER
 from .log import LOGS_DIRECTORY, get_logger
 from .utils import DriverTimeoutError, LoginError, random_sleep_duration
+
+
+# Extend the Faker class to include a 'locator' method
+class CustomFaker(Faker):
+    def locator(self, length=6):
+        result = random.choices(string.digits, k=2) + random.choices(
+            string.ascii_uppercase, k=length - 2
+        )
+        random.shuffle(result)
+        return "".join(result)
+
+
+faker = CustomFaker()
+
+MOCK_LOCATOR = faker.locator()
+MOCK_FIRST_NAME = faker.first_name()
+MOCK_LAST_NAME = faker.last_name()
 
 if TYPE_CHECKING:
     from .checkin_scheduler import CheckInScheduler
@@ -23,7 +43,9 @@ BASE_URL = "https://mobile.southwest.com"
 CHECKIN_URL = BASE_URL + "/air/check-in/"
 LOGIN_URL = BASE_URL + "/api/security/v4/security/token"
 TRIPS_URL = BASE_URL + "/api/mobile-misc/v1/mobile-misc/page/upcoming-trips"
-HEADERS_URL = BASE_URL + "/api/mobile-air-booking/v1/mobile-air-booking/feature/shopping-details"
+HEADERS_URL = (
+    f"{BASE_URL}/api/mobile-air-operations/v1/mobile-air-operations/page/check-in/{MOCK_LOCATOR}"
+)
 
 # Southwest's code when logging in with the incorrect information
 INVALID_CREDENTIALS_CODE = 400518024
@@ -146,7 +168,8 @@ class WebDriver:
         driver = Driver(
             binary_location=browser_path,
             driver_version=driver_version,
-            headless=True,
+            headed=IS_DOCKER,
+            headless1=not IS_DOCKER,
             uc_cdp_events=True,
             undetectable=True,
             incognito=True,
@@ -156,7 +179,16 @@ class WebDriver:
         driver.add_cdp_listener("Network.requestWillBeSent", self._headers_listener)
 
         logger.debug("Loading Southwest check-in page (this may take a moment)")
-        driver.open(CHECKIN_URL)
+        driver.get(CHECKIN_URL)
+        driver.click_if_visible(".button-popup.confirm-button")
+        driver.click_if_visible("#onetrust-accept-btn-handler")
+
+        driver.type('input[name="recordLocator"]', f"{MOCK_LOCATOR}")
+        driver.type('input[name="firstName"]', f"{MOCK_FIRST_NAME}")
+        driver.type('input[name="lastName"]', f"{MOCK_LAST_NAME}")
+
+        driver.click("button[type='submit']")
+        driver.click_if_visible(".button-popup.confirm-button")
         self._take_debug_screenshot(driver, "after_page_load.png")
         return driver
 
