@@ -318,3 +318,23 @@ class TestWebDriver:
 
         self.driver._stop_display()
         mock_display.stop.assert_not_called()
+
+    def test_reset_temp_dir_removes_existing_directory(self, mocker: MockerFixture) -> None:
+        mock_rmtree = mocker.patch("shutil.rmtree")
+        mock_exists = mocker.patch("os.path.exists", return_value=True)
+        self.driver.temp_dir = "/fake/temp/dir"
+
+        self.driver._reset_temp_dir()
+
+        mock_exists.assert_called_once_with("/fake/temp/dir")
+        mock_rmtree.assert_called_once_with("/fake/temp/dir")
+
+    def test_reset_temp_dir_ignores_if_temp_dir_is_not_set(self, mocker: MockerFixture) -> None:
+        mock_rmtree = mocker.patch("shutil.rmtree")
+        mock_exists = mocker.patch("os.path.exists")
+        self.driver.temp_dir = None
+
+        self.driver._reset_temp_dir()
+
+        mock_exists.assert_not_called()
+        mock_rmtree.assert_not_called()
