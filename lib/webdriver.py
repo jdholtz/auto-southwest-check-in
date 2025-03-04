@@ -341,6 +341,6 @@ class WebDriver:
             self.display.stop()
             logger.debug("Stopped virtual display successfully")
 
-    def _reset_temp_dir(self):
+    def _reset_temp_dir(self) -> None:
         if hasattr(self, "temp_dir") and self.temp_dir and os.path.exists(self.temp_dir):
             shutil.rmtree(self.temp_dir)
