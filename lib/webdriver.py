@@ -4,8 +4,10 @@ import json
 import os
 import random
 import re
+import shutil
 import string
 import sys
+import tempfile
 import time
 from typing import TYPE_CHECKING, Any
 
@@ -157,6 +159,8 @@ class WebDriver:
     def _get_driver(self) -> Driver:
         logger.debug("Starting webdriver for current session")
         browser_path = self.checkin_scheduler.reservation_monitor.config.browser_path
+        self._reset_temp_dir()
+        self.temp_dir = tempfile.mkdtemp()
 
         driver_version = "mlatest"
         if IS_DOCKER:
@@ -168,6 +172,7 @@ class WebDriver:
         driver = Driver(
             binary_location=browser_path,
             driver_version=driver_version,
+            user_data_dir=self.temp_dir,
             headed=IS_DOCKER,
             headless1=not IS_DOCKER,
             uc_cdp_events=True,
@@ -316,6 +321,7 @@ class WebDriver:
 
     def _quit_driver(self, driver: Driver) -> None:
         driver.quit()
+        self._reset_temp_dir()
         self._stop_display()
 
     def _start_display(self) -> None:
@@ -334,3 +340,7 @@ class WebDriver:
         if self.display is not None:
             self.display.stop()
             logger.debug("Stopped virtual display successfully")
+
+    def _reset_temp_dir(self):
+        if hasattr(self, "temp_dir") and self.temp_dir and os.path.exists(self.temp_dir):
+            shutil.rmtree(self.temp_dir)
