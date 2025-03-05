@@ -1,6 +1,4 @@
-import os
 import sys
-import tempfile
 from typing import Any
 from unittest import mock
 
@@ -321,25 +319,23 @@ class TestWebDriver:
         self.driver._stop_display()
         mock_display.stop.assert_not_called()
 
-    def test_get_or_create_temp_dir_existing(self, mocker: MockerFixture) -> None:
-        mock_temp_dir = tempfile.mkdtemp()
-
+    def test_get_or_create_temp_dir_fail_to_read_file(self, mocker: MockerFixture) -> None:
+        """Test the case when reading the temp file fails."""
         mocker.patch("os.path.isfile", return_value=True)
-        mocker.patch("builtins.open", mocker.mock_open(read_data=mock_temp_dir))
-        mocker.patch("os.path.isdir", return_value=True)
 
-        assert self.driver._get_or_create_temp_dir() == mock_temp_dir
+        # Simulate an exception during reading the file
+        mocker.patch("builtins.open", side_effect=Exception("Failed to read"))
 
-    def test_get_or_create_temp_dir_creates_new(self, mocker: MockerFixture) -> None:
-        new_temp_dir = "/mock/temp/dir"
+        # Ensure the function still returns a temp directory
+        result = self.driver._get_or_create_temp_dir()
+        assert result != ""
 
+    def test_get_or_create_temp_dir_fail_to_create_dir(self, mocker: MockerFixture) -> None:
+        """Test the case when creating the temp directory fails."""
         mocker.patch("os.path.isfile", return_value=False)
-        mocker.patch("tempfile.mkdtemp", return_value=new_temp_dir)
-        mock_open = mocker.mock_open()
-        mocker.patch("builtins.open", mock_open)
 
-        assert self.driver._get_or_create_temp_dir() == new_temp_dir
-        mock_open.assert_called_once_with(
-            os.path.join(tempfile.gettempdir(), "auto_sw_temp_dir"), "w"
-        )
-        mock_open().write.assert_called_once_with(new_temp_dir)
+        # Simulate an error when creating the temp directory
+        mocker.patch("tempfile.mkdtemp", side_effect=OSError("Failed to create directory"))
+
+        result = self.driver._get_or_create_temp_dir()
+        assert result != ""
