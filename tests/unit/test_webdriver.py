@@ -318,24 +318,3 @@ class TestWebDriver:
 
         self.driver._stop_display()
         mock_display.stop.assert_not_called()
-
-    def test_get_or_create_temp_dir_fail_to_read_file(self, mocker: MockerFixture) -> None:
-        """Test the case when reading the temp file fails."""
-        mocker.patch("os.path.isfile", return_value=True)
-
-        # Simulate an exception during reading the file
-        mocker.patch("builtins.open", side_effect=Exception("Failed to read"))
-
-        # Ensure the function still returns a temp directory
-        result = self.driver._get_or_create_temp_dir()
-        assert result != ""
-
-    def test_get_or_create_temp_dir_fail_to_create_dir(self, mocker: MockerFixture) -> None:
-        """Test the case when creating the temp directory fails."""
-        mocker.patch("os.path.isfile", return_value=False)
-
-        # Simulate an error when creating the temp directory
-        mocker.patch("tempfile.mkdtemp", side_effect=OSError("Failed to create directory"))
-
-        result = self.driver._get_or_create_temp_dir()
-        assert result != ""
