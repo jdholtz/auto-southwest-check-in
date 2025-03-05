@@ -161,6 +161,7 @@ class WebDriver:
     def _get_driver(self) -> Driver:
         logger.debug("Starting webdriver for current session")
         browser_path = self.checkin_scheduler.reservation_monitor.config.browser_path
+        user_agent = "Mozilla/5.0+(compatible; UptimeRobot/2.0"
 
         driver_version = "mlatest"
         if IS_DOCKER:
@@ -173,6 +174,7 @@ class WebDriver:
             binary_location=browser_path,
             driver_version=driver_version,
             user_data_dir=self.temp_dir,
+            agent=user_agent,
             headed=IS_DOCKER,
             headless1=not IS_DOCKER,
             uc_cdp_events=True,
