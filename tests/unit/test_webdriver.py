@@ -1,4 +1,6 @@
+import os
 import sys
+import tempfile
 from typing import Any
 from unittest import mock
 
@@ -319,22 +321,25 @@ class TestWebDriver:
         self.driver._stop_display()
         mock_display.stop.assert_not_called()
 
-    def test_reset_temp_dir_removes_existing_directory(self, mocker: MockerFixture) -> None:
-        mock_rmtree = mocker.patch("shutil.rmtree")
-        mock_exists = mocker.patch("os.path.exists", return_value=True)
-        self.driver.temp_dir = "/fake/temp/dir"
+    def test_get_or_create_temp_dir_existing(self, mocker: MockerFixture) -> None:
+        mock_temp_dir = tempfile.mkdtemp()
 
-        self.driver._reset_temp_dir()
+        mocker.patch("os.path.isfile", return_value=True)
+        mocker.patch("builtins.open", mocker.mock_open(read_data=mock_temp_dir))
+        mocker.patch("os.path.isdir", return_value=True)
 
-        mock_exists.assert_called_once_with("/fake/temp/dir")
-        mock_rmtree.assert_called_once_with("/fake/temp/dir")
+        assert self.driver._get_or_create_temp_dir() == mock_temp_dir
 
-    def test_reset_temp_dir_ignores_if_temp_dir_is_not_set(self, mocker: MockerFixture) -> None:
-        mock_rmtree = mocker.patch("shutil.rmtree")
-        mock_exists = mocker.patch("os.path.exists")
-        self.driver.temp_dir = None
+    def test_get_or_create_temp_dir_creates_new(self, mocker: MockerFixture) -> None:
+        new_temp_dir = "/mock/temp/dir"
 
-        self.driver._reset_temp_dir()
+        mocker.patch("os.path.isfile", return_value=False)
+        mocker.patch("tempfile.mkdtemp", return_value=new_temp_dir)
+        mock_open = mocker.mock_open()
+        mocker.patch("builtins.open", mock_open)
 
-        mock_exists.assert_not_called()
-        mock_rmtree.assert_not_called()
+        assert self.driver._get_or_create_temp_dir() == new_temp_dir
+        mock_open.assert_called_once_with(
+            os.path.join(tempfile.gettempdir(), "auto_sw_temp_dir"), "w"
+        )
+        mock_open().write.assert_called_once_with(new_temp_dir)

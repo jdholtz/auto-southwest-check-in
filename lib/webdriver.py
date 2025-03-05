@@ -4,7 +4,6 @@ import json
 import os
 import random
 import re
-import shutil
 import string
 import sys
 import tempfile
@@ -78,8 +77,9 @@ class WebDriver:
     def __init__(self, checkin_scheduler: CheckInScheduler) -> None:
         self.checkin_scheduler = checkin_scheduler
         self.headers_set = False
-        self.debug_screenshots = self._should_take_screenshots()
         self.display = None
+        self.debug_screenshots = self._should_take_screenshots()
+        self.temp_dir = self._get_or_create_temp_dir()
 
         # For account login
         self.login_request_id = None
@@ -138,11 +138,13 @@ class WebDriver:
         driver.click_if_visible(".button-popup.confirm-button")
 
         driver.click(".login-button--box")
-        time.sleep(random_sleep_duration(1, 5))
+        time.sleep(random_sleep_duration(1.5, 2))
         driver.type('input[name="userNameOrAccountNumber"]', account_monitor.username)
+        time.sleep(random_sleep_duration(1, 1.5))
 
         # Use quote_plus to workaround a x-www-form-urlencoded encoding bug on the mobile site
         driver.type('input[name="password"]', f"{account_monitor.password}\n")
+        time.sleep(random_sleep_duration(1, 1.5))
 
         # Wait for the necessary information to be set
         self._wait_for_attribute("headers_set")
@@ -159,8 +161,6 @@ class WebDriver:
     def _get_driver(self) -> Driver:
         logger.debug("Starting webdriver for current session")
         browser_path = self.checkin_scheduler.reservation_monitor.config.browser_path
-        self._reset_temp_dir()
-        self.temp_dir = tempfile.mkdtemp()
 
         driver_version = "mlatest"
         if IS_DOCKER:
@@ -244,6 +244,7 @@ class WebDriver:
         Handles login errors, if necessary.
         """
         self._click_login_button(driver)
+        time.sleep(random_sleep_duration(1, 1.5))
         self._wait_for_attribute("login_request_id")
         login_response = self._get_response_body(driver, self.login_request_id)
 
@@ -321,7 +322,6 @@ class WebDriver:
 
     def _quit_driver(self, driver: Driver) -> None:
         driver.quit()
-        self._reset_temp_dir()
         self._stop_display()
 
     def _start_display(self) -> None:
@@ -341,6 +341,28 @@ class WebDriver:
             self.display.stop()
             logger.debug("Stopped virtual display successfully")
 
-    def _reset_temp_dir(self) -> None:
-        if hasattr(self, "temp_dir") and self.temp_dir and os.path.exists(self.temp_dir):
-            shutil.rmtree(self.temp_dir)
+    def _get_temp_dir_file(self) -> str:
+        """Return the path for the persistent temp directory location file."""
+        return os.path.join(tempfile.gettempdir(), "auto_sw_temp_dir")
+
+    def _get_or_create_temp_dir(self) -> str:
+        """Retrieve existing temp directory or create a new one if not found."""
+        temp_dir_file = self._get_temp_dir_file()
+
+        try:
+            if os.path.isfile(temp_dir_file):
+                with open(temp_dir_file, "r") as f:
+                    temp_dir = f.read().strip()
+                    if os.path.isdir(temp_dir):
+                        return temp_dir
+        except Exception as e:
+            logger.debug("Failed to read temp dir file: %s", e)
+
+        try:
+            temp_dir = tempfile.mkdtemp()
+            with open(temp_dir_file, "w") as f:
+                f.write(temp_dir)
+        except Exception as e:
+            logger.debug("Failed to create temp dir: %s", e)
+
+        return temp_dir
