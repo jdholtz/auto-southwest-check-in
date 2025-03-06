@@ -319,33 +319,20 @@ class TestWebDriver:
         self.driver._stop_display()
         mock_display.stop.assert_not_called()
 
-    def test_get_temp_dir_file(self, mocker: MockerFixture) -> None:
-        mocker.patch("tempfile.gettempdir", return_value="/mock/tempdir")
+    def test_reset_temp_dir_removes_existing_directory(self, mocker: MockerFixture) -> None:
+        mock_rmtree = mocker.patch("shutil.rmtree")
+        mock_exists = mocker.patch("os.path.exists", return_value=True)
+        self.driver.temp_dir = "/mock/temp/dir"
+        self.driver._reset_temp_dir()
 
-        temp_dir_file = self.driver._get_temp_dir_file()
-        assert temp_dir_file == "/mock/tempdir/auto_sw_temp_dir"
+        mock_exists.assert_called_once_with("/mock/temp/dir")
+        mock_rmtree.assert_called_once_with("/mock/temp/dir")
 
-    def test_get_or_create_temp_dir_existing(self, mocker: MockerFixture) -> None:
-        temp_dir = "/mock/tempdir"
-        mocker.patch("os.path.isdir", return_value=True)
-        mocker.patch("builtins.open", mocker.mock_open(read_data=temp_dir))
+    def test_reset_temp_dir_ignores_if_temp_dir_is_not_set(self, mocker: MockerFixture) -> None:
+        mock_rmtree = mocker.patch("shutil.rmtree")
+        mock_exists = mocker.patch("os.path.exists")
+        self.driver.temp_dir = None
+        self.driver._reset_temp_dir()
 
-        result = self.driver._get_or_create_temp_dir()
-        assert result == temp_dir
-
-        mocker.patch("builtins.open").assert_called_once_with("/mock/tempdir/auto_sw_temp_dir", "r")
-        mocker.patch("os.path.isdir").assert_called_once_with(temp_dir)
-        mocker.patch("tempfile.mkdtemp").assert_not_called()
-
-    def test_get_or_create_temp_dir_create_new(self, mocker: MockerFixture) -> None:
-        new_temp_dir = "/mock/newtempdir"
-        mocker.patch("os.path.isdir", return_value=False)
-        mocker.patch("tempfile.mkdtemp", return_value=new_temp_dir)
-        mock_open = mocker.patch("builtins.open", mocker.mock_open())
-
-        result = self.driver._get_or_create_temp_dir()
-        assert result == new_temp_dir
-
-        mock_open.assert_called_once_with("/mock/tempdir/auto_sw_temp_dir", "w")
-        mock_open.return_value.write.assert_called_once_with(new_temp_dir)
-        mocker.patch("tempfile.mkdtemp").assert_called_once()
+        mock_exists.assert_not_called()
+        mock_rmtree.assert_not_called()
