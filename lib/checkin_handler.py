@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import os
+import queue
 import signal
+import threading
 import time
 from datetime import datetime, timedelta
 from multiprocessing import Lock, Process
@@ -28,6 +30,8 @@ MANUAL_CHECKIN_URL = "https://mobile.southwest.com/check-in"
 
 # Should only be relevant for same day flights
 MAX_CHECK_IN_ATTEMPTS = 10
+# Number of threads to use for check-in
+CHECK_IN_THREADS = 5
 
 logger = get_logger(__name__)
 
@@ -134,26 +138,76 @@ class CheckInHandler:
     def _check_in(self) -> None:
         """
         Checks into a flight. Will catch any errors that occur during the check-in process.
+
+        Starts CHECK_IN_THREADS threads to check in for potentially faster check-ins.
         """
         print(
             f"Checking in to flight from '{self.flight.departure_airport}' to "
             f"'{self.flight.destination_airport}' for {self.first_name} {self.last_name}\n"
         )  # Don't log as it has sensitive information
 
+        # Start CHECK_IN_THREADS threads to check in, each sleeping one second longer than the
+        # previous thread. This is to increase the likelihood of a successful check-in on the first
+        # attempt (otherwise a 400 error could be received, and the request could take up to 3
+        # seconds to finish before the next one is attempted).
+        result_queue = queue.Queue()
+        threads = []
+        for i in range(CHECK_IN_THREADS):
+            logger.debug("Starting thread with sleep time %d", i)
+            thread = threading.Thread(target=self._thread_check_in, args=(result_queue, i))
+            threads.append(thread)
+            thread.start()
+
+        logger.debug("All threads started. Waiting for them to finish")
+        for thread in threads:
+            thread.join()
+        logger.debug("All threads completed. Checking their results")
+
+        # Check all results from the threads. The loop will end early when a successful check-in or
+        # an AirportCheckInError is received. If a RequestError is received, the loop will continue
+        # until the results of all threads have been checked and `request_err` will be the last
+        # RequestError received.
+        request_err = None
+        while not result_queue.empty():
+            result = result_queue.get_nowait()
+
+            if isinstance(result, dict):
+                # Received a successful check-in
+                logger.debug("A successful check-in was received")
+                self.notification_handler.successful_checkin(
+                    result["checkInConfirmationPage"], self.flight
+                )
+                return
+            if isinstance(result, AirportCheckInError):
+                # Received an airport check-in error. Don't need to check any more results
+                # as the rest should have the same result
+                logger.debug("Failed to check in. Airport check-in is required")
+                self.notification_handler.airport_checkin_required(self.flight)
+                return
+
+            if isinstance(result, RequestError):
+                # Received a request error. Store it and continue checking the other results
+                logger.debug("Received request error: %s", result)
+                request_err = result
+            else:
+                raise ValueError(f"Unexpected result in result queue: {result}")
+
+        # Handle the RequestError at this point
+        logger.debug("Failed to check in. Error: %s. Exiting", request_err)
+        self.notification_handler.failed_checkin(request_err, self.flight)
+
+    def _thread_check_in(self, result_queue: queue.Queue, sleep_time: int) -> None:
+        """
+        Check in to the flight after sleeping for `sleep_time` seconds. Puts the result in the
+        `result_queue`. Should be run in each check-in thread.
+        """
+        time.sleep(sleep_time)
+
         try:
             reservation = self._attempt_check_in()
-        except AirportCheckInError:
-            logger.debug("Failed to check in. Airport check-in is required")
-            self.notification_handler.airport_checkin_required(self.flight)
-            return
-        except RequestError as err:
-            logger.debug("Failed to check in. Error: %s. Exiting", err)
-            self.notification_handler.failed_checkin(err, self.flight)
-            return
-
-        self.notification_handler.successful_checkin(
-            reservation["checkInConfirmationPage"], self.flight
-        )
+            result_queue.put(reservation)
+        except (AirportCheckInError, RequestError) as err:
+            result_queue.put(err)
 
     def _attempt_check_in(self) -> JSON:
         """
