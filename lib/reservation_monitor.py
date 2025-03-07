@@ -1,11 +1,11 @@
+from __future__ import annotations
+
 import multiprocessing
 import sys
 import time
-from datetime import datetime
-from typing import Any, Optional, Union
+from typing import TYPE_CHECKING, Any
 
 from .checkin_scheduler import CheckInScheduler
-from .config import AccountConfig, ReservationConfig
 from .fare_checker import FareChecker
 from .log import get_logger
 from .notification_handler import NotificationHandler
@@ -18,6 +18,11 @@ from .utils import (
     get_current_time,
 )
 from .webdriver import WebDriver
+
+if TYPE_CHECKING:
+    from datetime import datetime
+
+    from .config import AccountConfig, ReservationConfig
 
 TOO_MANY_REQUESTS_CODE = 429
 INTERNAL_SERVER_ERROR_CODE = 500
@@ -35,8 +40,8 @@ class ReservationMonitor:
 
     def __init__(
         self,
-        config: Union[AccountConfig, ReservationConfig],
-        lock: Optional[multiprocessing.Lock] = None,
+        config: AccountConfig | ReservationConfig,
+        lock: multiprocessing.Lock | None = None,
     ) -> None:
         self.first_name = config.first_name
         self.last_name = config.last_name

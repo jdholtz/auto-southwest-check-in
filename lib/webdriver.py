@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import json
-import os
 import re
 import sys
 import time
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from sbvirtualdisplay import Display
@@ -78,7 +78,7 @@ class WebDriver:
     def _take_debug_screenshot(self, driver: Driver, name: str) -> None:
         """Take a screenshot of the browser and save the image as 'name' in LOGS_DIRECTORY"""
         if self.debug_screenshots:
-            driver.save_screenshot(os.path.join(LOGS_DIRECTORY, name))
+            driver.save_screenshot(Path(LOGS_DIRECTORY) / name)
 
     def set_headers(self) -> None:
         """

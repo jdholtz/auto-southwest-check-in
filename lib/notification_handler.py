@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any
 
 import apprise
 import requests
@@ -24,12 +24,12 @@ logger = get_logger(__name__)
 class NotificationHandler:
     """Handles all notifications that will be sent to the user either via Apprise or the console"""
 
-    def __init__(self, reservation_monitor: Union[AccountMonitor, ReservationMonitor]) -> None:
+    def __init__(self, reservation_monitor: AccountMonitor | ReservationMonitor) -> None:
         self.reservation_monitor = reservation_monitor
         self.notifications = reservation_monitor.config.notifications
 
     def send_notification(
-        self, body: str, level: NotificationLevel = None, flights: Optional[list[Flight]] = None
+        self, body: str, level: NotificationLevel = None, flights: list[Flight] | None = None
     ) -> None:
         """
         Send a notification to all configured services. The notification will only be sent if the

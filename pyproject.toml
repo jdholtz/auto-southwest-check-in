@@ -26,14 +26,11 @@ addopts = "-p no:seleniumbase"
 line-length = 100
 
 [tool.ruff.lint]
-select = [
-    # Defaults
-    "E4", "E7", "E9", "F",
-
-    # Extras
+extend-select = [
     "ANN",   # flake8-annotations
     "ARG",   # flake8-unused-arguments
     "E501",  # line-too-long
+    "FA",    # flake8-future-annotations
     "G",     # flake8-logging-format
     "I",     # isort
     "N",     # pep8-naming
@@ -42,6 +39,7 @@ select = [
     "RUF",   # Ruff-specific rules
     "SLF",   # flake8-self
     "TC",    # flake8-type-checking
+    "UP",    # pyupgrade
 ]
 
 ignore = [

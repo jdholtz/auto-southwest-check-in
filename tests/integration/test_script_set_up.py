@@ -14,6 +14,8 @@ from lib import main
 @pytest.fixture(autouse=True)
 def logger(mocker: MockerFixture) -> Iterator[logging.Logger]:
     logger = logging.getLogger("lib")
+    # Make sure no file system changes are done
+    mocker.patch("pathlib.Path.mkdir")
     # Make sure logs aren't written to a file
     mock_file_handler = mocker.patch("logging.handlers.RotatingFileHandler")
     mock_file_handler.return_value.level = logging.DEBUG

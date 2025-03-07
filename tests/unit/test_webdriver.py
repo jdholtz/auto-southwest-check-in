@@ -40,7 +40,7 @@ class TestWebDriver:
         self.driver._take_debug_screenshot(mock_chrome, "test-shot.png")
 
         mock_chrome.save_screenshot.assert_called_once()
-        assert "test-shot.png" in mock_chrome.save_screenshot.call_args[0][0]
+        assert mock_chrome.save_screenshot.call_args[0][0].name == "test-shot.png"
 
     def test_set_headers_correctly_sets_needed_headers(
         self, mocker: MockerFixture, mock_chrome: mock.Mock
