@@ -157,6 +157,7 @@ class TestCheckInHandler:
     def test_check_in_sends_error_notification_when_check_in_fails(
         self, mocker: MockerFixture
     ) -> None:
+        mocker.patch("time.sleep")
         mocker.patch.object(CheckInHandler, "_attempt_check_in", side_effect=RequestError(""))
         mock_notification_handler = mocker.patch("lib.notification_handler.NotificationHandler")
 
@@ -169,6 +170,7 @@ class TestCheckInHandler:
     def test_check_in_sends_airport_check_in_notification_for_airport_check_in_error(
         self, mocker: MockerFixture
     ) -> None:
+        mocker.patch("time.sleep")
         mocker.patch.object(CheckInHandler, "_attempt_check_in", side_effect=AirportCheckInError)
         mock_notification_handler = mocker.patch("lib.notification_handler.NotificationHandler")
 
@@ -181,6 +183,7 @@ class TestCheckInHandler:
     def test_check_in_sends_success_notification_on_successful_check_in(
         self, mocker: MockerFixture
     ) -> None:
+        mocker.patch("time.sleep")
         post_response = {"checkInConfirmationPage": "Checked In!"}
         mock_successful_checkin_notification = mocker.patch.object(
             self.handler.notification_handler, "successful_checkin"
