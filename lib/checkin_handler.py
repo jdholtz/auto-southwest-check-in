@@ -7,7 +7,6 @@ from datetime import datetime, timedelta
 from multiprocessing import Lock, Process
 from typing import TYPE_CHECKING, Any
 
-from .flight import Flight
 from .log import get_logger
 from .utils import (
     AirportCheckInError,
@@ -19,6 +18,7 @@ from .utils import (
 
 if TYPE_CHECKING:
     from .checkin_scheduler import CheckInScheduler
+    from .flight import Flight
 
 # Type alias for JSON
 JSON = dict[str, Any]

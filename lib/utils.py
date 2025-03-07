@@ -1,10 +1,12 @@
+from __future__ import annotations
+
 import json
 import random
 import socket
 import time
 from datetime import datetime, timezone
 from enum import Enum, IntEnum
-from typing import Any, Union
+from typing import Any
 
 import ntplib
 import requests
@@ -31,7 +33,7 @@ def random_sleep_duration(min_duration: float, max_duration: float) -> float:
     return random.uniform(min_duration, max_duration)
 
 
-def _handle_southwest_error_code(error: "RequestError") -> None:
+def _handle_southwest_error_code(error: RequestError) -> None:
     if error.southwest_code == AIRPORT_CHECKIN_REQUIRED_CODE:
         raise AirportCheckInError("Airport check-in is required")
 
@@ -49,7 +51,12 @@ def _handle_southwest_error_code(error: "RequestError") -> None:
 
 
 def make_request(
-    method: str, site: str, headers: JSON, info: JSON, max_attempts=20, random_sleep=True
+    method: str,
+    site: str,
+    headers: JSON,
+    info: JSON,
+    max_attempts: int = 20,
+    random_sleep: bool = True,
 ) -> JSON:
     """
     Makes a request to the Southwest servers. For increased reliability, the request is performed
@@ -178,7 +185,7 @@ class CheckFaresOption(str, Enum):
     SAME_DAY = "same_day"
 
 
-def is_truthy(arg: Union[bool, int, str]) -> bool:
+def is_truthy(arg: bool | int | str) -> bool:
     """
     Convert "truthy" strings into Booleans.
 

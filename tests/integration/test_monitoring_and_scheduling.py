@@ -77,8 +77,7 @@ def test_flight_is_scheduled_checks_in_and_departs(
         [{"confirmationNumber": "TEST", "firstName": "Berkant", "lastName": "Marika"}]
     )
 
-    def mock_get_driver(self) -> mock.Mock:
-        # pylint: disable-next=protected-access
+    def mock_get_driver(self: WebDriver) -> mock.Mock:
         self.checkin_scheduler.headers = self._get_needed_headers(ALL_HEADERS)
         self.headers_set = True
         return mocker.patch("lib.webdriver.Driver")
@@ -167,7 +166,7 @@ def test_account_schedules_new_flights(requests_mock: RequestMocker, mocker: Moc
 
     login_attempts = 0
 
-    def mock_get_driver(self) -> mock.Mock:
+    def mock_get_driver(self: WebDriver) -> mock.Mock:
         """
         Adds login and trips responses. The second login request will be a 429 to test
         that the error is handled correctly.
@@ -175,7 +174,6 @@ def test_account_schedules_new_flights(requests_mock: RequestMocker, mocker: Moc
         nonlocal login_attempts
         login_attempts += 1
 
-        # pylint: disable-next=protected-access
         self.checkin_scheduler.headers = self._get_needed_headers(ALL_HEADERS)
         self.headers_set = True
 

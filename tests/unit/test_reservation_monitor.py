@@ -20,9 +20,6 @@ from lib.utils import (
 )
 from lib.webdriver import WebDriver
 
-# This needs to be accessed to be tested
-# pylint: disable=protected-access
-
 
 @pytest.fixture
 def mock_lock(mocker: MockerFixture) -> None:
@@ -36,7 +33,6 @@ def mock_lock(mocker: MockerFixture) -> None:
 class TestReservationMonitor:
     @pytest.fixture(autouse=True)
     def _set_up_monitor(self, mock_lock: mock.Mock, mocker: MockerFixture) -> None:
-        # pylint: disable-next=attribute-defined-outside-init
         self.monitor = ReservationMonitor(ReservationConfig(), mock_lock)
         mocker.patch(
             "lib.reservation_monitor.get_current_time", return_value=datetime(1999, 12, 31)
@@ -165,7 +161,7 @@ class TestReservationMonitor:
         mock_fare_checker.assert_not_called()
 
     def test_check_flight_fares_checks_fares_on_all_flights(self, mocker: MockerFixture) -> None:
-        test_flight = mocker.patch("lib.checkin_handler.Flight")
+        test_flight = mocker.patch("lib.flight.Flight")
         mock_check_flight_price = mocker.patch.object(FareChecker, "check_flight_price")
 
         self.monitor.config.check_fares = CheckFaresOption.SAME_FLIGHT
@@ -178,7 +174,7 @@ class TestReservationMonitor:
     def test_check_flight_fares_catches_error_when_checking_fares(
         self, mocker: MockerFixture, exception: Exception
     ) -> None:
-        test_flight = mocker.patch("lib.checkin_handler.Flight")
+        test_flight = mocker.patch("lib.flight.Flight")
         mock_check_flight_price = mocker.patch.object(
             FareChecker, "check_flight_price", side_effect=[None, exception]
         )
@@ -221,7 +217,6 @@ class TestReservationMonitor:
 class TestAccountMonitor:
     @pytest.fixture(autouse=True)
     def _set_up_monitor(self, mock_lock: mock.Mock, mocker: MockerFixture) -> None:
-        # pylint: disable-next=attribute-defined-outside-init
         self.monitor = AccountMonitor(AccountConfig(), mock_lock)
         mocker.patch(
             "lib.reservation_monitor.get_current_time", return_value=datetime(1999, 12, 31)

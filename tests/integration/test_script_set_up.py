@@ -14,6 +14,8 @@ from lib import main
 @pytest.fixture(autouse=True)
 def logger(mocker: MockerFixture) -> Iterator[logging.Logger]:
     logger = logging.getLogger("lib")
+    # Make sure no file system changes are done
+    mocker.patch("pathlib.Path.mkdir")
     # Make sure logs aren't written to a file
     mock_file_handler = mocker.patch("logging.handlers.RotatingFileHandler")
     mock_file_handler.return_value.level = logging.DEBUG
@@ -95,7 +97,7 @@ def test_account_from_command_line_with_verbose(
     args = ["test_user", "test_pass", verbose_flag]
     # sys.argv is used instead of the args passed in to the log module (it also would have
     # southwest.py prepended to it in real use)
-    mocker.patch("sys.argv", ["test_file"] + args)
+    mocker.patch("sys.argv", ["test_file", *args])
 
     main.main(args, "test_version")
 
@@ -114,7 +116,7 @@ def test_reservation_from_command_line_without_verbose(
     args = ["TEST", "Charli", "Silvester"]
     # sys.argv is used instead of the args passed in to the log module (it also would have
     # southwest.py prepended to it in real use)
-    mocker.patch("sys.argv", ["test_file"] + args)
+    mocker.patch("sys.argv", ["test_file", *args])
 
     main.main(args, "test_version")
 

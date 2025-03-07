@@ -1,20 +1,16 @@
 repos:
-  - repo: https://github.com/psf/black-pre-commit-mirror
-    rev: 24.10.0
-    hooks:
-      - id: black
   - repo: https://github.com/codespell-project/codespell
-    rev: v2.3.0
+    rev: v2.4.1
     hooks:
       - id: codespell
         additional_dependencies:
           - tomli
         exclude: utils/airport_timezones.json
-  - repo: https://github.com/pycqa/flake8
-    rev: 7.1.1
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.9.8
     hooks:
-      - id: flake8
-  - repo: https://github.com/PyCQA/isort
-    rev: 5.13.2
-    hooks:
-      - id: isort
+      # Run the linter.
+      - id: ruff
+        args: [ --fix ]
+        # Run the formatter.
+      - id: ruff-format

@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Callable
 
-from .flight import Flight
 from .log import get_logger
 from .utils import CheckFaresOption, FlightChangeError, make_request
 
 if TYPE_CHECKING:
+    from .flight import Flight
     from .reservation_monitor import ReservationMonitor
 
 # Type alias for JSON
@@ -143,11 +143,7 @@ class FareChecker:
             if self.filter(flight, new_flight):
                 fare = self._get_matching_fare(new_flight["fares"], fare_type)
                 # Check if this fare is the lowest encountered so far
-                if (
-                    not lowest_fare
-                    # pylint: disable-next=unsubscriptable-object
-                    or (fare and fare["amount"] < lowest_fare["amount"])
-                ):
+                if not lowest_fare or (fare and fare["amount"] < lowest_fare["amount"]):
                     lowest_fare = fare
 
         if not lowest_fare:

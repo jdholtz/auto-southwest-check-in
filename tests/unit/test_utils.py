@@ -1,16 +1,20 @@
+from __future__ import annotations
+
 import json
 import socket
 from datetime import datetime, timezone
-from typing import Any, Union
+from typing import TYPE_CHECKING, Any
 from unittest.mock import call
 
 import ntplib
 import pytest
-from pytest_mock import MockerFixture
-from requests_mock.mocker import Mocker as RequestMocker
 
 from lib import utils
 from lib.utils import AirportCheckInError, RequestError
+
+if TYPE_CHECKING:
+    from pytest_mock import MockerFixture
+    from requests_mock.mocker import Mocker as RequestMocker
 
 
 def test_random_sleep_duration_respects_min_and_max_durations(mocker: MockerFixture) -> None:
@@ -22,7 +26,7 @@ def test_random_sleep_duration_respects_min_and_max_durations(mocker: MockerFixt
 
 
 @pytest.mark.parametrize(
-    ["code", "error"],
+    ("code", "error"),
     [
         (utils.AIRPORT_CHECKIN_REQUIRED_CODE, AirportCheckInError),
         (utils.INVALID_CONFIRMATION_NUMBER_LENGTH_CODE, RequestError),
@@ -32,12 +36,11 @@ def test_random_sleep_duration_respects_min_and_max_durations(mocker: MockerFixt
     ],
 )
 def test_handle_southwest_error_code_handles_all_special_codes(
-    code: int, error: Union[AirportCheckInError, RequestError]
+    code: int, error: AirportCheckInError | RequestError
 ) -> None:
     response_body = json.dumps({"code": code})
     request_err = RequestError("", response_body)
     with pytest.raises(error):
-        # pylint: disable-next=protected-access
         utils._handle_southwest_error_code(request_err)
 
 
@@ -61,7 +64,7 @@ def test_make_request_raises_exception_on_failure(
 def test_make_request_stops_early_for_special_southwest_code(
     mocker: MockerFixture,
     requests_mock: RequestMocker,
-    error: Union[AirportCheckInError, RequestError],
+    error: AirportCheckInError | RequestError,
 ) -> None:
     requests_mock.get(utils.BASE_URL + "test", status_code=400, reason="Bad Request")
     mock_sleep = mocker.patch("time.sleep")
@@ -124,7 +127,7 @@ def test_make_request_correctly_gets_data(requests_mock: RequestMocker) -> None:
     assert last_request.headers["header"] == "test"
 
 
-def test_make_request_handles_malformed_URLs(requests_mock: RequestMocker) -> None:
+def test_make_request_handles_malformed_urls(requests_mock: RequestMocker) -> None:
     mock_post = requests_mock.get(utils.BASE_URL + "test/test2", status_code=200, text="{}")
     utils.make_request("GET", "/test//test2", {}, {})
     assert mock_post.last_request.url == utils.BASE_URL + "test/test2"
@@ -160,7 +163,7 @@ def test_get_current_time_returns_local_datetime_on_failed_requests(
 
 
 @pytest.mark.parametrize(
-    "value, expected",
+    ("value", "expected"),
     [
         (True, True),
         (False, False),

@@ -15,9 +15,6 @@ from lib.reservation_monitor import ReservationMonitor
 from lib.utils import RequestError
 from lib.webdriver import WebDriver
 
-# This needs to be accessed to be tested
-# pylint: disable=protected-access
-
 
 @pytest.fixture
 def test_flights(mocker: MockerFixture) -> list[Flight]:
@@ -35,7 +32,6 @@ def test_flights(mocker: MockerFixture) -> list[Flight]:
 class TestCheckInScheduler:
     @pytest.fixture(autouse=True)
     def _set_up_scheduler(self) -> None:
-        # pylint: disable-next=attribute-defined-outside-init
         self.scheduler = CheckInScheduler(ReservationMonitor(ReservationConfig()))
 
     def test_process_reservations_handles_all_reservations(self, mocker: MockerFixture) -> None:
@@ -75,9 +71,9 @@ class TestCheckInScheduler:
 
         flights = self.scheduler._get_flights("flight1")
         assert len(flights) == 2, "Unexpected number of flights retrieved"
-        assert mock_set_same_day_flight.call_count == len(
-            flights
-        ), "_set_same_day_flight() not called once for every retrieved flight"
+        assert mock_set_same_day_flight.call_count == len(flights), (
+            "_set_same_day_flight() not called once for every retrieved flight"
+        )
 
     def test_get_flights_retrieves_no_flights_on_request_error(self, mocker: MockerFixture) -> None:
         mocker.patch("lib.checkin_scheduler.make_request", side_effect=RequestError(""))
@@ -167,7 +163,7 @@ class TestCheckInScheduler:
         mock_failed_reservation_retrieval.assert_not_called()
         assert reservation_info == {}
 
-    @pytest.mark.parametrize(["hour_diff", "same_day"], [(23, True), (24, True), (25, False)])
+    @pytest.mark.parametrize(("hour_diff", "same_day"), [(23, True), (24, True), (25, False)])
     def test_set_same_day_flight_sets_flight_as_same_day_correctly(
         self, hour_diff: int, same_day: bool, test_flights: list[Flight]
     ) -> None:
@@ -202,9 +198,9 @@ class TestCheckInScheduler:
         mock_schedule_flights.assert_called_once_with([flight2])
         mock_remove_old_flights.assert_called_once_with(test_flights)
 
-        assert (
-            self.scheduler.flights[0].reservation_info == flight1.reservation_info
-        ), "Cached reservation info for already scheduled flight was never updated"
+        assert self.scheduler.flights[0].reservation_info == flight1.reservation_info, (
+            "Cached reservation info for already scheduled flight was never updated"
+        )
 
     def test_schedule_flights_schedules_all_flights(
         self, mocker: MockerFixture, test_flights: list[Flight]
@@ -216,9 +212,9 @@ class TestCheckInScheduler:
 
         assert len(self.scheduler.flights) == 2
         assert len(self.scheduler.checkin_handlers) == 2
-        assert (
-            mock_schedule_check_in.call_count == 2
-        ), "schedule_check_in() was not called once for every flight"
+        assert mock_schedule_check_in.call_count == 2, (
+            "schedule_check_in() was not called once for every flight"
+        )
         mock_new_flights_notification.assert_called_once_with(test_flights)
 
     def test_remove_old_flights_removes_flights_not_currently_scheduled(

@@ -17,9 +17,6 @@ from lib.utils import CheckFaresOption, NotificationLevel
 
 JSON = dict[str, Any]
 
-# This needs to be accessed to be tested
-# pylint: disable=protected-access
-
 
 class TestConfig:
     def _assert_notification_config_matches(
@@ -289,7 +286,7 @@ class TestGlobalConfig:
         assert config_content == {"check_fares": True}
 
     @pytest.mark.parametrize(
-        ["level", "twenty_four_hr_time"],
+        ("level", "twenty_four_hr_time"),
         [(None, None), (1, None), (None, True)],
     )
     def test_read_notification_env_vars_no_url_specified(

@@ -1,7 +1,6 @@
 import logging
 import logging.handlers
 import multiprocessing
-import os
 import sys
 from pathlib import Path
 
@@ -27,7 +26,7 @@ def init_main_logging() -> None:
 def init_logging(logger: logging.Logger) -> None:
     """Sets the configuration for the provided logger"""
     # Make the logging directory if it doesn't exist
-    os.makedirs(LOGS_DIRECTORY, exist_ok=True)
+    Path(LOGS_DIRECTORY).mkdir(parents=True, exist_ok=True)
 
     logger.setLevel(logging.DEBUG)  # The minimum level for every handler
 
@@ -36,7 +35,7 @@ def init_logging(logger: logging.Logger) -> None:
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
-    log_file_path = os.path.join(LOGS_DIRECTORY, LOG_FILE)
+    log_file_path = Path(LOGS_DIRECTORY) / LOG_FILE
     file_handler = logging.handlers.RotatingFileHandler(
         log_file_path, maxBytes=2 * 1024 * 1024, backupCount=4
     )

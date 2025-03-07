@@ -22,7 +22,6 @@ on:
       - "config.schema.json"
       - "LICENSE"
       - "pyproject.toml"
-      - "setup.cfg"
       - "tests/**"
 
 jobs:

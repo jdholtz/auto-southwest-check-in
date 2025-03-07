@@ -9,6 +9,7 @@ import string
 import sys
 import tempfile
 import time
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from faker import Faker
@@ -102,7 +103,7 @@ class WebDriver:
     def _take_debug_screenshot(self, driver: Driver, name: str) -> None:
         """Take a screenshot of the browser and save the image as 'name' in LOGS_DIRECTORY"""
         if self.debug_screenshots:
-            driver.save_screenshot(os.path.join(LOGS_DIRECTORY, name))
+            driver.save_screenshot(Path(LOGS_DIRECTORY) / name)
 
     def set_headers(self) -> None:
         """
@@ -300,7 +301,7 @@ class WebDriver:
     def _get_needed_headers(self, request_headers: JSON) -> JSON:
         headers = {}
         for header in request_headers:
-            if re.match(r"x-api-key|x-channel-id|user-agent|^[\w-]+?-\w$", header, re.I):
+            if re.match(r"x-api-key|x-channel-id|user-agent|^[\w-]+?-\w$", header, re.IGNORECASE):
                 headers[header] = request_headers[header]
 
         return headers

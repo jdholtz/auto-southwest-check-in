@@ -162,7 +162,7 @@ def test_fare_drop_inbound_same_flight(
 
 
 @pytest.mark.parametrize(
-    ["check_fares_option", "low_fare"],
+    ("check_fares_option", "low_fare"),
     [
         (CheckFaresOption.SAME_FLIGHT, "-3,600 PTS"),
         (CheckFaresOption.SAME_DAY_NONSTOP, "-4,800 PTS"),
@@ -186,7 +186,7 @@ def test_fare_drop_with_filter(
     monitor.notification_handler.lower_fare.assert_called_once_with(flight, low_fare)
 
 
-@pytest.mark.parametrize(["amount", "sign"], [("1,000", None), ("1", "-"), ("0", None)])
+@pytest.mark.parametrize(("amount", "sign"), [("1,000", None), ("1", "-"), ("0", None)])
 def test_no_fare_drop(
     requests_mock: RequestMocker,
     monitor: ReservationMonitor,

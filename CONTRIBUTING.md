@@ -27,13 +27,13 @@ Try to stay consistent with the current layout/format of the project. Please use
 It is highly recommended for you to use [pre-commit] to ensure you are following these conventions.
 
 ### Linting
-[Flake8] is used to lint the Python code. When validating your code against flake8, use your best judgement to determine whether to fix
+[Ruff] is used to lint the Python code via `ruff check`. When validating your code against Ruff, use your best judgement to determine whether to fix
 the issue or disable the warning.
 
 [Codespell] is used to reduce typos in comments, strings, and documentation.
 
 ### Formatting
-[Black] is used to format all the Python code to a consistent style. Additionally, [isort] is used to provide a consistent ordering to imports.
+[Ruff] is used to format all the Python code to a consistent style via `ruff format`.
 
 It is also highly recommended to use an [EditorConfig] plugin for your code editor to maintain a consistent coding style for all project files.
 
@@ -48,8 +48,6 @@ From there, methods are ordered from top to bottom in the order they are used. U
 
 [pytest]: https://docs.pytest.org
 [pre-commit]: https://pre-commit.com
-[Flake8]: https://flake8.pycqa.org/en/latest
+[Ruff]: https://docs.astral.sh/ruff/
 [Codespell]: https://github.com/codespell-project/codespell
-[Black]: https://black.readthedocs.io/en/stable
-[isort]: https://pycqa.github.io/isort/
 [EditorConfig]: https://editorconfig.org/

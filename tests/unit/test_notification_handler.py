@@ -6,9 +6,6 @@ from lib.config import NotificationConfig
 from lib.notification_handler import FLIGHT_TIME_PLACEHOLDER, NotificationHandler
 from lib.utils import NotificationLevel
 
-# This needs to be accessed to be tested
-# pylint: disable=protected-access
-
 
 class TestNotificationHandler:
     def _get_notification_config(self) -> list[NotificationConfig]:
@@ -23,7 +20,6 @@ class TestNotificationHandler:
     @pytest.fixture(autouse=True)
     def notification_handler(self, mocker: MockerFixture) -> None:
         mock_reservation_monitor = mocker.patch("lib.reservation_monitor.ReservationMonitor")
-        # pylint: disable-next=attribute-defined-outside-init
         self.handler = NotificationHandler(mock_reservation_monitor)
 
     def test_send_nofication_does_not_send_notifications_if_level_is_too_low(
@@ -58,9 +54,9 @@ class TestNotificationHandler:
         assert mock_apprise_notify.call_args[1]["body"] == "test notification"
 
     def test_format_flight_times_replaces_all_flight_times(self, mocker: MockerFixture) -> None:
-        mock_flight1 = mocker.patch("lib.notification_handler.Flight")
+        mock_flight1 = mocker.patch("lib.flight.Flight")
         mock_flight1.get_display_time.return_value = "2021-01-01 00:00 UTC"
-        mock_flight2 = mocker.patch("lib.notification_handler.Flight")
+        mock_flight2 = mocker.patch("lib.flight.Flight")
         mock_flight2.get_display_time.return_value = "2021-01-01 01:00 UTC"
 
         body = (
@@ -80,7 +76,7 @@ class TestNotificationHandler:
 
     def test_new_flights_sends_notifications_for_new_flights(self, mocker: MockerFixture) -> None:
         mock_send_notification = mocker.patch.object(NotificationHandler, "send_notification")
-        mock_flight = mocker.patch("lib.notification_handler.Flight")
+        mock_flight = mocker.patch("lib.flight.Flight")
         mock_flight.is_international = False
 
         self.handler.new_flights([mock_flight])
@@ -90,7 +86,7 @@ class TestNotificationHandler:
         self, mocker: MockerFixture
     ) -> None:
         mock_send_notification = mocker.patch.object(NotificationHandler, "send_notification")
-        mock_flight = mocker.patch("lib.notification_handler.Flight")
+        mock_flight = mocker.patch("lib.flight.Flight")
         mock_flight.is_international = True
 
         self.handler.new_flights([mock_flight])
@@ -126,7 +122,7 @@ class TestNotificationHandler:
         self, mocker: MockerFixture
     ) -> None:
         mock_send_notification = mocker.patch.object(NotificationHandler, "send_notification")
-        mock_flight = mocker.patch("lib.notification_handler.Flight")
+        mock_flight = mocker.patch("lib.flight.Flight")
 
         self.handler.successful_checkin(
             {
@@ -149,7 +145,7 @@ class TestNotificationHandler:
         A lap child does not get a boarding position, and does not need a notification
         """
         mock_send_notification = mocker.patch.object(NotificationHandler, "send_notification")
-        mock_flight = mocker.patch("lib.notification_handler.Flight")
+        mock_flight = mocker.patch("lib.flight.Flight")
 
         self.handler.successful_checkin(
             {
@@ -170,33 +166,33 @@ class TestNotificationHandler:
 
     def test_failed_checkin_sends_error_notification(self, mocker: MockerFixture) -> None:
         mock_send_notification = mocker.patch.object(NotificationHandler, "send_notification")
-        mock_flight = mocker.patch("lib.notification_handler.Flight")
+        mock_flight = mocker.patch("lib.flight.Flight")
 
         self.handler.failed_checkin("", mock_flight)
         assert mock_send_notification.call_args[0][1] == NotificationLevel.ERROR
 
     def test_airport_checkin_required_sends_error_notification(self, mocker: MockerFixture) -> None:
         mock_send_notification = mocker.patch.object(NotificationHandler, "send_notification")
-        mock_flight = mocker.patch("lib.notification_handler.Flight")
+        mock_flight = mocker.patch("lib.flight.Flight")
 
         self.handler.airport_checkin_required(mock_flight)
         assert mock_send_notification.call_args[0][1] == NotificationLevel.ERROR
 
     def test_timeout_before_checkin_sends_error_notification(self, mocker: MockerFixture) -> None:
         mock_send_notification = mocker.patch.object(NotificationHandler, "send_notification")
-        mock_flight = mocker.patch("lib.notification_handler.Flight")
+        mock_flight = mocker.patch("lib.flight.Flight")
 
         self.handler.timeout_before_checkin(mock_flight)
         assert mock_send_notification.call_args[0][1] == NotificationLevel.ERROR
 
     def test_lower_fare_sends_lower_fare_notification(self, mocker: MockerFixture) -> None:
         mock_send_notification = mocker.patch.object(NotificationHandler, "send_notification")
-        mock_flight = mocker.patch("lib.notification_handler.Flight")
+        mock_flight = mocker.patch("lib.flight.Flight")
 
         self.handler.lower_fare(mock_flight, "")
         assert mock_send_notification.call_args[0][1] == NotificationLevel.INFO
 
-    @pytest.mark.parametrize(["url", "expected_calls"], [("http://healthchecks", 1), (None, 0)])
+    @pytest.mark.parametrize(("url", "expected_calls"), [("http://healthchecks", 1), (None, 0)])
     def test_healthchecks_success_pings_url_only_if_configured(
         self, mocker: MockerFixture, url: str, expected_calls: int
     ) -> None:
@@ -206,7 +202,7 @@ class TestNotificationHandler:
         self.handler.healthchecks_success("healthchecks success")
         assert mock_post.call_count == expected_calls
 
-    @pytest.mark.parametrize(["url", "expected_calls"], [("http://healthchecks", 1), (None, 0)])
+    @pytest.mark.parametrize(("url", "expected_calls"), [("http://healthchecks", 1), (None, 0)])
     def test_healthchecks_fail_pings_url_only_if_configured(
         self, mocker: MockerFixture, url: str, expected_calls: int
     ) -> None:

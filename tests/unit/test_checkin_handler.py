@@ -8,20 +8,16 @@ from pytest_mock import MockerFixture
 from lib.checkin_handler import MAX_CHECK_IN_ATTEMPTS, CheckInHandler
 from lib.utils import AirportCheckInError, DriverTimeoutError, RequestError
 
-# This needs to be accessed to be tested
-# pylint: disable=protected-access
-
 
 class TestCheckInHandler:
     """Contains common tests between the CheckInHandler and the SameDayCheckInHandler"""
 
     @pytest.fixture(autouse=True)
     def _set_up_handler(self, mocker: MockerFixture) -> None:
-        test_flight = mocker.patch("lib.checkin_handler.Flight")
+        test_flight = mocker.patch("lib.flight.Flight")
         mock_checkin_scheduler = mocker.patch("lib.checkin_scheduler.CheckInScheduler")
         mock_lock = mocker.patch("multiprocessing.Lock")
 
-        # pylint: disable-next=attribute-defined-outside-init
         self.handler = CheckInHandler(mock_checkin_scheduler, test_flight, mock_lock)
         # This would usually be set in schedule_check_in, but that won't be run for every test
         self.handler.pid = 0
@@ -147,7 +143,7 @@ class TestCheckInHandler:
         mock_sleep.assert_has_calls([mock.call(17400), mock.call(1800)])
         mock_timeout_before_checkin_notification.assert_called_once()
 
-    @pytest.mark.parametrize(["weeks", "expected_sleep_calls"], [(0, 0), (1, 1), (3, 2)])
+    @pytest.mark.parametrize(("weeks", "expected_sleep_calls"), [(0, 0), (1, 1), (3, 2)])
     def test_safe_sleep_sleeps_in_intervals(
         self, mocker: MockerFixture, weeks: int, expected_sleep_calls: int
     ) -> None:
