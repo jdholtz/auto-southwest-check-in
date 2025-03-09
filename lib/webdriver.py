@@ -321,6 +321,7 @@ class WebDriver:
         )  # Don't log as it contains sensitive information
 
     def _quit_driver(self, driver: Driver) -> None:
+        driver.close()
         driver.quit()
         self._reset_temp_dir()
         self._stop_display()
