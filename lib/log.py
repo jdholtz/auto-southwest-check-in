@@ -2,11 +2,22 @@ import logging
 import logging.handlers
 import multiprocessing
 import sys
+import threading
 from pathlib import Path
 
 LOGS_DIRECTORY = Path(__file__).parents[1] / "logs"
 LOG_FILE = "auto-southwest-check-in.log"
 LOG_LEVEL = logging.INFO
+
+
+class CustomLogFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        # Add thread name to the log message only if the thread is not the main thread
+        if threading.current_thread().name != "MainThread":
+            record.thread_name = f":{threading.current_thread().name}"
+        else:
+            record.thread_name = ""
+        return True
 
 
 def init_main_logging() -> None:
@@ -31,7 +42,7 @@ def init_logging(logger: logging.Logger) -> None:
     logger.setLevel(logging.DEBUG)  # The minimum level for every handler
 
     formatter = logging.Formatter(
-        "%(asctime)s %(levelname)s %(processName)s[%(module)s:%(lineno)d]: %(message)s",
+        "%(asctime)s %(levelname)s %(processName)s%(thread_name)s[%(module)s:%(lineno)d]: %(message)s",  # noqa: E501
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
@@ -54,6 +65,10 @@ def init_logging(logger: logging.Logger) -> None:
         stream_handler.setFormatter(formatter)
     else:
         stream_handler.setLevel(logging.INFO)
+
+    custom_filter = CustomLogFilter()
+    file_handler.addFilter(custom_filter)
+    stream_handler.addFilter(custom_filter)
 
     logger.addHandler(file_handler)
     logger.addHandler(stream_handler)

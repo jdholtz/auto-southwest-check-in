@@ -154,7 +154,10 @@ class CheckInHandler:
         threads = []
         for i in range(CHECK_IN_THREADS):
             logger.debug("Starting thread with sleep time %d", i)
-            thread = threading.Thread(target=self._thread_check_in, args=(result_queue, i))
+            # Set a custom name to identify the thread in the logs
+            thread = threading.Thread(
+                target=self._thread_check_in, args=(result_queue, i), name=f"CheckInThread-{i + 1}"
+            )
             threads.append(thread)
             thread.start()
 
