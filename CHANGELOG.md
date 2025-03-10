@@ -3,7 +3,7 @@ When upgrading to a new version, make sure to follow the directions under the "U
 If there is no "Upgrading" header for that version, no post-upgrade actions need to be performed.
 
 
-## Upcoming
+## 8.3 (2025-03-10)
 ### Improvements
 - Set local timezone in Docker container to avoid 403/429 errors
 ([#342](https://github.com/jdholtz/auto-southwest-check-in/pull/342) by [@dmytrokoren](https://github.com/dmytrokoren))
@@ -18,6 +18,7 @@ for more information as well as how to update your configuration file
 ### Upgrading
 - Due to the changes in the notification configuration, you will need to update your configuration file to the new
 format. See the [notification configuration](CONFIGURATION.md#notifications) for how to do so
+- Upgrade the dependencies to the latest versions by running `pip install -r requirements.txt`
 
 
 ## 8.2 (2025-01-12)
