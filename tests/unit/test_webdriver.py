@@ -319,7 +319,7 @@ class TestWebDriver:
         mock_rmtree = mocker.patch("shutil.rmtree")
         mock_exists = mocker.patch("os.path.exists", return_value=True)
         self.driver.temp_dir = "/mock/temp/dir"
-        self.driver._reset_temp_dir()
+        self.driver.reset_temp_dir()
 
         mock_exists.assert_called_once_with("/mock/temp/dir")
         mock_rmtree.assert_called_once_with("/mock/temp/dir")
@@ -328,7 +328,7 @@ class TestWebDriver:
         mock_rmtree = mocker.patch("shutil.rmtree")
         mock_exists = mocker.patch("os.path.exists")
         self.driver.temp_dir = None
-        self.driver._reset_temp_dir()
+        self.driver.reset_temp_dir()
 
         mock_exists.assert_not_called()
         mock_rmtree.assert_not_called()

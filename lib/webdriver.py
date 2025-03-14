@@ -76,10 +76,19 @@ class WebDriver:
     https://github.com/byalextran/southwest-headers/commit/d2969306edb0976290bfa256d41badcc9698f6ed
     """
 
+    _temp_dir = None
+
+    @classmethod
+    def get_temp_dir(cls) -> None:
+        if cls._temp_dir is None:
+            cls._temp_dir = tempfile.mkdtemp()
+        return cls._temp_dir
+
     def __init__(self, checkin_scheduler: CheckInScheduler) -> None:
         self.checkin_scheduler = checkin_scheduler
         self.headers_set = False
         self.debug_screenshots = self._should_take_screenshots()
+        self.temp_dir = self.get_temp_dir()
         self.display = None
 
         # For account login
@@ -160,8 +169,6 @@ class WebDriver:
     def _get_driver(self) -> Driver:
         logger.debug("Starting webdriver for current session")
         browser_path = self.checkin_scheduler.reservation_monitor.config.browser_path
-        self._reset_temp_dir()
-        self.temp_dir = tempfile.mkdtemp()
 
         driver_version = "mlatest"
         if IS_DOCKER:
@@ -323,7 +330,7 @@ class WebDriver:
     def _quit_driver(self, driver: Driver) -> None:
         driver.close()
         driver.quit()
-        self._reset_temp_dir()
+        self.reset_temp_dir()
         self._stop_display()
 
     def _start_display(self) -> None:
@@ -343,6 +350,6 @@ class WebDriver:
             self.display.stop()
             logger.debug("Stopped virtual display successfully")
 
-    def _reset_temp_dir(self) -> None:
+    def reset_temp_dir(self) -> None:
         if hasattr(self, "temp_dir") and self.temp_dir and os.path.exists(self.temp_dir):
             shutil.rmtree(self.temp_dir)

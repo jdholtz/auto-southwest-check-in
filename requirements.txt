@@ -2,6 +2,6 @@ apprise==1.9.2
 ntplib==0.4.0
 requests==2.32.3
 Faker==36.1.1
-seleniumbase==4.35.6
+seleniumbase==4.35.7
 # Only needed for Windows systems, as they don't have an IANA database by default
 tzdata>=2025.1; platform_system == "Windows"
