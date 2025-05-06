@@ -50,7 +50,7 @@ class TestWebDriver:
 
         self.driver.set_headers()
 
-        mock_wait_for_attribute.assert_called_once_with("headers_set")
+        mock_wait_for_attribute.assert_called_once_with(mock_chrome, "headers_set")
         mock_chrome.quit.assert_called_once()
 
     def test_get_reservations_fetches_reservations(
@@ -133,7 +133,9 @@ class TestWebDriver:
         assert self.driver.login_request_id is None
         assert self.driver.trips_request_id is None
 
-    def test_wait_for_attribute_waits_for_attribute_to_be_set(self, mocker: MockerFixture) -> None:
+    def test_wait_for_attribute_waits_for_attribute_to_be_set(
+        self, mocker: MockerFixture, mock_chrome: mock.Mock
+    ) -> None:
         call_count = 0
 
         def mock_sleep(_: int) -> None:
@@ -144,13 +146,17 @@ class TestWebDriver:
 
         mocker.patch("time.sleep", side_effect=mock_sleep)
 
-        self.driver._wait_for_attribute("headers_set")
+        self.driver._wait_for_attribute(mock_chrome, "headers_set")
         assert call_count == 2
 
-    def test_wait_for_attribute_raises_error_on_timeout(self, mocker: MockerFixture) -> None:
+    def test_wait_for_attribute_raises_error_on_timeout(
+        self, mocker: MockerFixture, mock_chrome: mock.Mock
+    ) -> None:
         mocker.patch("time.sleep")
         with pytest.raises(DriverTimeoutError):
-            self.driver._wait_for_attribute("headers_set")
+            self.driver._wait_for_attribute(mock_chrome, "headers_set")
+
+        mock_chrome.quit.assert_called_once()
 
     def test_wait_for_login_raises_error_on_failed_login(
         self, mocker: MockerFixture, mock_chrome: mock.Mock
