@@ -31,6 +31,7 @@ extend-select = [
     "ARG",   # flake8-unused-arguments
     "E501",  # line-too-long
     "FA",    # flake8-future-annotations
+    "FURB",  # refurb
     "G",     # flake8-logging-format
     "I",     # isort
     "N",     # pep8-naming
