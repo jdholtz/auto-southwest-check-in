@@ -196,6 +196,17 @@ class TestReservationMonitor:
 
         mock_sleep.assert_called_once_with(12 * 60 * 60)
 
+    def test_smart_sleep_handles_negative_sleep_time(self, mocker: MockerFixture) -> None:
+        mock_sleep = mocker.patch("time.sleep")
+        mocker.patch(
+            "lib.reservation_monitor.get_current_time", return_value=datetime(1999, 12, 30, 12, 1)
+        )
+
+        self.monitor.config.retrieval_interval = 60
+        self.monitor._smart_sleep(datetime(1999, 12, 30, 12))
+
+        mock_sleep.assert_called_once_with(0)
+
     def test_stop_checkins_stops_all_checkins(self, mocker: MockerFixture) -> None:
         mock_checkin_handler = mocker.patch.object(CheckInHandler, "stop_check_in")
 

@@ -57,6 +57,15 @@ class TestCheckInHandler:
         mock_os_kill.assert_called_once_with(self.handler.pid, signal.SIGTERM)
         mock_os_waitpid.assert_called_once_with(self.handler.pid, 0)
 
+    def test_stop_check_in_handles_process_lookup_error(self, mocker: MockerFixture) -> None:
+        mock_os_kill = mocker.patch("os.kill", side_effect=ProcessLookupError)
+        mock_os_waitpid = mocker.patch("os.waitpid")
+
+        self.handler.stop_check_in()
+
+        mock_os_kill.assert_called_once_with(self.handler.pid, signal.SIGTERM)
+        mock_os_waitpid.assert_not_called()
+
     def test_set_check_in_correctly_sets_up_check_in_process(self, mocker: MockerFixture) -> None:
         self.handler.flight.departure_time = datetime(1999, 12, 31, 18, 29)
         mock_wait_for_check_in = mocker.patch.object(CheckInHandler, "_wait_for_check_in")
