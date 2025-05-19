@@ -80,13 +80,39 @@ def test_check_in(
     if same_day_flight:
         # Add a flight before to make sure a same day flight selects the second flight
         same_day_post_response = copy.deepcopy(post_response2)
-        same_day_post_response["checkInConfirmationPage"]["flights"].insert(0, {})
+        same_day_post_response["checkInConfirmationPage"]["flights"].insert(
+            0,
+            {
+                "passengers": [
+                    {
+                        "boardingGroup": None,
+                        "boardingPosition": None,
+                        "name": "Garry Lin",
+                    }
+                ]
+            },
+        )
+
+        final_post_response = copy.deepcopy(post_response2)
+        final_post_response["checkInConfirmationPage"]["flights"].insert(
+            0,
+            {
+                "passengers": [
+                    {
+                        "boardingGroup": "A",
+                        "boardingPosition": "41",
+                        "name": "Garry Lin",
+                    }
+                ]
+            },
+        )
 
         requests_mock.post(
             BASE_URL + "mobile-air-operations/post_check_in",
             [
                 {"json": post_response2, "status_code": 200},
                 {"json": same_day_post_response, "status_code": 200},
+                {"json": final_post_response, "status_code": 200},
             ],
         )
 

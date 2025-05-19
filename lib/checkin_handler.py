@@ -179,7 +179,12 @@ class CheckInHandler:
 
             reservation = self._check_in_to_flight()
             flights = reservation["checkInConfirmationPage"]["flights"]
-            if len(flights) >= expected_flights:
+            checked_in_count = sum(
+                any(p.get("boardingGroup") is not None for p in f.get("passengers", []))
+                for f in flights
+            )
+            logger.debug("Checked in %d/%d flights", checked_in_count, expected_flights)
+            if checked_in_count >= expected_flights:
                 logger.debug("Successfully checked in after %d attempts", attempts)
                 return reservation
 
