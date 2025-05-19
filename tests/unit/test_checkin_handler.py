@@ -196,7 +196,21 @@ class TestCheckInHandler:
     def test_attempt_check_in_succeeds_first_time_when_flight_is_not_same_day(
         self, mocker: MockerFixture
     ) -> None:
-        post_response = {"checkInConfirmationPage": {"flights": ["flight1"]}}
+        post_response = {
+            "checkInConfirmationPage": {
+                "flights": [
+                    {
+                        "passengers": [
+                            {
+                                "boardingGroup": "A",
+                                "boardingPosition": "1",
+                                "name": "Test Passenger",
+                            }
+                        ]
+                    }
+                ]
+            }
+        }
         mock_check_in_to_flight = mocker.patch.object(
             CheckInHandler, "_check_in_to_flight", return_value=post_response
         )
@@ -208,8 +222,45 @@ class TestCheckInHandler:
         assert reservation == post_response
 
     def test_submit_check_in_succeeds_after_multiple_attempts(self, mocker: MockerFixture) -> None:
-        first_post_response = {"checkInConfirmationPage": {"flights": ["flight1"]}}
-        second_post_response = {"checkInConfirmationPage": {"flights": ["flight1", "flight2"]}}
+        first_post_response = {
+            "checkInConfirmationPage": {
+                "flights": [
+                    {
+                        "passengers": [
+                            {
+                                "boardingGroup": "A",
+                                "boardingPosition": "1",
+                                "name": "Test Passenger",
+                            }
+                        ]
+                    }
+                ]
+            }
+        }
+        second_post_response = {
+            "checkInConfirmationPage": {
+                "flights": [
+                    {
+                        "passengers": [
+                            {
+                                "boardingGroup": "A",
+                                "boardingPosition": "1",
+                                "name": "Test Passenger",
+                            }
+                        ]
+                    },
+                    {
+                        "passengers": [
+                            {
+                                "boardingGroup": "B",
+                                "boardingPosition": "2",
+                                "name": "Test Passenger 2",
+                            }
+                        ]
+                    },
+                ]
+            }
+        }
         mocker.patch.object(
             CheckInHandler,
             "_check_in_to_flight",
@@ -224,7 +275,21 @@ class TestCheckInHandler:
         mock_sleep.assert_called_once()
 
     def test_submit_check_in_fails_when_max_attempts_reached(self, mocker: MockerFixture) -> None:
-        post_response = {"checkInConfirmationPage": {"flights": ["flight1"]}}
+        post_response = {
+            "checkInConfirmationPage": {
+                "flights": [
+                    {
+                        "passengers": [
+                            {
+                                "boardingGroup": "A",
+                                "boardingPosition": "1",
+                                "name": "Test Passenger",
+                            }
+                        ]
+                    }
+                ]
+            }
+        }
         mock_check_in_to_flight = mocker.patch.object(
             CheckInHandler, "_check_in_to_flight", return_value=post_response
         )

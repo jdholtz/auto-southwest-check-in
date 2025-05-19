@@ -2,6 +2,11 @@
 When upgrading to a new version, make sure to follow the directions under the "Upgrading" header of the corresponding version.
 If there is no "Upgrading" header for that version, no post-upgrade actions need to be performed.
 
+### Upcoming
+
+#### Bug Fixes
+
+- Fixed an issue causing the second flight on the same day to fail check-in. Now counts only flights with passengers who have valid boarding groups (#266, ).
 
 ## 8.3 (2025-03-10)
 ### Improvements
