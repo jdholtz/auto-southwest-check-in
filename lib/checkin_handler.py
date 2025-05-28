@@ -70,8 +70,8 @@ class CheckInHandler:
             # Wait so zombie (defunct) processes are not created
             logger.debug("Waiting for process with PID %d to be terminated", self.pid)
             os.waitpid(self.pid, 0)
-        except (ChildProcessError, PermissionError):
-            # Processes are handled differently in Windows
+        except (ChildProcessError, PermissionError, ProcessLookupError):
+            # Processes are handled differently in Windows or may already be terminated
             pass
 
         logger.debug("Process with PID %d successfully terminated", self.pid)

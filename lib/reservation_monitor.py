@@ -157,7 +157,7 @@ class ReservationMonitor:
         """
         current_time = get_current_time()
         time_taken = (current_time - previous_time).total_seconds()
-        sleep_time = self.config.retrieval_interval - time_taken
+        sleep_time = max(self.config.retrieval_interval - time_taken, 0)
         logger.debug("Sleeping for %d seconds", sleep_time)
         time.sleep(sleep_time)
 

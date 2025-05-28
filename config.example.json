@@ -1,8 +1,7 @@
 {
     "$schema": "config.schema.json",
     "check_fares": true,
-    "notification_urls": "",
-    "notification_level": 1,
+    "notifications": [],
     "retrieval_interval": 24,
     "accounts": [],
     "reservations": []
