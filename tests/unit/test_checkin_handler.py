@@ -1,3 +1,4 @@
+import copy
 import signal
 from datetime import datetime
 from unittest import mock
@@ -7,6 +8,18 @@ from pytest_mock import MockerFixture
 
 from lib.checkin_handler import MAX_CHECK_IN_ATTEMPTS, CheckInHandler
 from lib.utils import AirportCheckInError, DriverTimeoutError, RequestError
+
+POST_RESPONSE = {
+    "checkInConfirmationPage": {
+        "flights": [
+            {
+                "passengers": [
+                    {"boardingGroup": "A", "boardingPosition": "1", "name": "Test Passenger"}
+                ]
+            }
+        ]
+    }
+}
 
 
 class TestCheckInHandler:
@@ -196,102 +209,55 @@ class TestCheckInHandler:
     def test_attempt_check_in_succeeds_first_time_when_flight_is_not_same_day(
         self, mocker: MockerFixture
     ) -> None:
-        post_response = {
-            "checkInConfirmationPage": {
-                "flights": [
-                    {
-                        "passengers": [
-                            {
-                                "boardingGroup": "A",
-                                "boardingPosition": "1",
-                                "name": "Test Passenger",
-                            }
-                        ]
-                    }
-                ]
-            }
-        }
         mock_check_in_to_flight = mocker.patch.object(
-            CheckInHandler, "_check_in_to_flight", return_value=post_response
+            CheckInHandler, "_check_in_to_flight", return_value=POST_RESPONSE
         )
 
         self.handler.flight.is_same_day = False
         reservation = self.handler._attempt_check_in()
 
         mock_check_in_to_flight.assert_called_once()
-        assert reservation == post_response
+        assert reservation == POST_RESPONSE
 
-    def test_submit_check_in_succeeds_after_multiple_attempts(self, mocker: MockerFixture) -> None:
-        first_post_response = {
-            "checkInConfirmationPage": {
-                "flights": [
-                    {
-                        "passengers": [
-                            {
-                                "boardingGroup": "A",
-                                "boardingPosition": "1",
-                                "name": "Test Passenger",
-                            }
-                        ]
-                    }
+    def test_attempt_check_in_succeeds_after_multiple_attempts_same_day_flight(
+        self, mocker: MockerFixture
+    ) -> None:
+        # The same-day flight check-in time is available, but the check-in hasn't gone through yet
+        second_post_response = copy.deepcopy(POST_RESPONSE)
+        second_post_response["checkInConfirmationPage"]["flights"].append(
+            {
+                "passengers": [
+                    {"boardingGroup": None, "boardingPosition": None, "name": "Test Passenger"}
                 ]
             }
-        }
-        second_post_response = {
-            "checkInConfirmationPage": {
-                "flights": [
-                    {
-                        "passengers": [
-                            {
-                                "boardingGroup": "A",
-                                "boardingPosition": "1",
-                                "name": "Test Passenger",
-                            }
-                        ]
-                    },
-                    {
-                        "passengers": [
-                            {
-                                "boardingGroup": "B",
-                                "boardingPosition": "2",
-                                "name": "Test Passenger 2",
-                            }
-                        ]
-                    },
+        )
+
+        # The same-day flight is now checked in
+        third_post_response = copy.deepcopy(POST_RESPONSE)
+        third_post_response["checkInConfirmationPage"]["flights"].append(
+            {
+                "passengers": [
+                    {"boardingGroup": "B", "boardingPosition": "2", "name": "Test Passenger"}
                 ]
             }
-        }
+        )
+
         mocker.patch.object(
             CheckInHandler,
             "_check_in_to_flight",
-            side_effect=[first_post_response, second_post_response],
+            side_effect=[POST_RESPONSE, second_post_response, third_post_response],
         )
         mock_sleep = mocker.patch("time.sleep")
 
         self.handler.flight.is_same_day = True
         reservation = self.handler._attempt_check_in()
 
-        assert reservation == second_post_response
-        mock_sleep.assert_called_once()
+        assert reservation == third_post_response
+        assert mock_sleep.call_count == 2
 
-    def test_submit_check_in_fails_when_max_attempts_reached(self, mocker: MockerFixture) -> None:
-        post_response = {
-            "checkInConfirmationPage": {
-                "flights": [
-                    {
-                        "passengers": [
-                            {
-                                "boardingGroup": "A",
-                                "boardingPosition": "1",
-                                "name": "Test Passenger",
-                            }
-                        ]
-                    }
-                ]
-            }
-        }
+    def test_attempt_check_in_fails_when_max_attempts_reached(self, mocker: MockerFixture) -> None:
         mock_check_in_to_flight = mocker.patch.object(
-            CheckInHandler, "_check_in_to_flight", return_value=post_response
+            CheckInHandler, "_check_in_to_flight", return_value=POST_RESPONSE
         )
         mocker.patch("time.sleep")
 

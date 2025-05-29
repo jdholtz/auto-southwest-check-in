@@ -49,19 +49,21 @@ def test_check_in(
     handler.first_name = "Garry"
     handler.last_name = "Lin"
 
-    post_response1 = {
+    first_post_response = {
         "checkInViewReservationPage": {
             "_links": {"checkIn": {"body": {"test": "checkin"}, "href": "/post_check_in"}}
         }
     }
 
-    post_response2 = {
+    final_post_response = {
         "checkInConfirmationPage": {
             "flights": [
                 {
                     "passengers": [
                         {"boardingGroup": "A", "boardingPosition": "42", "name": "Garry Lin"},
                         {"boardingGroup": "A", "boardingPosition": "43", "name": "Erin Lin"},
+                        # Lap children are not assigned a boarding group
+                        {"boardingGroup": None, "boardingPosition": None, "name": "Linda Lin"},
                     ]
                 }
             ]
@@ -70,39 +72,62 @@ def test_check_in(
 
     requests_mock.post(
         BASE_URL + CHECKIN_URL + "TEST",
-        [{"json": post_response1, "status_code": 200}],
+        [{"json": first_post_response, "status_code": 200}],
     )
     requests_mock.post(
         BASE_URL + "mobile-air-operations/post_check_in",
-        [{"json": post_response2, "status_code": 200}],
+        [{"json": final_post_response, "status_code": 200}],
     )
 
     if same_day_flight:
-        # Add a flight before to make sure a same day flight selects the second flight
-        same_day_post_response = copy.deepcopy(post_response2)
-        same_day_post_response["checkInConfirmationPage"]["flights"].insert(
-            0,
+        # First, keep just the one flight. This simulates a response before the actual check-in time
+        same_day_post_response1 = copy.deepcopy(final_post_response)
+
+        # Add the same day flight with no boarding group assigned. This simulates a response after
+        # the actual check-in time, but before the check-in goes through
+        same_day_post_response2 = copy.deepcopy(final_post_response)
+        same_day_post_response2["checkInConfirmationPage"]["flights"].append(
             {
                 "passengers": [
                     {
                         "boardingGroup": None,
                         "boardingPosition": None,
                         "name": "Garry Lin",
-                    }
+                    },
+                    {
+                        "boardingGroup": None,
+                        "boardingPosition": None,
+                        "name": "Erin Lin",
+                    },
+                    {
+                        "boardingGroup": None,
+                        "boardingPosition": None,
+                        "name": "Linda Lin",
+                    },
                 ]
             },
         )
 
-        final_post_response = copy.deepcopy(post_response2)
-        final_post_response["checkInConfirmationPage"]["flights"].insert(
-            0,
+        # Final response is the check-in has gone through
+        final_post_response = copy.deepcopy(final_post_response)
+        final_post_response["checkInConfirmationPage"]["flights"].append(
             {
                 "passengers": [
                     {
-                        "boardingGroup": "A",
-                        "boardingPosition": "41",
+                        "boardingGroup": "B",
+                        "boardingPosition": "12",
                         "name": "Garry Lin",
-                    }
+                    },
+                    {
+                        "boardingGroup": "B",
+                        "boardingPosition": "13",
+                        "name": "Erin Lin",
+                    },
+                    {
+                        "boardingGroup": None,
+                        "boardingPosition": None,
+                        "name": "Linda Lin",
+                    },
                 ]
             },
         )
@@ -110,8 +135,8 @@ def test_check_in(
         requests_mock.post(
             BASE_URL + "mobile-air-operations/post_check_in",
             [
-                {"json": post_response2, "status_code": 200},
-                {"json": same_day_post_response, "status_code": 200},
+                {"json": same_day_post_response1, "status_code": 200},
+                {"json": same_day_post_response2, "status_code": 200},
                 {"json": final_post_response, "status_code": 200},
             ],
         )
@@ -125,6 +150,6 @@ def test_check_in(
     mock_successful_checkin = handler.notification_handler.successful_checkin
     mock_successful_checkin.assert_called_once()
 
-    # Ensure all flights have been checked in
+    # Ensure all flights have been checked in and the expected response was returned
     checked_in_flights = mock_successful_checkin.call_args[0][0]["flights"]
-    assert len(checked_in_flights) == 2 if same_day_flight else 1
+    assert checked_in_flights == final_post_response["checkInConfirmationPage"]["flights"]
