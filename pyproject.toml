@@ -36,6 +36,7 @@ extend-select = [
     "I",     # isort
     "N",     # pep8-naming
     "PIE",   # flake8-pie
+    "PLC",   # pylint
     "PT",    # flake8-pytest-style
     "RUF",   # Ruff-specific rules
     "SLF",   # flake8-self
