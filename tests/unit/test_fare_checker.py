@@ -14,6 +14,11 @@ from lib.utils import CheckFaresOption, FlightChangeError
 JSON = dict[str, Any]
 
 
+@pytest.fixture(autouse=True)
+def mock_sleep(mocker: MockerFixture) -> None:
+    mocker.patch("time.sleep")
+
+
 @pytest.fixture
 def test_flight(mocker: MockerFixture) -> Flight:
     mocker.patch.object(Flight, "_set_flight_time")

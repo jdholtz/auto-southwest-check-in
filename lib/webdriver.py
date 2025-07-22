@@ -84,11 +84,15 @@ class WebDriver:
             cls._temp_dir = tempfile.mkdtemp()
         return cls._temp_dir
 
+    @classmethod
+    def reset_temp_dir(cls) -> None:
+        if cls._temp_dir and os.path.exists(cls._temp_dir):
+            shutil.rmtree(cls._temp_dir)
+
     def __init__(self, checkin_scheduler: CheckInScheduler) -> None:
         self.checkin_scheduler = checkin_scheduler
         self.headers_set = False
         self.debug_screenshots = self._should_take_screenshots()
-        self.temp_dir = self.get_temp_dir()
         self.display = None
 
         # For account login
@@ -180,7 +184,7 @@ class WebDriver:
         driver = Driver(
             binary_location=browser_path,
             driver_version=driver_version,
-            user_data_dir=self.temp_dir,
+            user_data_dir=self.get_temp_dir(),
             headed=IS_DOCKER,
             headless1=not IS_DOCKER,
             uc_cdp_events=True,
@@ -195,14 +199,16 @@ class WebDriver:
         driver.get(CHECKIN_URL)
         driver.click_if_visible(".button-popup.confirm-button")
         driver.click_if_visible("#onetrust-accept-btn-handler")
+        self._take_debug_screenshot(driver, "after_page_load.png")
 
+        # Submit the check-in form with mock data
         driver.type('input[name="recordLocator"]', f"{MOCK_LOCATOR}")
         driver.type('input[name="firstName"]', f"{MOCK_FIRST_NAME}")
         driver.type('input[name="lastName"]', f"{MOCK_LAST_NAME}")
-
         driver.click("button[type='submit']")
         driver.click_if_visible(".button-popup.confirm-button")
-        self._take_debug_screenshot(driver, "after_page_load.png")
+        self._take_debug_screenshot(driver, "after_form_submission.png")
+
         return driver
 
     def _headers_listener(self, data: JSON) -> None:
@@ -349,7 +355,3 @@ class WebDriver:
         if self.display is not None:
             self.display.stop()
             logger.debug("Stopped virtual display successfully")
-
-    def reset_temp_dir(self) -> None:
-        if hasattr(self, "temp_dir") and self.temp_dir and os.path.exists(self.temp_dir):
-            shutil.rmtree(self.temp_dir)

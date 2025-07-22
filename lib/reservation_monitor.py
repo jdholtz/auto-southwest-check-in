@@ -57,7 +57,6 @@ class ReservationMonitor:
         process.start()
 
     def monitor(self) -> None:
-        webdriver = WebDriver(self.checkin_scheduler)
         try:
             self._monitor()
         except KeyboardInterrupt:
@@ -65,7 +64,7 @@ class ReservationMonitor:
             time.sleep(0.05)
             # Lock so all processes are stopped sequentially
             with self.lock:
-                webdriver.reset_temp_dir()
+                WebDriver.reset_temp_dir()
                 self._stop_monitoring()
 
     def _monitor(self) -> None:

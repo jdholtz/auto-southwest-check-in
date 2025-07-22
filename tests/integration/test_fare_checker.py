@@ -6,6 +6,7 @@ import copy
 from unittest import mock
 
 import pytest
+from pytest_mock import MockerFixture
 from requests_mock.mocker import Mocker as RequestMocker
 
 from lib.config import GlobalConfig
@@ -82,6 +83,11 @@ FLIGHT_CARDS = [
 ]
 
 MATCHING_FLIGHTS = {"changeShoppingPage": {"flights": {"outboundPage": {"cards": FLIGHT_CARDS}}}}
+
+
+@pytest.fixture(autouse=True)
+def mock_sleep(mocker: MockerFixture) -> None:
+    mocker.patch("time.sleep")
 
 
 @pytest.fixture
