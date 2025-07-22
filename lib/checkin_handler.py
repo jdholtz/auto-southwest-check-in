@@ -206,7 +206,6 @@ class CheckInHandler:
         site = CHECKIN_URL + self.flight.confirmation_number
 
         logger.debug("Making first POST request to check in")
-
         # Don't randomly sleep during the check-in requests to have them go through more quickly
         response = make_request("POST", site, headers, info, random_sleep=False)
 
