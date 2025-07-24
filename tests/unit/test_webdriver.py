@@ -19,6 +19,40 @@ def mock_account_monitor(mocker: MockerFixture) -> mock.Mock:
     return mocker.patch("lib.reservation_monitor.AccountMonitor")
 
 
+# Tests for the WebDriver's class methods
+
+
+def test_get_temp_dir_returns_temp_directory() -> None:
+    WebDriver._temp_dir = "/mock/temp/dir"
+    assert WebDriver.get_temp_dir() == "/mock/temp/dir"
+
+
+def test_reset_temp_dir_creates_directory_on_first_use(mocker: MockerFixture) -> None:
+    mocker.patch("tempfile.mkdtemp", return_value="/mock/temp/new-dir")
+    WebDriver._temp_dir = None
+    assert WebDriver.get_temp_dir() == "/mock/temp/new-dir"
+
+
+def test_reset_temp_dir_removes_existing_directory(mocker: MockerFixture) -> None:
+    mock_rmtree = mocker.patch("shutil.rmtree")
+    mock_exists = mocker.patch("os.path.exists", return_value=True)
+    WebDriver._temp_dir = "/mock/temp/dir"
+    WebDriver.reset_temp_dir()
+
+    mock_exists.assert_called_once_with("/mock/temp/dir")
+    mock_rmtree.assert_called_once_with("/mock/temp/dir")
+
+
+def test_reset_temp_dir_ignores_if_temp_dir_is_not_set(mocker: MockerFixture) -> None:
+    mock_rmtree = mocker.patch("shutil.rmtree")
+    mock_exists = mocker.patch("os.path.exists")
+    WebDriver._temp_dir = None
+    WebDriver.reset_temp_dir()
+
+    mock_exists.assert_not_called()
+    mock_rmtree.assert_not_called()
+
+
 class TestWebDriver:
     @pytest.fixture(autouse=True)
     def _set_up_webdriver(self, mocker: MockerFixture) -> None:
@@ -75,7 +109,7 @@ class TestWebDriver:
     def test_get_driver_returns_a_webdriver_with_one_request(self, mock_chrome: mock.Mock) -> None:
         driver = self.driver._get_driver()
         driver.add_cdp_listener.assert_called_once()
-        driver.open.assert_called_once()
+        driver.get.assert_called_once()
 
         assert mock_chrome.call_args.kwargs.get("driver_version") == "mlatest"
 
@@ -91,7 +125,7 @@ class TestWebDriver:
 
         driver = self.driver._get_driver()
         driver.add_cdp_listener.assert_called_once()
-        driver.open.assert_called_once()
+        driver.get.assert_called_once()
 
         assert mock_chrome.call_args.kwargs.get("driver_version") == "keep"
         mock_start_display.assert_called_once()

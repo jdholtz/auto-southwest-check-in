@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Callable
 
 from .log import get_logger
-from .utils import CheckFaresOption, FlightChangeError, make_request
+from .utils import CheckFaresOption, FlightChangeError, make_request, time
 
 if TYPE_CHECKING:
     from .flight import Flight
@@ -79,6 +79,8 @@ class FareChecker:
         fare_type = fare_type_bounds[bound]["fareProductDetails"]["fareProductId"]
 
         logger.debug("Retrieving matching flights")
+        time.sleep(2)
+
         response = make_request("POST", site, self.headers, query, max_attempts=7)
         return response["changeShoppingPage"]["flights"][bound_page]["cards"], fare_type
 
@@ -98,8 +100,9 @@ class FareChecker:
             raise FlightChangeError("Flight cannot be changed online")
 
         site = BOOKING_URL + change_link["href"]
-        response = make_request("GET", site, self.headers, change_link["query"], max_attempts=7)
+        time.sleep(2)
 
+        response = make_request("GET", site, self.headers, change_link["query"], max_attempts=7)
         return response["changeFlightPage"], fare_type_bounds
 
     def _get_search_query(self, flight_page: JSON, flight: Flight) -> JSON:

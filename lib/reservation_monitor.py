@@ -27,7 +27,7 @@ if TYPE_CHECKING:
 TOO_MANY_REQUESTS_CODE = 429
 INTERNAL_SERVER_ERROR_CODE = 500
 
-RETRY_WAIT_SECONDS = 20
+RETRY_WAIT_SECONDS = 10
 
 logger = get_logger(__name__)
 
@@ -64,6 +64,7 @@ class ReservationMonitor:
             time.sleep(0.05)
             # Lock so all processes are stopped sequentially
             with self.lock:
+                WebDriver.reset_temp_dir()
                 self._stop_monitoring()
 
     def _monitor(self) -> None:
@@ -204,7 +205,7 @@ class AccountMonitor(ReservationMonitor):
         # this scope
         return False
 
-    def _get_reservations(self, max_retries: int = 1) -> tuple[list[dict[str, Any]], bool]:
+    def _get_reservations(self, max_retries: int = 2) -> tuple[list[dict[str, Any]], bool]:
         """
         Attempts to retrieve a list of reservations and returns a tuple containing the list
         of reservations and a boolean indicating whether reservation scheduling should be skipped.
@@ -247,6 +248,7 @@ class AccountMonitor(ReservationMonitor):
                             err.status_code,
                         )
                         logger.debug("Waiting for %d seconds before retrying", RETRY_WAIT_SECONDS)
+                        webdriver.reset_temp_dir()
                         time.sleep(RETRY_WAIT_SECONDS)
                     else:
                         logger.debug(
