@@ -155,6 +155,8 @@ class WebDriver:
         time.sleep(random_sleep_duration(2, 3))
         driver.type('input[name="userNameOrAccountNumber"]', account_monitor.username)
         driver.type('input[name="password"]', f"{account_monitor.password}")
+        time.sleep(random_sleep_duration(1.5, 2.5))
+        driver.click("//button[@id='login-btn']")
 
         # Wait for the necessary information to be set
         self._wait_for_attribute(driver, "headers_set")
@@ -279,10 +281,8 @@ class WebDriver:
             # yet there was an error
             return
 
-        time.sleep(random_sleep_duration(1.5, 2.5))
         login_button = "//button[@id='login-btn']"
         try:
-            driver.click(login_button)
             seleniumbase_actions.wait_for_element_absent(
                 driver, login_button, by="xpath", timeout=5
             )

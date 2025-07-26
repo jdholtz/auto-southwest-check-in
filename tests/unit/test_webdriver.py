@@ -222,7 +222,7 @@ class TestWebDriver:
     def test_click_login_button_does_not_click_when_form_submits(
         self, mocker: MockerFixture, mock_chrome: mock.Mock
     ) -> None:
-        mocker.patch("seleniumbase.fixtures.page_actions.wait_for_element_not_visible")
+        mocker.patch("seleniumbase.fixtures.page_actions.wait_for_element_absent")
         mocker.patch.object(mock_chrome, "is_element_visible", return_value=False)
         self.driver._click_login_button(mock_chrome)
         mock_chrome.click.assert_not_called()
