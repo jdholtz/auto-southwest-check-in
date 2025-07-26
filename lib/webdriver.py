@@ -283,7 +283,9 @@ class WebDriver:
         login_button = "//button[@id='login-btn']"
         try:
             driver.click(login_button)
-            seleniumbase_actions.wait_for_element_absent(driver, login_button, by="xpath", timeout=5)
+            seleniumbase_actions.wait_for_element_absent(
+                driver, login_button, by="xpath", timeout=5
+            )
         except Exception:
             logger.debug("Login form failed to submit. Clicking login button again")
             driver.click(login_button)
