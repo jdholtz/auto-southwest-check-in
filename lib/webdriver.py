@@ -151,12 +151,12 @@ class WebDriver:
         # See https://github.com/jdholtz/auto-southwest-check-in/issues/226
         driver.click_if_visible(".button-popup.confirm-button")
 
-        driver.click(".login-button--box")
+        driver.click('//span[contains(text(), "Log in")]')
         time.sleep(random_sleep_duration(2, 3))
         driver.type('input[name="userNameOrAccountNumber"]', account_monitor.username)
 
         # Use quote_plus to workaround a x-www-form-urlencoded encoding bug on the mobile site
-        driver.type('input[name="password"]', f"{account_monitor.password}\n")
+        driver.type('input[name="password"]', f"{account_monitor.password}")
 
         # Wait for the necessary information to be set
         self._wait_for_attribute("headers_set")
@@ -205,7 +205,7 @@ class WebDriver:
         driver.type('input[name="recordLocator"]', f"{MOCK_LOCATOR}")
         driver.type('input[name="firstName"]', f"{MOCK_FIRST_NAME}")
         driver.type('input[name="lastName"]', f"{MOCK_LAST_NAME}")
-        driver.click("button[type='submit']")
+        driver.click('//button[normalize-space(text())="Retrieve reservation"]')
         driver.click_if_visible(".button-popup.confirm-button")
         self._take_debug_screenshot(driver, "after_form_submission.png")
 
@@ -280,9 +280,11 @@ class WebDriver:
             # yet there was an error
             return
 
-        login_button = "button#login-btn"
+        time.sleep(random_sleep_duration(1.5, 2.5))
+        login_button = "//button[@id='login-btn']"
         try:
-            seleniumbase_actions.wait_for_element_not_visible(driver, login_button, timeout=5)
+            driver.click(login_button)
+            seleniumbase_actions.wait_for_element_absent(driver, login_button, by="xpath", timeout=5)
         except Exception:
             logger.debug("Login form failed to submit. Clicking login button again")
             driver.click(login_button)
