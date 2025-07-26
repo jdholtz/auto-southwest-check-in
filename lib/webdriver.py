@@ -127,7 +127,7 @@ class WebDriver:
         self._take_debug_screenshot(driver, "pre_headers.png")
         logger.debug("Waiting for valid headers")
         # Once this attribute is set, the headers have been set in the checkin_scheduler
-        self._wait_for_attribute("headers_set")
+        self._wait_for_attribute(driver, "headers_set")
         self._take_debug_screenshot(driver, "post_headers.png")
 
         self._quit_driver(driver)
@@ -154,12 +154,10 @@ class WebDriver:
         driver.click('//span[contains(text(), "Log in")]')
         time.sleep(random_sleep_duration(2, 3))
         driver.type('input[name="userNameOrAccountNumber"]', account_monitor.username)
-
-        # Use quote_plus to workaround a x-www-form-urlencoded encoding bug on the mobile site
         driver.type('input[name="password"]', f"{account_monitor.password}")
 
         # Wait for the necessary information to be set
-        self._wait_for_attribute("headers_set")
+        self._wait_for_attribute(driver, "headers_set")
         self._wait_for_login(driver, account_monitor)
         self._take_debug_screenshot(driver, "post_login.png")
 
@@ -235,7 +233,7 @@ class WebDriver:
             logger.debug("Upcoming trips response has been received")
             self.trips_request_id = data["params"]["requestId"]
 
-    def _wait_for_attribute(self, attribute: str) -> None:
+    def _wait_for_attribute(self, driver: Driver, attribute: str) -> None:
         logger.debug("Waiting for %s to be set (timeout: %d seconds)", attribute, WAIT_TIMEOUT_SECS)
         poll_interval = 0.5
 
@@ -246,6 +244,7 @@ class WebDriver:
             attempts += 1
 
         if attempts >= max_attempts:
+            self._quit_driver(driver)
             timeout_err = DriverTimeoutError(f"Timeout waiting for the '{attribute}' attribute")
             logger.debug(timeout_err)
             raise timeout_err
@@ -258,7 +257,7 @@ class WebDriver:
         Handles login errors, if necessary.
         """
         self._click_login_button(driver)
-        self._wait_for_attribute("login_request_id")
+        self._wait_for_attribute(driver, "login_request_id")
         login_response = self._get_response_body(driver, self.login_request_id)
 
         # Handle login errors
@@ -294,7 +293,7 @@ class WebDriver:
         Waits for the reservations request to go through and returns only reservations
         that are flights.
         """
-        self._wait_for_attribute("trips_request_id")
+        self._wait_for_attribute(driver, "trips_request_id")
         trips_response = self._get_response_body(driver, self.trips_request_id)
         reservations = trips_response["upcomingTripsPage"]
         return [reservation for reservation in reservations if reservation["tripType"] == "FLIGHT"]

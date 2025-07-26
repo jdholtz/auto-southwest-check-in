@@ -2,6 +2,13 @@
 When upgrading to a new version, make sure to follow the directions under the "Upgrading" header of the corresponding version.
 If there is no "Upgrading" header for that version, no post-upgrade actions need to be performed.
 
+## Upcoming
+### Bug Fixes
+- Prevent negative sleep times when checking for flights takes a long time
+([#355](https://github.com/jdholtz/auto-southwest-check-in/pull/355) by [@chriseckman](https://github.com/chriseckman))
+- Gracefully handle check-in processes that have already terminated when pressing `Ctrl-C`
+([#355](https://github.com/jdholtz/auto-southwest-check-in/pull/355) by [@chriseckman](https://github.com/chriseckman))
+
 
 ## 8.3 (2025-03-10)
 ### Improvements

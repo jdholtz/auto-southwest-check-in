@@ -20,7 +20,7 @@ def init_main_logging() -> None:
     init_logging(logger)
 
     logger.handlers[0].doRollover()  # Create a new log file when starting the application
-    logger.debug("Initialized the application")
+    logger.debug("Initialized logging")
 
 
 def init_logging(logger: logging.Logger) -> None:

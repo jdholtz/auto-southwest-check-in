@@ -191,6 +191,13 @@ class TestConfig:
 
         assert test_config.retrieval_interval == 0
 
+    def test_parse_config_raises_error_when_notification_urls_is_present(self) -> None:
+        # Removed in v8.3. This test only needs to be present until the next version
+
+        test_config = Config()
+        with pytest.raises(ConfigError):
+            test_config._parse_config({"notification_urls": ["test_url"]})
+
     def test_create_notification_config_creates_all_configs(self, mocker: MockerFixture) -> None:
         mock_config_create = mocker.patch.object(NotificationConfig, "create")
         test_config = GlobalConfig()

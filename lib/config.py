@@ -134,6 +134,12 @@ class Config:
 
             self._create_notification_config(notifications)
 
+        if "notification_urls" in config:
+            raise ConfigError(
+                "'notification_urls' has been removed. Use 'notifications' instead.\nTo update "
+                "your config, see https://github.com/jdholtz/auto-southwest-check-in/blob/master/CONFIGURATION.md#notifications"
+            )
+
     def _create_notification_config(self, notifications: list[JSON]) -> None:
         logger.debug("Creating configurations for %d notifications", len(notifications))
         for notification_json in notifications:
