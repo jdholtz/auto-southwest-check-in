@@ -13,6 +13,9 @@ environment variable
 ### Improvements
 - Improve resistance against 403/429 errors
 ([#344](https://github.com/jdholtz/auto-southwest-check-in/pull/344) by [@dmytrokoren](https://github.com/dmytrokoren))
+- Accidental wake-ups (an OS-level issue) before check-ins are now handled properly, ensuring
+check-ins don't occur too early
+([#360](https://github.com/jdholtz/auto-southwest-check-in/issues/360))
 
 ### Bug Fixes
 - Prevent negative sleep times when checking for flights takes a long time

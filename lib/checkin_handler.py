@@ -117,19 +117,24 @@ class CheckInHandler:
 
         sleep_time = (checkin_time - current_time).total_seconds()
         logger.debug("Sleeping until check-in: %d seconds...", sleep_time)
-        time.sleep(sleep_time)
+        self._safe_sleep(sleep_time)
 
     def _safe_sleep(self, total_sleep_time: float) -> None:
         """
         If the total sleep time is too long, an overflow error could occur.
         Therefore, the script will continuously sleep in two week periods
         to avoid this issue.
+
+        Also accounts for spurious wake-ups to ensure the total sleep time is respected.
         """
         two_weeks = 60 * 60 * 24 * 14
         while total_sleep_time > 0:
+            time_before = time.monotonic()
             sleep_time = min(total_sleep_time, two_weeks)
             time.sleep(sleep_time)
-            total_sleep_time -= sleep_time
+
+            time_elapsed = time.monotonic() - time_before
+            total_sleep_time -= time_elapsed
 
     def _check_in(self) -> None:
         """

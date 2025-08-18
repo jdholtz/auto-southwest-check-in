@@ -45,6 +45,7 @@ def test_check_in(
         ],
     )
     mock_sleep = mocker.patch("time.sleep")
+    mocker.patch("time.monotonic", side_effect=[100, 1900, 2000, 3200])
 
     handler.first_name = "Garry"
     handler.last_name = "Lin"
