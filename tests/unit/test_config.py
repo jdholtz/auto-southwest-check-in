@@ -6,6 +6,7 @@ import pytest
 from pytest_mock import MockerFixture
 
 from lib.config import (
+    CONFIG_FILE_NAME,
     AccountConfig,
     Config,
     ConfigError,
@@ -243,6 +244,38 @@ class TestGlobalConfig:
         test_config = GlobalConfig()
         test_config.create_reservation_config([{"reservation": "one"}, {"reservation": "two"}])
         assert mock_config_create.call_count == 2
+
+    def test_get_config_file_path_returns_path_from_env_var(self, mocker: MockerFixture) -> None:
+        expected_config_path = "/tmp/test_config.json"
+        mocker.patch.dict(
+            "os.environ", {"AUTO_SOUTHWEST_CHECK_IN_CONFIG_FILE": expected_config_path}
+        )
+        mocker.patch.object(Path, "is_file", return_value=True)
+
+        test_config = GlobalConfig()
+        assert test_config._get_config_file_path() == Path(expected_config_path)
+
+    def test_get_config_file_path_returns_default_path_when_env_var_is_not_file(
+        self, mocker: MockerFixture
+    ) -> None:
+        mocker.patch.dict(
+            "os.environ", {"AUTO_SOUTHWEST_CHECK_IN_CONFIG_FILE": "/tmp/test_config.json"}
+        )
+        mocker.patch.object(Path, "is_file", return_value=False)
+
+        test_config = GlobalConfig()
+        config_file_path = test_config._get_config_file_path()
+
+        assert config_file_path == (Path(__file__).parents[2] / CONFIG_FILE_NAME)
+
+    def test_get_config_file_path_returns_default_path_when_env_var_not_set(
+        self, mocker: MockerFixture
+    ) -> None:
+        mocker.patch.dict("os.environ", {}, clear=True)
+        test_config = GlobalConfig()
+        config_file_path = test_config._get_config_file_path()
+
+        assert config_file_path == (Path(__file__).parents[2] / CONFIG_FILE_NAME)
 
     def test_read_config_reads_the_config_file_correctly(self, mocker: MockerFixture) -> None:
         mocker.patch.object(Path, "read_text")

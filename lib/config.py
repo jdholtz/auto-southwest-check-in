@@ -185,9 +185,26 @@ class GlobalConfig(Config):
             reservation_config.create(reservation_json, self)
             self.reservations.append(reservation_config)
 
-    def _read_config(self) -> JSON:
+    def _get_config_file_path(self) -> Path:
+        """
+        Read the config file path from the environment variable or use the default path if not set.
+        """
+        if cfg_file_path := os.getenv("AUTO_SOUTHWEST_CHECK_IN_CONFIG_FILE"):
+            logger.debug("Using configuration file specified in environment variable")
+            config_file = Path(cfg_file_path)
+            if config_file.is_file():
+                return config_file
+
+            logger.warning(
+                "Config file specified in environment variable AUTO_SOUTHWEST_CHECK_IN_CONFIG_FILE "
+                "is not a file. Using config file at default location"
+            )
+
         project_dir = Path(__file__).parents[1]
-        config_file = project_dir / CONFIG_FILE_NAME
+        return project_dir / CONFIG_FILE_NAME
+
+    def _read_config(self) -> JSON:
+        config_file = self._get_config_file_path()
 
         logger.debug("Reading the configuration file")
         try:

@@ -3,6 +3,13 @@ When upgrading to a new version, make sure to follow the directions under the "U
 If there is no "Upgrading" header for that version, no post-upgrade actions need to be performed.
 
 ## Upcoming
+### New Features
+- A custom config file location can be specified using the `AUTO_SOUTHWEST_CHECK_IN_CONFIG_FILE`
+environment variable
+([#368](https://github.com/jdholtz/auto-southwest-check-in/issues/368))
+    - This is especially helpful when using technologies like Docker Swarm where the config file
+    cannot be in the same mount as the project files
+
 ### Bug Fixes
 - Prevent negative sleep times when checking for flights takes a long time
 ([#355](https://github.com/jdholtz/auto-southwest-check-in/pull/355) by [@chriseckman](https://github.com/chriseckman))
