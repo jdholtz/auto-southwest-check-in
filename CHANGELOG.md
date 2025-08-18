@@ -8,13 +8,20 @@ If there is no "Upgrading" header for that version, no post-upgrade actions need
 environment variable
 ([#368](https://github.com/jdholtz/auto-southwest-check-in/issues/368))
     - This is especially helpful when using technologies like Docker Swarm where the config file
-    cannot be in the same mount as the project files
+    cannot be in the same mount directory as the project files
+
+### Improvements
+- Improve resistance against 403/429 errors
+([#344](https://github.com/jdholtz/auto-southwest-check-in/pull/344) by [@dmytrokoren](https://github.com/dmytrokoren))
 
 ### Bug Fixes
 - Prevent negative sleep times when checking for flights takes a long time
 ([#355](https://github.com/jdholtz/auto-southwest-check-in/pull/355) by [@chriseckman](https://github.com/chriseckman))
 - Gracefully handle check-in processes that have already terminated when pressing `Ctrl-C`
 ([#355](https://github.com/jdholtz/auto-southwest-check-in/pull/355) by [@chriseckman](https://github.com/chriseckman))
+
+### Upgrading
+- Upgrade the dependencies to the latest versions by running `pip install -r requirements.txt`
 
 
 ## 8.3 (2025-03-10)
