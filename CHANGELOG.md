@@ -4,6 +4,12 @@ If there is no "Upgrading" header for that version, no post-upgrade actions need
 
 ## Upcoming
 ### New Features
+- You will now be notified for any flight that is eligible to be changed for free
+([#370](https://github.com/jdholtz/auto-southwest-check-in/pull/370))
+    - See [this Southwest article](https://support.southwest.com/helpcenter/s/article/options-if-southwest-changes-my-flight)
+    to understand how a flight can be eligible for a free change
+    - There is currently no configuration option to disable this notification. If you would not like to receive these notifications,
+    please let me know in [#339](https://github.com/jdholtz/auto-southwest-check-in/issues/339)
 - A custom config file location can be specified using the `AUTO_SOUTHWEST_CHECK_IN_CONFIG_FILE`
 environment variable
 ([#368](https://github.com/jdholtz/auto-southwest-check-in/issues/368))
