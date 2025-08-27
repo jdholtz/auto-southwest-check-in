@@ -94,6 +94,11 @@ class FareChecker:
         # Next, get the search information needed to change the flight
         logger.debug("Retrieving search information for the current flight")
         change_link = reservation_info["_links"]["change"]
+        reaccom_link = reservation_info["_links"]["reaccom"]
+
+        if reaccom_link is not None:
+            # The flight is reaccommodated, so changing the flight is not supported
+            raise FlightChangeError("Flight can be changed for free (reaccommodated)")
 
         # The change link does not exist, so skip fare checking for this flight
         if change_link is None:
