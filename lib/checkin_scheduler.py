@@ -129,6 +129,8 @@ class CheckInScheduler:
 
     def _schedule_flights(self, flights: list[Flight]) -> None:
         logger.debug("Scheduling %d flights for check-in", len(flights))
+
+        reacommodated_flights = []
         for flight in flights:
             checkin_handler = CheckInHandler(self, flight, self.reservation_monitor.lock)
             checkin_handler.schedule_check_in()
@@ -136,7 +138,11 @@ class CheckInScheduler:
             self.flights.append(flight)
             self.checkin_handlers.append(checkin_handler)
 
+            if flight.can_be_reaccommodated:
+                reacommodated_flights.append(flight)
+
         self.notification_handler.new_flights(flights)
+        self.notification_handler.reaccommodated_flights(reacommodated_flights)
 
     def _remove_old_flights(self, flights: list[Flight]) -> None:
         """Remove all scheduled flights that are not in the current flight list"""

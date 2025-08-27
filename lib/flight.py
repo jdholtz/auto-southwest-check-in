@@ -24,10 +24,8 @@ class Flight:
         self.departure_airport = flight_info["departureAirport"]["name"]
         self.destination_airport = flight_info["arrivalAirport"]["name"]
         self.flight_number = self._get_flight_number(flight_info["flights"])
-        self.is_same_day = False
-
-        # Cached for use by the fare checker
         self.reservation_info = reservation_info
+        self.is_same_day = False
 
         # Track to notify the user of filling out their passport information.
         # Southwest only fills the country's value for international flights
@@ -44,6 +42,13 @@ class Flight:
             and self.flight_number == other.flight_number
             and self.departure_time == other.departure_time
         )
+
+    @property
+    def can_be_reaccommodated(self) -> bool:
+        """
+        Returns whether or not the flight can be changed for free (Southwest uses 'reaccommodated').
+        """
+        return self.reservation_info["_links"]["reaccom"] is not None
 
     def get_display_time(self, twenty_four_hr_time: bool) -> str:
         if twenty_four_hr_time:

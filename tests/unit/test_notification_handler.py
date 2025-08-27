@@ -92,6 +92,22 @@ class TestNotificationHandler:
         self.handler.new_flights([mock_flight])
         assert "passport information" in mock_send_notification.call_args[0][0]
 
+    def test_reaccommodated_flights_sends_no_notification_if_no_flights_are_reaccommodated(
+        self, mocker: MockerFixture
+    ) -> None:
+        mock_send_notification = mocker.patch.object(NotificationHandler, "send_notification")
+        self.handler.reaccommodated_flights([])
+        mock_send_notification.assert_not_called()
+
+    def test_reaccommodated_flights_sends_notifications_for_reaccommodated_flights(
+        self, mocker: MockerFixture
+    ) -> None:
+        mock_send_notification = mocker.patch.object(NotificationHandler, "send_notification")
+        mock_flight = mocker.patch("lib.flight.Flight")
+
+        self.handler.reaccommodated_flights([mock_flight])
+        assert mock_send_notification.call_args[0][1] == NotificationLevel.INFO
+
     def test_failed_reservation_retrieval_sends_error_notification(
         self, mocker: MockerFixture
     ) -> None:

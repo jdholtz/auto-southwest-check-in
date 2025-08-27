@@ -25,8 +25,12 @@ def test_flights(mocker: MockerFixture) -> list[Flight]:
         "departureTime": None,
         "flights": [{"number": "100"}],
     }
-    reservation_info = {"bounds": [flight_info]}
-    return [Flight(flight_info, reservation_info, ""), Flight(flight_info, reservation_info, "")]
+    reservation_info = {"bounds": [flight_info], "_links": {"reaccom": None}}
+
+    flight1 = Flight(flight_info, reservation_info, "")
+    # With this deepcopy, any modifications to either flight should not affect the other
+    flight2 = copy.deepcopy(flight1)
+    return [flight1, flight2]
 
 
 class TestCheckInScheduler:
@@ -207,6 +211,12 @@ class TestCheckInScheduler:
     ) -> None:
         mock_schedule_check_in = mocker.patch.object(CheckInHandler, "schedule_check_in")
         mock_new_flights_notification = mocker.patch.object(NotificationHandler, "new_flights")
+        mock_reaccommodated_flights_notification = mocker.patch.object(
+            NotificationHandler, "reaccommodated_flights"
+        )
+
+        # Modify the reservation info so one flight can be seen as reacommodated
+        test_flights[1].reservation_info["_links"]["reaccom"] = {"href": "/test"}
 
         self.scheduler._schedule_flights(test_flights)
 
@@ -216,6 +226,7 @@ class TestCheckInScheduler:
             "schedule_check_in() was not called once for every flight"
         )
         mock_new_flights_notification.assert_called_once_with(test_flights)
+        mock_reaccommodated_flights_notification.assert_called_once_with([test_flights[1]])
 
     def test_remove_old_flights_removes_flights_not_currently_scheduled(
         self, mocker: MockerFixture, test_flights: list[Flight]

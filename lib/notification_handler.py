@@ -107,6 +107,25 @@ class NotificationHandler:
         logger.debug("Sending new flights notification")
         self.send_notification(flight_schedule_message, NotificationLevel.INFO, flights)
 
+    def reaccommodated_flights(self, flights: list[Flight]) -> None:
+        # Don't send notifications if no flights can be reaccommodated
+        if len(flights) == 0:
+            return
+
+        flight_reaccommodation_message = (
+            "The following flights are eligible to be changed at no cost for "
+            f"{self._get_account_name()}!\nManage your reservations here: "
+            f"{MANAGE_RESERVATION_URL}\n"
+        )
+        for flight in flights:
+            flight_reaccommodation_message += (
+                f"Flight from {flight.departure_airport} to {flight.destination_airport} on "
+                f"{FLIGHT_TIME_PLACEHOLDER}\n"
+            )
+
+        logger.debug("Sending reaccommodated flights notification")
+        self.send_notification(flight_reaccommodation_message, NotificationLevel.INFO, flights)
+
     def failed_reservation_retrieval(self, error: RequestError, confirmation_number: str) -> None:
         error_message = (
             f"Error: Failed to retrieve reservation for {self._get_account_name()} "
