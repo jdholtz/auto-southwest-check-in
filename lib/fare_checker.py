@@ -97,7 +97,7 @@ class FareChecker:
         reaccom_link = reservation_info["_links"]["reaccom"]
 
         if reaccom_link is not None:
-            # The flight is reaccommodated, so changing the flight is not supported
+            # The flight is reaccommodated, so no fare checking is needed
             raise FlightChangeError("Flight can be changed for free (reaccommodated)")
 
         # The change link does not exist, so skip fare checking for this flight
