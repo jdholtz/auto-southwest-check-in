@@ -33,23 +33,6 @@ def random_sleep_duration(min_duration: float, max_duration: float) -> float:
     return random.uniform(min_duration, max_duration)
 
 
-def _handle_southwest_error_code(error: RequestError) -> None:
-    if error.southwest_code == AIRPORT_CHECKIN_REQUIRED_CODE:
-        raise AirportCheckInError("Airport check-in is required")
-
-    if error.southwest_code == INVALID_CONFIRMATION_NUMBER_LENGTH_CODE:
-        raise RequestError("Invalid confirmation number length")
-
-    if error.southwest_code == PASSENGER_NOT_FOUND_CODE:
-        raise RequestError("Passenger not found on reservation")
-
-    if error.southwest_code == RESERVATION_NOT_FOUND_CODE:
-        raise RequestError("Reservation not found")
-
-    if error.southwest_code == RESERVATION_CANCELLED_CODE:
-        raise RequestError("Reservation has been cancelled")
-
-
 def make_request(
     method: str,
     site: str,
@@ -72,7 +55,7 @@ def make_request(
         attempts += 1
 
         try:
-            response = do_request(method, url, headers, info)
+            response = _do_request(method, url, headers, info)
             if response.status_code == 200:
                 logger.debug("Successfully made request after %d attempts", attempts)
                 return response.json()
@@ -106,13 +89,30 @@ def make_request(
     raise error
 
 
-def do_request(method: str, url: str, headers: JSON, info: JSON) -> requests.Response:
+def _do_request(method: str, url: str, headers: JSON, info: JSON) -> requests.Response:
     if method.upper() == "POST":
         response = requests.post(url, headers=headers, json=info)
     else:
         response = requests.get(url, headers=headers, params=info)
 
     return response
+
+
+def _handle_southwest_error_code(error: RequestError) -> None:
+    if error.southwest_code == AIRPORT_CHECKIN_REQUIRED_CODE:
+        raise AirportCheckInError("Airport check-in is required")
+
+    if error.southwest_code == INVALID_CONFIRMATION_NUMBER_LENGTH_CODE:
+        raise RequestError("Invalid confirmation number length")
+
+    if error.southwest_code == PASSENGER_NOT_FOUND_CODE:
+        raise RequestError("Passenger not found on reservation")
+
+    if error.southwest_code == RESERVATION_NOT_FOUND_CODE:
+        raise RequestError("Reservation not found")
+
+    if error.southwest_code == RESERVATION_CANCELLED_CODE:
+        raise RequestError("Reservation has been cancelled")
 
 
 def get_current_time() -> datetime:
