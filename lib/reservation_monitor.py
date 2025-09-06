@@ -162,6 +162,9 @@ class ReservationMonitor:
         logger.debug("Sleeping for %d seconds", sleep_time)
         time.sleep(sleep_time)
 
+    def get_account_name(self) -> str:
+        return f"{self.first_name} {self.last_name}"
+
     def _stop_checkins(self) -> None:
         """
         Stops all check-ins for a monitor. This is called when Ctrl-C is pressed. The
@@ -262,6 +265,13 @@ class AccountMonitor(ReservationMonitor):
                     sys.exit(1)
 
         return [], True
+
+    def get_account_name(self) -> str:
+        if not self.first_name:
+            # No name has been set, so use the account's username.
+            return self.username
+
+        return super().get_account_name()
 
     def _stop_monitoring(self) -> None:
         print(f"\nStopping monitoring for account with username {self.username}")

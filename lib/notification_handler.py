@@ -219,13 +219,4 @@ class NotificationHandler:
             requests.post(self.reservation_monitor.config.healthchecks_url + "/fail", data=data)
 
     def _get_account_name(self) -> str:
-        # hasattr has to be used instead of isinstance to avoid a circular import
-        if (
-            hasattr(self.reservation_monitor, "username")
-            and not self.reservation_monitor.first_name
-        ):
-            # No name has been set, so use the account's username. A ReservationMonitor will always
-            # have a name set, but check if it is an AccountMonitor (through hasattr) just in case
-            return self.reservation_monitor.username
-
-        return f"{self.reservation_monitor.first_name} {self.reservation_monitor.last_name}"
+        return self.reservation_monitor.get_account_name()

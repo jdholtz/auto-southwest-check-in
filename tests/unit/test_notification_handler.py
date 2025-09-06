@@ -228,16 +228,6 @@ class TestNotificationHandler:
         self.handler.healthchecks_fail("healthchecks fail")
         assert mock_post.call_count == expected_calls
 
-    def test_get_account_name_returns_username_when_no_name_is_set(
-        self, mocker: MockerFixture
-    ) -> None:
-        self.handler.reservation_monitor = mocker.patch("lib.reservation_monitor.AccountMonitor")
-        self.handler.reservation_monitor.first_name = None
-        self.handler.reservation_monitor.last_name = None
-        self.handler.reservation_monitor.username = "Test user"
-        assert self.handler._get_account_name() == self.handler.reservation_monitor.username
-
-    def test_get_account_name_returns_the_correct_name_when_set(self) -> None:
-        self.handler.reservation_monitor.first_name = "John"
-        self.handler.reservation_monitor.last_name = "Doe"
+    def test_get_account_name_returns_the_reservation_monitor_name(self) -> None:
+        self.handler.reservation_monitor.get_account_name.return_value = "John Doe"
         assert self.handler._get_account_name() == "John Doe"
