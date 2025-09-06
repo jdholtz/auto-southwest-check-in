@@ -7,12 +7,12 @@ import pytest
 from pytest_mock import MockerFixture
 
 from lib.checkin_handler import CheckInHandler
-from lib.checkin_scheduler import FLIGHT_IN_PAST_CODE, CheckInScheduler
+from lib.checkin_scheduler import CheckInScheduler
 from lib.config import ReservationConfig
 from lib.flight import Flight
 from lib.notification_handler import NotificationHandler
 from lib.reservation_monitor import ReservationMonitor
-from lib.utils import RequestError
+from lib.utils import RequestError, SouthwestErrorCode
 from lib.webdriver import WebDriver
 
 
@@ -119,7 +119,7 @@ class TestCheckInScheduler:
         """
         mocker.patch(
             "lib.checkin_scheduler.make_request",
-            side_effect=RequestError("", json.dumps({"code": FLIGHT_IN_PAST_CODE})),
+            side_effect=RequestError("", json.dumps({"code": SouthwestErrorCode.FLIGHT_IN_PAST})),
         )
         mock_failed_reservation_retrieval = mocker.patch.object(
             NotificationHandler, "failed_reservation_retrieval"
@@ -155,7 +155,7 @@ class TestCheckInScheduler:
         """A reservation is already scheduled and the flights are in the past"""
         mocker.patch(
             "lib.checkin_scheduler.make_request",
-            side_effect=RequestError("", json.dumps({"code": FLIGHT_IN_PAST_CODE})),
+            side_effect=RequestError("", json.dumps({"code": SouthwestErrorCode.FLIGHT_IN_PAST})),
         )
         mock_failed_reservation_retrieval = mocker.patch.object(
             NotificationHandler, "failed_reservation_retrieval"

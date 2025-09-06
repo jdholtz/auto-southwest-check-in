@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any
 from .checkin_handler import CheckInHandler
 from .flight import Flight
 from .log import get_logger
-from .utils import RequestError, get_current_time, make_request
+from .utils import RequestError, SouthwestErrorCode, get_current_time, make_request
 from .webdriver import WebDriver
 
 if TYPE_CHECKING:
@@ -14,8 +14,6 @@ if TYPE_CHECKING:
 
 VIEW_RESERVATION_URL = "mobile-air-booking/v1/mobile-air-booking/page/view-reservation/"
 logger = get_logger(__name__)
-
-FLIGHT_IN_PAST_CODE = 400520413
 
 
 class CheckInScheduler:
@@ -83,7 +81,7 @@ class CheckInScheduler:
         except RequestError as err:
             # Don't send a notification if flights have already been scheduled and all flights
             # from this reservation are old. This is how old flights are removed.
-            if len(self.flights) == 0 or err.southwest_code != FLIGHT_IN_PAST_CODE:
+            if len(self.flights) == 0 or err.southwest_code != SouthwestErrorCode.FLIGHT_IN_PAST:
                 logger.debug("Failed to retrieve reservation info. Error: %s. Exiting", err)
                 self.notification_handler.failed_reservation_retrieval(err, confirmation_number)
             else:

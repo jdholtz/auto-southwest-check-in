@@ -20,12 +20,6 @@ BASE_URL = "https://mobile.southwest.com/api/"
 NTP_SERVER = "time.nist.gov"
 NTP_BACKUP_SERVER = "time.cloudflare.com"
 
-AIRPORT_CHECKIN_REQUIRED_CODE = 400511206
-INVALID_CONFIRMATION_NUMBER_LENGTH_CODE = 400310456
-PASSENGER_NOT_FOUND_CODE = 400620480
-RESERVATION_CANCELLED_CODE = 400520414
-RESERVATION_NOT_FOUND_CODE = 400620389
-
 logger = get_logger(__name__)
 
 
@@ -98,20 +92,32 @@ def _do_request(method: str, url: str, headers: JSON, info: JSON) -> requests.Re
     return response
 
 
+class SouthwestErrorCode(IntEnum):
+    AIRPORT_CHECKIN_REQUIRED = 400511206
+    FLIGHT_IN_PAST = 400520413
+    INVALID_CONFIRMATION_NUMBER_LENGTH = 400310456
+    PASSENGER_NOT_FOUND = 400620480
+    RESERVATION_CANCELLED = 400520414
+    RESERVATION_NOT_FOUND = 400620389
+
+
 def _handle_southwest_error_code(error: RequestError) -> None:
-    if error.southwest_code == AIRPORT_CHECKIN_REQUIRED_CODE:
+    if error.southwest_code == SouthwestErrorCode.AIRPORT_CHECKIN_REQUIRED:
         raise AirportCheckInError("Airport check-in is required")
 
-    if error.southwest_code == INVALID_CONFIRMATION_NUMBER_LENGTH_CODE:
+    if error.southwest_code == SouthwestErrorCode.FLIGHT_IN_PAST:
+        raise RequestError("Flight has already departed")
+
+    if error.southwest_code == SouthwestErrorCode.INVALID_CONFIRMATION_NUMBER_LENGTH:
         raise RequestError("Invalid confirmation number length")
 
-    if error.southwest_code == PASSENGER_NOT_FOUND_CODE:
+    if error.southwest_code == SouthwestErrorCode.PASSENGER_NOT_FOUND:
         raise RequestError("Passenger not found on reservation")
 
-    if error.southwest_code == RESERVATION_NOT_FOUND_CODE:
+    if error.southwest_code == SouthwestErrorCode.RESERVATION_NOT_FOUND:
         raise RequestError("Reservation not found")
 
-    if error.southwest_code == RESERVATION_CANCELLED_CODE:
+    if error.southwest_code == SouthwestErrorCode.RESERVATION_CANCELLED:
         raise RequestError("Reservation has been cancelled")
 
 

@@ -131,11 +131,12 @@ def test_do_request_correctly_gets_data(requests_mock: RequestMocker) -> None:
 @pytest.mark.parametrize(
     ("code", "error"),
     [
-        (utils.AIRPORT_CHECKIN_REQUIRED_CODE, AirportCheckInError),
-        (utils.INVALID_CONFIRMATION_NUMBER_LENGTH_CODE, RequestError),
-        (utils.PASSENGER_NOT_FOUND_CODE, RequestError),
-        (utils.RESERVATION_NOT_FOUND_CODE, RequestError),
-        (utils.RESERVATION_CANCELLED_CODE, RequestError),
+        (utils.SouthwestErrorCode.AIRPORT_CHECKIN_REQUIRED, AirportCheckInError),
+        (utils.SouthwestErrorCode.FLIGHT_IN_PAST, RequestError),
+        (utils.SouthwestErrorCode.INVALID_CONFIRMATION_NUMBER_LENGTH, RequestError),
+        (utils.SouthwestErrorCode.PASSENGER_NOT_FOUND, RequestError),
+        (utils.SouthwestErrorCode.RESERVATION_NOT_FOUND, RequestError),
+        (utils.SouthwestErrorCode.RESERVATION_CANCELLED, RequestError),
     ],
 )
 def test_handle_southwest_error_code_handles_all_special_codes(
