@@ -28,6 +28,8 @@ check-ins don't occur too early
 ([#355](https://github.com/jdholtz/auto-southwest-check-in/pull/355) by [@chriseckman](https://github.com/chriseckman))
 - Gracefully handle check-in processes that have already terminated when pressing `Ctrl-C`
 ([#355](https://github.com/jdholtz/auto-southwest-check-in/pull/355) by [@chriseckman](https://github.com/chriseckman))
+- Add more resistance to HTTP request errors handle them gracefully
+([#356](https://github.com/jdholtz/auto-southwest-check-in/issues/356))
 
 ### Upgrading
 - Upgrade the dependencies to the latest versions by running `pip install -r requirements.txt`

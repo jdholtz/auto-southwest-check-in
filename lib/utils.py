@@ -60,9 +60,8 @@ def make_request(
 ) -> JSON:
     """
     Makes a request to the Southwest servers. For increased reliability, the request is performed
-    multiple times on failure. This request retrying is also necessary for check-ins, as check-in
-    requests are started five seconds ahead of the actual check-in time (in case the Southwest
-    server is not in sync with our NTP server or local computer).
+    multiple times on failure. This request retrying is also necessary for check-ins, as check-ins
+    may start early.
     """
     # Ensure the URL is not malformed
     site = site.replace("//", "/").lstrip("/")
@@ -72,18 +71,18 @@ def make_request(
     while attempts < max_attempts:
         attempts += 1
 
-        if method.upper() == "POST":
-            response = requests.post(url, headers=headers, json=info)
-        else:
-            response = requests.get(url, headers=headers, params=info)
+        try:
+            response = do_request(method, url, headers, info)
+            if response.status_code == 200:
+                logger.debug("Successfully made request after %d attempts", attempts)
+                return response.json()
 
-        if response.status_code == 200:
-            logger.debug("Successfully made request after %d attempts", attempts)
-            return response.json()
+            response_body = response.content.decode()
+            error_msg = f"{response.reason} ({response.status_code})"
+        except requests.RequestException as err:
+            response_body = ""
+            error_msg = str(err)
 
-        # Handle unsuccessful responses
-        response_body = response.content.decode()
-        error_msg = f"{response.reason} ({response.status_code})"
         error = RequestError(error_msg, response_body)
 
         try:
@@ -93,11 +92,7 @@ def make_request(
             error = err
             break
 
-        if random_sleep:
-            sleep_time = random_sleep_duration(1, 3)
-        else:
-            sleep_time = 0.5
-
+        sleep_time = random_sleep_duration(1, 3) if random_sleep else 0.5
         logger.debug(
             "Request error on attempt %d: %s. Sleeping for %.2f seconds until next attempt",
             attempts,
@@ -109,6 +104,15 @@ def make_request(
     logger.debug("Failed to make request after %d attempts: %s", attempts, error_msg)
     logger.debug("Response body: %s", response_body)
     raise error
+
+
+def do_request(method: str, url: str, headers: JSON, info: JSON) -> requests.Response:
+    if method.upper() == "POST":
+        response = requests.post(url, headers=headers, json=info)
+    else:
+        response = requests.get(url, headers=headers, params=info)
+
+    return response
 
 
 def get_current_time() -> datetime:
