@@ -20,34 +20,11 @@ BASE_URL = "https://mobile.southwest.com/api/"
 NTP_SERVER = "time.nist.gov"
 NTP_BACKUP_SERVER = "time.cloudflare.com"
 
-AIRPORT_CHECKIN_REQUIRED_CODE = 400511206
-INVALID_CONFIRMATION_NUMBER_LENGTH_CODE = 400310456
-PASSENGER_NOT_FOUND_CODE = 400620480
-RESERVATION_CANCELLED_CODE = 400520414
-RESERVATION_NOT_FOUND_CODE = 400620389
-
 logger = get_logger(__name__)
 
 
 def random_sleep_duration(min_duration: float, max_duration: float) -> float:
     return random.uniform(min_duration, max_duration)
-
-
-def _handle_southwest_error_code(error: RequestError) -> None:
-    if error.southwest_code == AIRPORT_CHECKIN_REQUIRED_CODE:
-        raise AirportCheckInError("Airport check-in is required")
-
-    if error.southwest_code == INVALID_CONFIRMATION_NUMBER_LENGTH_CODE:
-        raise RequestError("Invalid confirmation number length")
-
-    if error.southwest_code == PASSENGER_NOT_FOUND_CODE:
-        raise RequestError("Passenger not found on reservation")
-
-    if error.southwest_code == RESERVATION_NOT_FOUND_CODE:
-        raise RequestError("Reservation not found")
-
-    if error.southwest_code == RESERVATION_CANCELLED_CODE:
-        raise RequestError("Reservation has been cancelled")
 
 
 def make_request(
@@ -60,9 +37,8 @@ def make_request(
 ) -> JSON:
     """
     Makes a request to the Southwest servers. For increased reliability, the request is performed
-    multiple times on failure. This request retrying is also necessary for check-ins, as check-in
-    requests are started five seconds ahead of the actual check-in time (in case the Southwest
-    server is not in sync with our NTP server or local computer).
+    multiple times on failure. This request retrying is also necessary for check-ins, as check-ins
+    may start early.
     """
     # Ensure the URL is not malformed
     site = site.replace("//", "/").lstrip("/")
@@ -72,18 +48,18 @@ def make_request(
     while attempts < max_attempts:
         attempts += 1
 
-        if method.upper() == "POST":
-            response = requests.post(url, headers=headers, json=info)
-        else:
-            response = requests.get(url, headers=headers, params=info)
+        try:
+            response = _do_request(method, url, headers, info)
+            if response.status_code == 200:
+                logger.debug("Successfully made request after %d attempts", attempts)
+                return response.json()
 
-        if response.status_code == 200:
-            logger.debug("Successfully made request after %d attempts", attempts)
-            return response.json()
+            response_body = response.content.decode()
+            error_msg = f"{response.reason} ({response.status_code})"
+        except requests.RequestException as err:
+            response_body = ""
+            error_msg = str(err)
 
-        # Handle unsuccessful responses
-        response_body = response.content.decode()
-        error_msg = f"{response.reason} ({response.status_code})"
         error = RequestError(error_msg, response_body)
 
         try:
@@ -93,11 +69,7 @@ def make_request(
             error = err
             break
 
-        if random_sleep:
-            sleep_time = random_sleep_duration(1, 3)
-        else:
-            sleep_time = 0.5
-
+        sleep_time = random_sleep_duration(1, 3) if random_sleep else 0.5
         logger.debug(
             "Request error on attempt %d: %s. Sleeping for %.2f seconds until next attempt",
             attempts,
@@ -109,6 +81,44 @@ def make_request(
     logger.debug("Failed to make request after %d attempts: %s", attempts, error_msg)
     logger.debug("Response body: %s", response_body)
     raise error
+
+
+def _do_request(method: str, url: str, headers: JSON, info: JSON) -> requests.Response:
+    if method.upper() == "POST":
+        response = requests.post(url, headers=headers, json=info)
+    else:
+        response = requests.get(url, headers=headers, params=info)
+
+    return response
+
+
+class SouthwestErrorCode(IntEnum):
+    AIRPORT_CHECKIN_REQUIRED = 400511206
+    FLIGHT_IN_PAST = 400520413
+    INVALID_CONFIRMATION_NUMBER_LENGTH = 400310456
+    PASSENGER_NOT_FOUND = 400620480
+    RESERVATION_CANCELLED = 400520414
+    RESERVATION_NOT_FOUND = 400620389
+
+
+def _handle_southwest_error_code(error: RequestError) -> None:
+    if error.southwest_code == SouthwestErrorCode.AIRPORT_CHECKIN_REQUIRED:
+        raise AirportCheckInError("Airport check-in is required")
+
+    if error.southwest_code == SouthwestErrorCode.FLIGHT_IN_PAST:
+        raise RequestError("Flight has already departed")
+
+    if error.southwest_code == SouthwestErrorCode.INVALID_CONFIRMATION_NUMBER_LENGTH:
+        raise RequestError("Invalid confirmation number length")
+
+    if error.southwest_code == SouthwestErrorCode.PASSENGER_NOT_FOUND:
+        raise RequestError("Passenger not found on reservation")
+
+    if error.southwest_code == SouthwestErrorCode.RESERVATION_NOT_FOUND:
+        raise RequestError("Reservation not found")
+
+    if error.southwest_code == SouthwestErrorCode.RESERVATION_CANCELLED:
+        raise RequestError("Reservation has been cancelled")
 
 
 def get_current_time() -> datetime:

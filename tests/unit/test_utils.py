@@ -8,6 +8,7 @@ from unittest.mock import call
 
 import ntplib
 import pytest
+import requests
 
 from lib import utils
 from lib.utils import AirportCheckInError, RequestError
@@ -25,31 +26,27 @@ def test_random_sleep_duration_respects_min_and_max_durations(mocker: MockerFixt
     mock_uniform.assert_called_once_with(10, 100)
 
 
-@pytest.mark.parametrize(
-    ("code", "error"),
-    [
-        (utils.AIRPORT_CHECKIN_REQUIRED_CODE, AirportCheckInError),
-        (utils.INVALID_CONFIRMATION_NUMBER_LENGTH_CODE, RequestError),
-        (utils.PASSENGER_NOT_FOUND_CODE, RequestError),
-        (utils.RESERVATION_NOT_FOUND_CODE, RequestError),
-        (utils.RESERVATION_CANCELLED_CODE, RequestError),
-    ],
-)
-def test_handle_southwest_error_code_handles_all_special_codes(
-    code: int, error: AirportCheckInError | RequestError
-) -> None:
-    response_body = json.dumps({"code": code})
-    request_err = RequestError("", response_body)
-    with pytest.raises(error):
-        utils._handle_southwest_error_code(request_err)
-
-
 def test_make_request_raises_exception_on_failure(
     requests_mock: RequestMocker, mocker: MockerFixture
 ) -> None:
     mock_sleep = mocker.patch("time.sleep")
     mocker.patch("lib.utils.random_sleep_duration", side_effect=[1.5, 1, 2.2, 3, 2])
     requests_mock.post(utils.BASE_URL + "test", status_code=400, reason="error")
+
+    with pytest.raises(RequestError):
+        utils.make_request("POST", "test", {}, {}, max_attempts=5)
+
+    assert mock_sleep.call_count == 5
+
+    expected_calls = [call(1.5), call(1), call(2.2), call(3), call(2)]
+    mock_sleep.assert_has_calls(expected_calls)
+
+
+# Test if make_request is resistant to general Python requests exceptions like SSLError
+def test_make_request_handles_request_errors(mocker: MockerFixture) -> None:
+    mock_sleep = mocker.patch("time.sleep")
+    mocker.patch("lib.utils.random_sleep_duration", side_effect=[1.5, 1, 2.2, 3, 2])
+    mocker.patch("requests.post", side_effect=requests.exceptions.SSLError)
 
     with pytest.raises(RequestError):
         utils.make_request("POST", "test", {}, {}, max_attempts=5)
@@ -96,41 +93,59 @@ def test_make_request_does_not_sleep_randomly_on_failures_when_random_sleep_is_f
     mock_sleep.assert_has_calls(expected_calls)
 
 
-def test_make_request_correctly_posts_data(requests_mock: RequestMocker) -> None:
-    mock_post = requests_mock.post(
-        utils.BASE_URL + "test", status_code=200, text='{"success": "post"}'
-    )
-
-    response = utils.make_request("POST", "test", {"header": "test"}, {"test": "json"})
-
-    assert response == {"success": "post"}
-
-    last_request = mock_post.last_request
-    assert last_request.method == "POST"
-    assert last_request.url == utils.BASE_URL + "test"
-    assert last_request.headers["header"] == "test"
-    assert last_request.json() == {"test": "json"}
-
-
-def test_make_request_correctly_gets_data(requests_mock: RequestMocker) -> None:
-    mock_post = requests_mock.get(
-        utils.BASE_URL + "test", status_code=200, text='{"success": "get"}'
-    )
-
-    response = utils.make_request("GET", "test", {"header": "test"}, {"test": "params"})
-
-    assert response == {"success": "get"}
-
-    last_request = mock_post.last_request
-    assert last_request.method == "GET"
-    assert last_request.url == utils.BASE_URL + "test?test=params"
-    assert last_request.headers["header"] == "test"
-
-
 def test_make_request_handles_malformed_urls(requests_mock: RequestMocker) -> None:
     mock_post = requests_mock.get(utils.BASE_URL + "test/test2", status_code=200, text="{}")
     utils.make_request("GET", "/test//test2", {}, {})
     assert mock_post.last_request.url == utils.BASE_URL + "test/test2"
+
+
+def test_do_request_correctly_posts_data(requests_mock: RequestMocker) -> None:
+    url = utils.BASE_URL + "test"
+    mock_post = requests_mock.post(url, status_code=200, text='{"success": "post"}')
+
+    response = utils._do_request("POST", url, {"header": "test"}, {"test": "json"})
+
+    assert response.json() == {"success": "post"}
+
+    last_request = mock_post.last_request
+    assert last_request.method == "POST"
+    assert last_request.url == url
+    assert last_request.headers["header"] == "test"
+    assert last_request.json() == {"test": "json"}
+
+
+def test_do_request_correctly_gets_data(requests_mock: RequestMocker) -> None:
+    url = utils.BASE_URL + "test"
+    mock_post = requests_mock.get(url, status_code=200, text='{"success": "get"}')
+
+    response = utils._do_request("GET", url, {"header": "test"}, {"test": "params"})
+
+    assert response.json() == {"success": "get"}
+
+    last_request = mock_post.last_request
+    assert last_request.method == "GET"
+    assert last_request.url == url + "?test=params"
+    assert last_request.headers["header"] == "test"
+
+
+@pytest.mark.parametrize(
+    ("code", "error"),
+    [
+        (utils.SouthwestErrorCode.AIRPORT_CHECKIN_REQUIRED, AirportCheckInError),
+        (utils.SouthwestErrorCode.FLIGHT_IN_PAST, RequestError),
+        (utils.SouthwestErrorCode.INVALID_CONFIRMATION_NUMBER_LENGTH, RequestError),
+        (utils.SouthwestErrorCode.PASSENGER_NOT_FOUND, RequestError),
+        (utils.SouthwestErrorCode.RESERVATION_NOT_FOUND, RequestError),
+        (utils.SouthwestErrorCode.RESERVATION_CANCELLED, RequestError),
+    ],
+)
+def test_handle_southwest_error_code_handles_all_special_codes(
+    code: int, error: AirportCheckInError | RequestError
+) -> None:
+    response_body = json.dumps({"code": code})
+    request_err = RequestError("", response_body)
+    with pytest.raises(error):
+        utils._handle_southwest_error_code(request_err)
 
 
 def test_get_current_time_returns_a_datetime_from_ntp_server(mocker: MockerFixture) -> None:

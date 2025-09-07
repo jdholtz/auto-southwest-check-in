@@ -7,12 +7,12 @@ import pytest
 from pytest_mock import MockerFixture
 
 from lib.checkin_handler import CheckInHandler
-from lib.checkin_scheduler import FLIGHT_IN_PAST_CODE, CheckInScheduler
+from lib.checkin_scheduler import CheckInScheduler
 from lib.config import ReservationConfig
 from lib.flight import Flight
 from lib.notification_handler import NotificationHandler
 from lib.reservation_monitor import ReservationMonitor
-from lib.utils import RequestError
+from lib.utils import RequestError, SouthwestErrorCode
 from lib.webdriver import WebDriver
 
 
@@ -25,8 +25,12 @@ def test_flights(mocker: MockerFixture) -> list[Flight]:
         "departureTime": None,
         "flights": [{"number": "100"}],
     }
-    reservation_info = {"bounds": [flight_info]}
-    return [Flight(flight_info, reservation_info, ""), Flight(flight_info, reservation_info, "")]
+    reservation_info = {"bounds": [flight_info], "_links": {"reaccom": None}}
+
+    flight1 = Flight(flight_info, reservation_info, "")
+    # With this deepcopy, any modifications to either flight should not affect the other
+    flight2 = copy.deepcopy(flight1)
+    return [flight1, flight2]
 
 
 class TestCheckInScheduler:
@@ -115,7 +119,7 @@ class TestCheckInScheduler:
         """
         mocker.patch(
             "lib.checkin_scheduler.make_request",
-            side_effect=RequestError("", json.dumps({"code": FLIGHT_IN_PAST_CODE})),
+            side_effect=RequestError("", json.dumps({"code": SouthwestErrorCode.FLIGHT_IN_PAST})),
         )
         mock_failed_reservation_retrieval = mocker.patch.object(
             NotificationHandler, "failed_reservation_retrieval"
@@ -151,7 +155,7 @@ class TestCheckInScheduler:
         """A reservation is already scheduled and the flights are in the past"""
         mocker.patch(
             "lib.checkin_scheduler.make_request",
-            side_effect=RequestError("", json.dumps({"code": FLIGHT_IN_PAST_CODE})),
+            side_effect=RequestError("", json.dumps({"code": SouthwestErrorCode.FLIGHT_IN_PAST})),
         )
         mock_failed_reservation_retrieval = mocker.patch.object(
             NotificationHandler, "failed_reservation_retrieval"
@@ -207,6 +211,12 @@ class TestCheckInScheduler:
     ) -> None:
         mock_schedule_check_in = mocker.patch.object(CheckInHandler, "schedule_check_in")
         mock_new_flights_notification = mocker.patch.object(NotificationHandler, "new_flights")
+        mock_reaccommodated_flights_notification = mocker.patch.object(
+            NotificationHandler, "reaccommodated_flights"
+        )
+
+        # Modify the reservation info so one flight can be seen as reacommodated
+        test_flights[1].reservation_info["_links"]["reaccom"] = {"href": "/test"}
 
         self.scheduler._schedule_flights(test_flights)
 
@@ -216,6 +226,7 @@ class TestCheckInScheduler:
             "schedule_check_in() was not called once for every flight"
         )
         mock_new_flights_notification.assert_called_once_with(test_flights)
+        mock_reaccommodated_flights_notification.assert_called_once_with([test_flights[1]])
 
     def test_remove_old_flights_removes_flights_not_currently_scheduled(
         self, mocker: MockerFixture, test_flights: list[Flight]

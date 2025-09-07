@@ -136,7 +136,7 @@ class TestFareChecker:
     ) -> None:
         res_info = {
             "bounds": ["bound_one", "bound_two"],
-            "_links": {"change": {"href": "test_link", "query": "query_body"}},
+            "_links": {"change": {"href": "test_link", "query": "query_body"}, "reaccom": None},
         }
         flight_page = {"changeFlightPage": "test_page"}
         mock_make_request = mocker.patch("lib.fare_checker.make_request", return_value=flight_page)
@@ -152,15 +152,29 @@ class TestFareChecker:
         assert call_args[1] == fare_checker.BOOKING_URL + "test_link"
         assert call_args[3] == "query_body"
 
+    def test_get_change_flight_page_raises_exception_when_flight_is_reaccommodated(self) -> None:
+        reservation_info = {
+            "greyBoxMessage": None,
+            "bounds": ["bound_one", "bound_two"],
+            "_links": {"change": None, "reaccom": {"href": "test_link"}},
+        }
+
+        with pytest.raises(FlightChangeError) as err:
+            self.checker._get_change_flight_page(reservation_info)
+
+        assert "reaccommodated" in str(err.value).lower()
+
     def test_get_change_flight_page_raises_exception_when_flight_cannot_be_changed(self) -> None:
         reservation_info = {
             "greyBoxMessage": None,
             "bounds": ["bound_one", "bound_two"],
-            "_links": {"change": None},
+            "_links": {"change": None, "reaccom": None},
         }
 
-        with pytest.raises(FlightChangeError):
+        with pytest.raises(FlightChangeError) as err:
             self.checker._get_change_flight_page(reservation_info)
+
+        assert "cannot be changed" in str(err.value).lower()
 
     def test_get_search_query_returns_the_correct_query_for_one_way(
         self, test_flight: Flight

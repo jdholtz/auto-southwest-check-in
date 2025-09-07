@@ -66,6 +66,9 @@ def test_flight_is_scheduled_checks_in_and_departs(
     mock_new_flights_notification = mocker.patch(
         "lib.notification_handler.NotificationHandler.new_flights"
     )
+    mock_reaccommodated_flights_notification = mocker.patch(
+        "lib.notification_handler.NotificationHandler.reaccommodated_flights"
+    )
     mocker.patch("os.kill")
     mock_sleep = mocker.patch("time.sleep")
 
@@ -95,6 +98,7 @@ def test_flight_is_scheduled_checks_in_and_departs(
                     "flights": [{"number": "WN100"}, {"number": "WN101"}],
                 },
             ],
+            "_links": {"reaccom": None},
         }
     }
 
@@ -121,6 +125,7 @@ def test_flight_is_scheduled_checks_in_and_departs(
     # Ensure the flight was scheduled correctly
     mock_process.start.assert_called_once()
     assert mock_new_flights_notification.call_count == 2
+    assert mock_reaccommodated_flights_notification.call_count == 2
 
     # Ensure the flight was removed after it departed
     assert len(scheduler.checkin_handlers) == 0
@@ -210,6 +215,7 @@ def test_account_schedules_new_flights(requests_mock: RequestMocker, mocker: Moc
                     "flights": [{"number": "WN101"}],
                 },
             ],
+            "_links": {"reaccom": None},
         }
     }
 

@@ -107,6 +107,25 @@ class NotificationHandler:
         logger.debug("Sending new flights notification")
         self.send_notification(flight_schedule_message, NotificationLevel.INFO, flights)
 
+    def reaccommodated_flights(self, flights: list[Flight]) -> None:
+        # Don't send notifications if no flights can be reaccommodated
+        if len(flights) == 0:
+            return
+
+        flight_reaccommodation_message = (
+            "The following flights are eligible to be changed at no cost for "
+            f"{self._get_account_name()}!\nManage your reservations here: "
+            f"{MANAGE_RESERVATION_URL}\n"
+        )
+        for flight in flights:
+            flight_reaccommodation_message += (
+                f"Flight from {flight.departure_airport} to {flight.destination_airport} on "
+                f"{FLIGHT_TIME_PLACEHOLDER}\n"
+            )
+
+        logger.debug("Sending reaccommodated flights notification")
+        self.send_notification(flight_reaccommodation_message, NotificationLevel.INFO, flights)
+
     def failed_reservation_retrieval(self, error: RequestError, confirmation_number: str) -> None:
         error_message = (
             f"Error: Failed to retrieve reservation for {self._get_account_name()} "
@@ -200,13 +219,4 @@ class NotificationHandler:
             requests.post(self.reservation_monitor.config.healthchecks_url + "/fail", data=data)
 
     def _get_account_name(self) -> str:
-        # hasattr has to be used instead of isinstance to avoid a circular import
-        if (
-            hasattr(self.reservation_monitor, "username")
-            and not self.reservation_monitor.first_name
-        ):
-            # No name has been set, so use the account's username. A ReservationMonitor will always
-            # have a name set, but check if it is an AccountMonitor (through hasattr) just in case
-            return self.reservation_monitor.username
-
-        return f"{self.reservation_monitor.first_name} {self.reservation_monitor.last_name}"
+        return self.reservation_monitor.get_account_name()

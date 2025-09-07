@@ -114,7 +114,7 @@ def flight() -> Flight:
 
     reservation_info = {
         "bounds": [flight_info],
-        "_links": {"change": {"href": "change_page", "query": "test_query"}},
+        "_links": {"change": {"href": "change_page", "query": "test_query"}, "reaccom": None},
         "greyBoxMessage": None,
     }
     return Flight(flight_info, reservation_info, "TEST")

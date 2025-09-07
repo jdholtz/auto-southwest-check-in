@@ -3,7 +3,7 @@
 
 import sys
 
-__version__ = "v8.3"
+__version__ = "v9.0"
 
 __doc__ = """
 Schedule a check-in:
@@ -47,7 +47,7 @@ def init(arguments: list[str]) -> None:
 
     # Imported here to avoid needing dependencies to retrieve the script's
     # version or usage
-    from lib.main import main
+    from lib.main import main  # noqa: PLC0415
 
     main(arguments, __version__)
 

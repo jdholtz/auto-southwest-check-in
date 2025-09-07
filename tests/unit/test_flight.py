@@ -97,6 +97,18 @@ class TestFlight:
         assert self.flight != new_flight
 
     @pytest.mark.parametrize(
+        ("reaccom_url", "expected_val"),
+        [(None, False), ({"href": "/test"}, True)],
+    )
+    def test_flight_can_be_reaccomodated(
+        self, mocker: MockerFixture, reaccom_url: str, expected_val: bool
+    ) -> None:
+        mocker.patch.object(Flight, "_set_flight_time")
+        self.flight.reservation_info = {"_links": {"reaccom": reaccom_url}}
+
+        assert self.flight.can_be_reaccommodated == expected_val
+
+    @pytest.mark.parametrize(
         ("twenty_four_hr", "expected_time"), [(True, "13:59"), (False, "1:59 PM")]
     )
     def test_get_display_time_formats_time_correctly(

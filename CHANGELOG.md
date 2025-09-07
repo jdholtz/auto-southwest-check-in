@@ -2,12 +2,37 @@
 When upgrading to a new version, make sure to follow the directions under the "Upgrading" header of the corresponding version.
 If there is no "Upgrading" header for that version, no post-upgrade actions need to be performed.
 
-## Upcoming
+## 9.0 (2025-09-06)
+### New Features
+- You will now be notified for any flight that is eligible to be changed for free
+([#370](https://github.com/jdholtz/auto-southwest-check-in/pull/370))
+    - See [this Southwest article](https://support.southwest.com/helpcenter/s/article/options-if-southwest-changes-my-flight)
+    to understand how a flight can be eligible for a free change
+    - There is currently no configuration option to disable this notification. If you would not like to receive these notifications,
+    please let me know in [#339](https://github.com/jdholtz/auto-southwest-check-in/issues/339)
+- A custom config file location can be specified using the `AUTO_SOUTHWEST_CHECK_IN_CONFIG_FILE`
+environment variable
+([#368](https://github.com/jdholtz/auto-southwest-check-in/issues/368))
+    - This is especially helpful when using technologies like Docker Swarm where the config file
+    cannot be in the same mount directory as the project files
+
+### Improvements
+- Improve resistance against 403/429 errors
+([#344](https://github.com/jdholtz/auto-southwest-check-in/pull/344) by [@dmytrokoren](https://github.com/dmytrokoren))
+- Accidental wake-ups (an OS-level issue) before check-ins are now handled properly, ensuring
+check-ins don't occur too early
+([#360](https://github.com/jdholtz/auto-southwest-check-in/issues/360))
+
 ### Bug Fixes
 - Prevent negative sleep times when checking for flights takes a long time
 ([#355](https://github.com/jdholtz/auto-southwest-check-in/pull/355) by [@chriseckman](https://github.com/chriseckman))
 - Gracefully handle check-in processes that have already terminated when pressing `Ctrl-C`
 ([#355](https://github.com/jdholtz/auto-southwest-check-in/pull/355) by [@chriseckman](https://github.com/chriseckman))
+- Add more resistance to HTTP request errors handle them gracefully
+([#356](https://github.com/jdholtz/auto-southwest-check-in/issues/356))
+
+### Upgrading
+- Upgrade the dependencies to the latest versions by running `pip install -r requirements.txt`
 
 
 ## 8.3 (2025-03-10)
