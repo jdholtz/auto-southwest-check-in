@@ -185,8 +185,8 @@ class WebDriver:
             binary_location=browser_path,
             driver_version=driver_version,
             user_data_dir=self.get_temp_dir(),
-            headed=IS_DOCKER,
-            headless1=not IS_DOCKER,
+            # headed=IS_DOCKER, # Commented for now, not required
+            headless1=True,
             uc_cdp_events=True,
             undetectable=True,
             incognito=True,
