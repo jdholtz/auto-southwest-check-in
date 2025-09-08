@@ -43,12 +43,10 @@ if TYPE_CHECKING:
     from .reservation_monitor import AccountMonitor
 
 BASE_URL = "https://mobile.southwest.com"
-CHECKIN_URL = BASE_URL + "/air/check-in/"
+CHECKIN_URL = BASE_URL + "/air/check-in"
 LOGIN_URL = BASE_URL + "/api/security/v4/security/token"
 TRIPS_URL = BASE_URL + "/api/mobile-misc/v1/mobile-misc/page/upcoming-trips"
-HEADERS_URL = (
-    f"{BASE_URL}/api/mobile-air-operations/v1/mobile-air-operations/page/check-in/{MOCK_LOCATOR}"
-)
+HEADERS_URL = BASE_URL + "/api/mobile-air-operations/v1/mobile-air-operations/page/check-in"
 
 # Southwest's code when logging in with the incorrect information
 INVALID_CREDENTIALS_CODE = 400518024
@@ -151,10 +149,12 @@ class WebDriver:
         # See https://github.com/jdholtz/auto-southwest-check-in/issues/226
         driver.click_if_visible(".button-popup.confirm-button")
 
-        driver.click(".login-button--box")
+        driver.click('//span[contains(text(), "Log in")]')
         time.sleep(random_sleep_duration(2, 3))
         driver.type('input[name="userNameOrAccountNumber"]', account_monitor.username)
-        driver.type('input[name="password"]', f"{account_monitor.password}\n")
+        driver.type('input[name="password"]', f"{account_monitor.password}")
+        time.sleep(random_sleep_duration(1.5, 2.5))
+        driver.click("//button[@id='login-btn']")
 
         # Wait for the necessary information to be set
         self._wait_for_attribute(driver, "headers_set")
@@ -184,7 +184,7 @@ class WebDriver:
             driver_version=driver_version,
             user_data_dir=self.get_temp_dir(),
             headed=IS_DOCKER,
-            headless1=not IS_DOCKER,
+            headless1=True,
             uc_cdp_events=True,
             undetectable=True,
             incognito=True,
@@ -203,7 +203,7 @@ class WebDriver:
         driver.type('input[name="recordLocator"]', f"{MOCK_LOCATOR}")
         driver.type('input[name="firstName"]', f"{MOCK_FIRST_NAME}")
         driver.type('input[name="lastName"]', f"{MOCK_LAST_NAME}")
-        driver.click("button[type='submit']")
+        driver.click('//button[normalize-space(text())="Retrieve reservation"]')
         driver.click_if_visible(".button-popup.confirm-button")
         self._take_debug_screenshot(driver, "after_form_submission.png")
 
@@ -215,7 +215,7 @@ class WebDriver:
         in the checkin_scheduler.
         """
         request = data["params"]["request"]
-        if request["url"] == HEADERS_URL:
+        if request["url"].startswith(HEADERS_URL):
             self.checkin_scheduler.headers = self._get_needed_headers(request["headers"])
             self.headers_set = True
 
@@ -279,9 +279,11 @@ class WebDriver:
             # yet there was an error
             return
 
-        login_button = "button#login-btn"
+        login_button = "//button[@id='login-btn']"
         try:
-            seleniumbase_actions.wait_for_element_not_visible(driver, login_button, timeout=5)
+            seleniumbase_actions.wait_for_element_absent(
+                driver, login_button, by="xpath", timeout=5
+            )
         except Exception:
             logger.debug("Login form failed to submit. Clicking login button again")
             driver.click(login_button)

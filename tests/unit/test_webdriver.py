@@ -223,7 +223,7 @@ class TestWebDriver:
         self, mocker: MockerFixture, mock_chrome: mock.Mock
     ) -> None:
         mocker.patch("seleniumbase.fixtures.page_actions.wait_for_element_not_visible")
-        mocker.patch.object(mock_chrome, "is_element_visible", return_value=False)
+        mocker.patch.object(mock_chrome, "is_element_visible", return_value=True)
         self.driver._click_login_button(mock_chrome)
         mock_chrome.click.assert_not_called()
 

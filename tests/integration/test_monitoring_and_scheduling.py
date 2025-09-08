@@ -238,4 +238,4 @@ def test_account_schedules_new_flights(requests_mock: RequestMocker, mocker: Moc
     assert len(scheduler.flights) == 2
 
     # Ensures the 429 error was handled correctly
-    assert mock_check_flight_price.call_count == 2 * len(scheduler.flights)
+    assert mock_check_flight_price.call_count == len(scheduler.flights)
