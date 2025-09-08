@@ -43,12 +43,10 @@ if TYPE_CHECKING:
     from .reservation_monitor import AccountMonitor
 
 BASE_URL = "https://mobile.southwest.com"
-CHECKIN_URL = BASE_URL + "/air/check-in/"
+CHECKIN_URL = BASE_URL + "/air/check-in"
 LOGIN_URL = BASE_URL + "/api/security/v4/security/token"
 TRIPS_URL = BASE_URL + "/api/mobile-misc/v1/mobile-misc/page/upcoming-trips"
-HEADERS_URL = (
-    f"{BASE_URL}/api/mobile-air-operations/v1/mobile-air-operations/page/check-in/{MOCK_LOCATOR}"
-)
+HEADERS_URL = BASE_URL + "/api/mobile-air-operations/v1/mobile-air-operations/page/check-in"
 
 # Southwest's code when logging in with the incorrect information
 INVALID_CREDENTIALS_CODE = 400518024
@@ -185,7 +183,7 @@ class WebDriver:
             binary_location=browser_path,
             driver_version=driver_version,
             user_data_dir=self.get_temp_dir(),
-            # headed=IS_DOCKER, # Commented for now, not required
+            headed=IS_DOCKER,
             headless1=True,
             uc_cdp_events=True,
             undetectable=True,
@@ -217,7 +215,7 @@ class WebDriver:
         in the checkin_scheduler.
         """
         request = data["params"]["request"]
-        if request["url"] == HEADERS_URL:
+        if request["url"].startswith(HEADERS_URL):
             self.checkin_scheduler.headers = self._get_needed_headers(request["headers"])
             self.headers_set = True
 
