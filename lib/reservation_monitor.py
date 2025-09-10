@@ -64,7 +64,6 @@ class ReservationMonitor:
             time.sleep(0.05)
             # Lock so all processes are stopped sequentially
             with self.lock:
-                WebDriver.reset_temp_dir()
                 self._stop_monitoring()
 
     def _monitor(self) -> None:
@@ -251,7 +250,6 @@ class AccountMonitor(ReservationMonitor):
                             err.status_code,
                         )
                         logger.debug("Waiting for %d seconds before retrying", RETRY_WAIT_SECONDS)
-                        webdriver.reset_temp_dir()
                         time.sleep(RETRY_WAIT_SECONDS)
                     else:
                         logger.debug(

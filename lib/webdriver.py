@@ -1,18 +1,12 @@
 from __future__ import annotations
 
 import json
-import os
-import random
 import re
-import shutil
-import string
 import sys
-import tempfile
 import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from faker import Faker
 from sbvirtualdisplay import Display
 from seleniumbase import Driver
 from seleniumbase.fixtures import page_actions as seleniumbase_actions
@@ -21,34 +15,15 @@ from .config import IS_DOCKER
 from .log import LOGS_DIRECTORY, get_logger
 from .utils import DriverTimeoutError, LoginError, random_sleep_duration
 
-
-# Extend the Faker class to include a 'locator' method
-class CustomFaker(Faker):
-    def locator(self, length: int = 6) -> str:
-        result = random.choices(string.digits, k=2) + random.choices(
-            string.ascii_uppercase, k=length - 2
-        )
-        random.shuffle(result)
-        return "".join(result)
-
-
-faker = CustomFaker()
-
-MOCK_LOCATOR = faker.locator()
-MOCK_FIRST_NAME = faker.first_name()
-MOCK_LAST_NAME = faker.last_name()
-
 if TYPE_CHECKING:
     from .checkin_scheduler import CheckInScheduler
     from .reservation_monitor import AccountMonitor
 
 BASE_URL = "https://mobile.southwest.com"
-CHECKIN_URL = BASE_URL + "/air/check-in/"
+CHECKIN_URL = BASE_URL + "/air/check-in"
 LOGIN_URL = BASE_URL + "/api/security/v4/security/token"
 TRIPS_URL = BASE_URL + "/api/mobile-misc/v1/mobile-misc/page/upcoming-trips"
-HEADERS_URL = (
-    f"{BASE_URL}/api/mobile-air-operations/v1/mobile-air-operations/page/check-in/{MOCK_LOCATOR}"
-)
+HEADERS_URL = BASE_URL + "/api/mobile-air-booking/v1/mobile-air-booking/feature/shopping-details"
 
 # Southwest's code when logging in with the incorrect information
 INVALID_CREDENTIALS_CODE = 400518024
@@ -75,19 +50,6 @@ class WebDriver:
     Some of this code is based off of:
     https://github.com/byalextran/southwest-headers/commit/d2969306edb0976290bfa256d41badcc9698f6ed
     """
-
-    _temp_dir = None
-
-    @classmethod
-    def get_temp_dir(cls) -> None:
-        if cls._temp_dir is None:
-            cls._temp_dir = tempfile.mkdtemp()
-        return cls._temp_dir
-
-    @classmethod
-    def reset_temp_dir(cls) -> None:
-        if cls._temp_dir and os.path.exists(cls._temp_dir):
-            shutil.rmtree(cls._temp_dir)
 
     def __init__(self, checkin_scheduler: CheckInScheduler) -> None:
         self.checkin_scheduler = checkin_scheduler
@@ -152,7 +114,7 @@ class WebDriver:
         driver.click_if_visible(".button-popup.confirm-button")
 
         driver.click(".login-button--box")
-        time.sleep(random_sleep_duration(2, 3))
+        time.sleep(random_sleep_duration(1, 3))
         driver.type('input[name="userNameOrAccountNumber"]', account_monitor.username)
         driver.type('input[name="password"]', f"{account_monitor.password}\n")
 
@@ -182,7 +144,6 @@ class WebDriver:
         driver = Driver(
             binary_location=browser_path,
             driver_version=driver_version,
-            user_data_dir=self.get_temp_dir(),
             headed=IS_DOCKER,
             headless1=not IS_DOCKER,
             uc_cdp_events=True,
@@ -195,17 +156,7 @@ class WebDriver:
 
         logger.debug("Loading Southwest check-in page (this may take a moment)")
         driver.get(CHECKIN_URL)
-        driver.click_if_visible(".button-popup.confirm-button")
-        driver.click_if_visible("#onetrust-accept-btn-handler")
         self._take_debug_screenshot(driver, "after_page_load.png")
-
-        # Submit the check-in form with mock data
-        driver.type('input[name="recordLocator"]', f"{MOCK_LOCATOR}")
-        driver.type('input[name="firstName"]', f"{MOCK_FIRST_NAME}")
-        driver.type('input[name="lastName"]', f"{MOCK_LAST_NAME}")
-        driver.click("button[type='submit']")
-        driver.click_if_visible(".button-popup.confirm-button")
-        self._take_debug_screenshot(driver, "after_form_submission.png")
 
         return driver
 
@@ -333,9 +284,7 @@ class WebDriver:
         )  # Don't log as it contains sensitive information
 
     def _quit_driver(self, driver: Driver) -> None:
-        driver.close()
         driver.quit()
-        self.reset_temp_dir()
         self._stop_display()
 
     def _start_display(self) -> None:
