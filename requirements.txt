@@ -1,6 +1,6 @@
 apprise==1.9.4
 ntplib==0.4.0
 requests==2.32.3
-seleniumbase==4.34.1
+seleniumbase==4.34.12
 # Only needed for Windows systems, as they don't have an IANA database by default
 tzdata>=2025.2; platform_system == "Windows"
