@@ -6,10 +6,12 @@ from typing import TYPE_CHECKING, Any
 from .checkin_handler import CheckInHandler
 from .flight import Flight
 from .log import get_logger
-from .utils import RequestError, SouthwestErrorCode, get_current_time, make_request
+from .utils import RequestError, SouthwestErrorCode, create_session, get_current_time, make_request
 from .webdriver import WebDriver
 
 if TYPE_CHECKING:
+    import requests
+
     from .reservation_monitor import ReservationMonitor
 
 VIEW_RESERVATION_URL = "mobile-air-booking/v1/mobile-air-booking/page/view-reservation/"
@@ -30,6 +32,30 @@ class CheckInScheduler:
         self.flights = []
         self.checkin_handlers = []
 
+        # Session for connection pooling - reused across requests for performance
+        self._session: requests.Session | None = None
+
+    @property
+    def session(self) -> requests.Session:
+        """Lazily create and return a requests Session for connection pooling."""
+        if self._session is None:
+            self._session = create_session()
+        return self._session
+
+    def close_session(self) -> None:
+        """Close the session to release resources."""
+        if self._session is not None:
+            self._session.close()
+            self._session = None
+
+    def refresh_session(self) -> None:
+        """
+        Refresh the session by closing and recreating it.
+        Useful before check-in to ensure fresh connections.
+        """
+        self.close_session()
+        self._session = create_session()
+
     def process_reservations(self, confirmation_numbers: list[str]) -> None:
         """
         Flights from all confirmation numbers are retrieved. Then, any new
@@ -46,6 +72,26 @@ class CheckInScheduler:
         logger.debug("Refreshing headers for current session")
         webdriver = WebDriver(self)
         webdriver.set_headers()
+
+    def pre_warm_connection(self) -> None:
+        """
+        Pre-warm the connection pool by making a lightweight request to Southwest.
+        This establishes TCP connections and completes TLS handshakes before check-in,
+        reducing latency when the actual check-in request is made.
+        """
+        logger.debug("Pre-warming connection to Southwest API")
+        try:
+            # Use HEAD-like behavior with a simple GET to establish connection
+            # We don't care about the response, just warming the connection pool
+            self.session.get(
+                "https://mobile.southwest.com/api/",
+                headers=self.headers,
+                timeout=10,
+            )
+            logger.debug("Connection pre-warmed successfully")
+        except Exception as err:
+            # Non-critical - if pre-warming fails, check-in will still work
+            logger.debug("Failed to pre-warm connection: %s", err)
 
     def _get_flights(self, confirmation_number: str) -> list[Flight]:
         """Get all flights booked on a single reservation"""
@@ -77,7 +123,7 @@ class CheckInScheduler:
 
         try:
             logger.debug("Retrieving reservation information")
-            response = make_request("POST", site, self.headers, info)
+            response = make_request("POST", site, self.headers, info, session=self.session)
         except RequestError as err:
             # Don't send a notification if flights have already been scheduled and all flights
             # from this reservation are old. This is how old flights are removed.

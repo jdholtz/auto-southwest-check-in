@@ -10,6 +10,7 @@ from typing import Any
 
 import ntplib
 import requests
+from requests.adapters import HTTPAdapter
 
 from .log import get_logger
 
@@ -20,7 +21,28 @@ BASE_URL = "https://mobile.southwest.com/api/"
 NTP_SERVER = "time.nist.gov"
 NTP_BACKUP_SERVER = "time.cloudflare.com"
 
+# Additional NTP servers for better reliability
+NTP_TERTIARY_SERVER = "pool.ntp.org"
+
 logger = get_logger(__name__)
+
+
+def create_session() -> requests.Session:
+    """
+    Create a requests Session configured for optimal performance.
+    Sessions maintain persistent TCP connections via connection pooling,
+    avoiding TCP handshake and TLS negotiation overhead on repeated requests.
+    """
+    session = requests.Session()
+
+    # Configure connection pooling for better performance
+    # pool_connections: Number of connection pools to cache
+    # pool_maxsize: Maximum number of connections to save in the pool
+    adapter = HTTPAdapter(pool_connections=10, pool_maxsize=10)
+    session.mount("https://", adapter)
+    session.mount("http://", adapter)
+
+    return session
 
 
 def random_sleep_duration(min_duration: float, max_duration: float) -> float:
@@ -34,11 +56,21 @@ def make_request(
     info: JSON,
     max_attempts: int = 20,
     random_sleep: bool = True,
+    session: requests.Session | None = None,
 ) -> JSON:
     """
     Makes a request to the Southwest servers. For increased reliability, the request is performed
     multiple times on failure. This request retrying is also necessary for check-ins, as check-ins
     may start early.
+
+    Args:
+        method: HTTP method (GET or POST)
+        site: API endpoint path
+        headers: Request headers
+        info: Request body/params
+        max_attempts: Maximum retry attempts
+        random_sleep: Whether to use random sleep between retries (False for check-in)
+        session: Optional requests.Session for connection reuse (improves performance)
     """
     # Ensure the URL is not malformed
     site = site.replace("//", "/").lstrip("/")
@@ -49,7 +81,7 @@ def make_request(
         attempts += 1
 
         try:
-            response = _do_request(method, url, headers, info)
+            response = _do_request(method, url, headers, info, session)
             if response.status_code == 200:
                 logger.debug("Successfully made request after %d attempts", attempts)
                 return response.json()
@@ -69,7 +101,15 @@ def make_request(
             error = err
             break
 
-        sleep_time = random_sleep_duration(1, 3) if random_sleep else 0.5
+        # Use shorter retry delays for check-in requests (random_sleep=False)
+        # to maximize chances of getting the check-in through quickly
+        if random_sleep:
+            sleep_time = random_sleep_duration(1, 3)
+        else:
+            # Exponential backoff with very short initial delay for check-in
+            # attempts 1-3: 0.05s, 0.1s, 0.2s; then caps at 0.5s
+            sleep_time = min(0.05 * (2 ** (attempts - 1)), 0.5)
+
         logger.debug(
             "Request error on attempt %d: %s. Sleeping for %.2f seconds until next attempt",
             attempts,
@@ -83,11 +123,22 @@ def make_request(
     raise error
 
 
-def _do_request(method: str, url: str, headers: JSON, info: JSON) -> requests.Response:
-    if method.upper() == "POST":
-        response = requests.post(url, headers=headers, json=info)
+def _do_request(
+    method: str, url: str, headers: JSON, info: JSON, session: requests.Session | None = None
+) -> requests.Response:
+    """
+    Perform the actual HTTP request. Uses session if provided for connection reuse.
+    """
+    if session is not None:
+        if method.upper() == "POST":
+            response = session.post(url, headers=headers, json=info)
+        else:
+            response = session.get(url, headers=headers, params=info)
     else:
-        response = requests.get(url, headers=headers, params=info)
+        if method.upper() == "POST":
+            response = requests.post(url, headers=headers, json=info)
+        else:
+            response = requests.get(url, headers=headers, params=info)
 
     return response
 
@@ -130,20 +181,19 @@ def get_current_time() -> datetime:
     Times are returned in UTC.
     """
     c = ntplib.NTPClient()
+    ntp_servers = [NTP_SERVER, NTP_BACKUP_SERVER, NTP_TERTIARY_SERVER]
 
-    try:
-        # Set a longer timeout to make the request more reliable
-        response = c.request(NTP_SERVER, version=3, timeout=10)
-    except (socket.gaierror, ntplib.NTPException):
+    for server in ntp_servers:
         try:
-            # Try the backup NTP server before falling back to local time. Increases reliability of
-            # fetching the time significantly
-            response = c.request(NTP_BACKUP_SERVER, version=3, timeout=10)
-        except (socket.gaierror, ntplib.NTPException):
-            logger.debug("Error requesting time from NTP servers. Using local time")
-            return datetime.now(timezone.utc)
+            # Reduced timeout from 10s to 5s for faster fallback
+            response = c.request(server, version=3, timeout=5)
+            return datetime.fromtimestamp(response.tx_time, timezone.utc)
+        except (socket.gaierror, ntplib.NTPException, OSError):
+            logger.debug("Failed to get time from %s, trying next server", server)
+            continue
 
-    return datetime.fromtimestamp(response.tx_time, timezone.utc)
+    logger.debug("Error requesting time from all NTP servers. Using local time")
+    return datetime.now(timezone.utc)
 
 
 class RequestError(Exception):
