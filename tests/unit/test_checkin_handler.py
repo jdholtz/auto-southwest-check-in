@@ -98,10 +98,18 @@ class TestCheckInHandler:
         mocker.patch(
             "lib.checkin_handler.get_current_time", return_value=datetime(1999, 12, 31, 18, 29, 59)
         )
+        mock_refresh_session = mocker.patch.object(
+            self.handler.checkin_scheduler, "refresh_session"
+        )
+        mock_pre_warm = mocker.patch.object(
+            self.handler.checkin_scheduler, "pre_warm_connection"
+        )
 
         self.handler._wait_for_check_in(datetime(1999, 12, 31, 18, 59, 59))
 
         mock_sleep.assert_called_once_with(1800)
+        mock_refresh_session.assert_called_once()
+        mock_pre_warm.assert_called_once()
 
     @pytest.mark.filterwarnings(
         # Mocking multiprocessing.Lock causes this warning
@@ -115,6 +123,12 @@ class TestCheckInHandler:
         mock_refresh_headers = mocker.patch.object(
             self.handler.checkin_scheduler, "refresh_headers"
         )
+        mock_refresh_session = mocker.patch.object(
+            self.handler.checkin_scheduler, "refresh_session"
+        )
+        mock_pre_warm = mocker.patch.object(
+            self.handler.checkin_scheduler, "pre_warm_connection"
+        )
         mocker.patch(
             "lib.checkin_handler.get_current_time",
             side_effect=[
@@ -127,6 +141,8 @@ class TestCheckInHandler:
 
         mock_sleep.assert_has_calls([mock.call(17400), mock.call(1800)])
         mock_refresh_headers.assert_called_once()
+        mock_refresh_session.assert_called_once()
+        mock_pre_warm.assert_called_once()
 
     @pytest.mark.filterwarnings(
         # Mocking multiprocessing.Lock causes this warning
@@ -143,6 +159,12 @@ class TestCheckInHandler:
         mock_timeout_before_checkin_notification = mocker.patch.object(
             self.handler.notification_handler, "timeout_before_checkin"
         )
+        mock_refresh_session = mocker.patch.object(
+            self.handler.checkin_scheduler, "refresh_session"
+        )
+        mock_pre_warm = mocker.patch.object(
+            self.handler.checkin_scheduler, "pre_warm_connection"
+        )
         mocker.patch(
             "lib.checkin_handler.get_current_time",
             side_effect=[
@@ -154,6 +176,8 @@ class TestCheckInHandler:
         self.handler._wait_for_check_in(datetime(1999, 12, 31, 23, 49, 59))
         mock_sleep.assert_has_calls([mock.call(17400), mock.call(1800)])
         mock_timeout_before_checkin_notification.assert_called_once()
+        mock_refresh_session.assert_called_once()
+        mock_pre_warm.assert_called_once()
 
     @pytest.mark.parametrize(("weeks", "expected_sleep_calls"), [(0, 0), (1, 1), (3, 2)])
     def test_safe_sleep_sleeps_in_intervals(

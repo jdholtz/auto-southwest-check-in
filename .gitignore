@@ -13,3 +13,5 @@ venv/
 
 # From SeleniumBase
 downloaded_files/
+
+.github/copilot-instructions.md

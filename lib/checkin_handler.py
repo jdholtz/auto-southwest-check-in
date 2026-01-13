@@ -119,6 +119,11 @@ class CheckInHandler:
         logger.debug("Sleeping until check-in: %d seconds...", sleep_time)
         self._safe_sleep(sleep_time)
 
+        # Pre-warm the connection right before check-in for minimal latency
+        logger.debug("Pre-warming connection before check-in")
+        self.checkin_scheduler.refresh_session()
+        self.checkin_scheduler.pre_warm_connection()
+
     def _safe_sleep(self, total_sleep_time: float) -> None:
         """
         If the total sleep time is too long, an overflow error could occur.
@@ -200,8 +205,11 @@ class CheckInHandler:
         """
         First, initiate a POST request to get the needed check-in information. Subsequently, execute
         another POST request to submit the check in.
+
+        Uses session for connection pooling to minimize latency between the two requests.
         """
         headers = self.checkin_scheduler.headers
+        session = self.checkin_scheduler.session
         info = {
             "firstName": self.first_name,
             "lastName": self.last_name,
@@ -212,11 +220,13 @@ class CheckInHandler:
 
         logger.debug("Making first POST request to check in")
         # Don't randomly sleep during the check-in requests to have them go through more quickly
-        response = make_request("POST", site, headers, info, random_sleep=False)
+        response = make_request("POST", site, headers, info, random_sleep=False, session=session)
 
         info = response["checkInViewReservationPage"]["_links"]["checkIn"]
         site = f"mobile-air-operations{info['href']}"
 
         logger.debug("Making second POST request to check in")
-        reservation = make_request("POST", site, headers, info["body"], random_sleep=False)
+        reservation = make_request(
+            "POST", site, headers, info["body"], random_sleep=False, session=session
+        )
         return reservation

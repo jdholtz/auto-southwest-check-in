@@ -38,6 +38,51 @@ class TestCheckInScheduler:
     def _set_up_scheduler(self) -> None:
         self.scheduler = CheckInScheduler(ReservationMonitor(ReservationConfig()))
 
+    def test_session_property_creates_session_lazily(self) -> None:
+        assert self.scheduler._session is None
+        session = self.scheduler.session
+        assert session is not None
+        assert self.scheduler._session is session
+        # Subsequent access returns same session
+        assert self.scheduler.session is session
+        self.scheduler.close_session()
+
+    def test_close_session_closes_and_clears_session(self, mocker: MockerFixture) -> None:
+        # Create session first
+        session = self.scheduler.session
+        mock_close = mocker.patch.object(session, "close")
+
+        self.scheduler.close_session()
+
+        mock_close.assert_called_once()
+        assert self.scheduler._session is None
+
+    def test_refresh_session_closes_old_and_creates_new(self, mocker: MockerFixture) -> None:
+        old_session = self.scheduler.session
+        mocker.patch.object(old_session, "close")
+
+        self.scheduler.refresh_session()
+
+        assert self.scheduler._session is not None
+        assert self.scheduler._session is not old_session
+        self.scheduler.close_session()
+
+    def test_pre_warm_connection_makes_request(self, mocker: MockerFixture) -> None:
+        mock_get = mocker.patch.object(self.scheduler.session, "get")
+        self.scheduler.headers = {"test": "header"}
+
+        self.scheduler.pre_warm_connection()
+
+        mock_get.assert_called_once()
+        self.scheduler.close_session()
+
+    def test_pre_warm_connection_handles_errors_gracefully(self, mocker: MockerFixture) -> None:
+        mocker.patch.object(self.scheduler.session, "get", side_effect=Exception("Network error"))
+
+        # Should not raise
+        self.scheduler.pre_warm_connection()
+        self.scheduler.close_session()
+
     def test_process_reservations_handles_all_reservations(self, mocker: MockerFixture) -> None:
         mock_get_flights = mocker.patch.object(
             CheckInScheduler, "_get_flights", return_value=["flight"]

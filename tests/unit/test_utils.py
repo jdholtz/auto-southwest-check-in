@@ -26,6 +26,15 @@ def test_random_sleep_duration_respects_min_and_max_durations(mocker: MockerFixt
     mock_uniform.assert_called_once_with(10, 100)
 
 
+def test_create_session_returns_configured_session() -> None:
+    session = utils.create_session()
+    assert isinstance(session, requests.Session)
+    # Verify adapters are mounted
+    assert "https://" in session.adapters
+    assert "http://" in session.adapters
+    session.close()
+
+
 def test_make_request_raises_exception_on_failure(
     requests_mock: RequestMocker, mocker: MockerFixture
 ) -> None:
@@ -84,12 +93,13 @@ def test_make_request_does_not_sleep_randomly_on_failures_when_random_sleep_is_f
     requests_mock.post(utils.BASE_URL + "test", status_code=400, reason="error")
 
     with pytest.raises(RequestError):
-        utils.make_request("POST", "test", {}, {}, max_attempts=2, random_sleep=False)
+        utils.make_request("POST", "test", {}, {}, max_attempts=3, random_sleep=False)
 
-    assert mock_sleep.call_count == 2
+    assert mock_sleep.call_count == 3
     mock_rand_sleep_duration.assert_not_called()
 
-    expected_calls = [call(0.5), call(0.5)]
+    # Exponential backoff: 0.05, 0.1, 0.2 seconds
+    expected_calls = [call(0.05), call(0.1), call(0.2)]
     mock_sleep.assert_has_calls(expected_calls)
 
 
@@ -128,6 +138,40 @@ def test_do_request_correctly_gets_data(requests_mock: RequestMocker) -> None:
     assert last_request.headers["header"] == "test"
 
 
+def test_do_request_uses_session_when_provided(requests_mock: RequestMocker) -> None:
+    url = utils.BASE_URL + "test"
+    requests_mock.post(url, status_code=200, text='{"success": "session"}')
+
+    session = utils.create_session()
+    response = utils._do_request("POST", url, {"header": "test"}, {"test": "json"}, session=session)
+
+    assert response.json() == {"success": "session"}
+    session.close()
+
+
+def test_do_request_uses_session_for_get_when_provided(requests_mock: RequestMocker) -> None:
+    url = utils.BASE_URL + "test"
+    requests_mock.get(url, status_code=200, text='{"success": "session_get"}')
+
+    session = utils.create_session()
+    response = utils._do_request("GET", url, {"header": "test"}, {"test": "params"}, session=session)
+
+    assert response.json() == {"success": "session_get"}
+    session.close()
+
+
+def test_make_request_uses_session_when_provided(
+    requests_mock: RequestMocker, mocker: MockerFixture
+) -> None:
+    requests_mock.post(utils.BASE_URL + "test", status_code=200, text='{"success": true}')
+
+    session = utils.create_session()
+    result = utils.make_request("POST", "test", {}, {}, session=session)
+
+    assert result == {"success": True}
+    session.close()
+
+
 @pytest.mark.parametrize(
     ("code", "error"),
     [
@@ -164,7 +208,20 @@ def test_get_current_time_returns_a_datetime_from_backup_ntp_server(mocker: Mock
     assert utils.get_current_time() == datetime(1999, 12, 31, 23, 59, 59, tzinfo=timezone.utc)
 
 
-@pytest.mark.parametrize("exception", [socket.gaierror, ntplib.NTPException])
+def test_get_current_time_returns_a_datetime_from_tertiary_ntp_server(
+    mocker: MockerFixture,
+) -> None:
+    ntp_stats = ntplib.NTPStats()
+    ntp_stats.tx_timestamp = 3155673599
+    mocker.patch(
+        "ntplib.NTPClient.request",
+        side_effect=[ntplib.NTPException, socket.gaierror, ntp_stats],
+    )
+
+    assert utils.get_current_time() == datetime(1999, 12, 31, 23, 59, 59, tzinfo=timezone.utc)
+
+
+@pytest.mark.parametrize("exception", [socket.gaierror, ntplib.NTPException, OSError])
 def test_get_current_time_returns_local_datetime_on_failed_requests(
     mocker: MockerFixture, exception: Exception
 ) -> None:
