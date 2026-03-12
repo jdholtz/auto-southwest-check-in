@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING, Any, Callable
 
 from .log import get_logger
 from .utils import CheckFaresOption, FlightChangeError, make_request, time
+from .webdriver import WebDriver
 
 if TYPE_CHECKING:
     from .flight import Flight
@@ -21,7 +23,8 @@ class FareChecker:
         self.reservation_monitor = reservation_monitor
         self.headers = reservation_monitor.checkin_scheduler.headers
         self.filter = get_fare_check_filter(self.reservation_monitor.config.check_fares)
-        self._cancel_refund_cache = {}
+        self._original_fare_cache = {}
+        self._points_transactions_cache = {}
 
     def check_flight_price(self, flight: Flight) -> None:
         """
@@ -91,10 +94,6 @@ class FareChecker:
 
     def _get_change_flight_page(self, reservation_info: JSON) -> tuple[JSON, list[JSON]]:
         fare_type_bounds = reservation_info["bounds"]
-
-        # Ensure the flight does not have a companion pass connected to it
-        # as companion passes are not supported.
-        self._check_for_companion(reservation_info)
 
         # Next, get the search information needed to change the flight
         logger.debug("Retrieving search information for the current flight")
@@ -314,19 +313,104 @@ class FareChecker:
             return None
 
         cache_key = (flight.confirmation_number, flight.flight_number, currency_code)
-        if cache_key in self._cancel_refund_cache:
-            return self._cancel_refund_cache[cache_key]
+        if cache_key in self._original_fare_cache:
+            return self._original_fare_cache[cache_key]
 
-        try:
-            original_fare = self._get_cancel_refund_total(flight, currency_code)
-        except (FlightChangeError, KeyError, ValueError) as err:
-            logger.debug(
-                "Could not retrieve WGA refund quote for %s: %s", flight.flight_number, err
-            )
-            original_fare = None
+        original_fare = None
+        if currency_code == "PTS":
+            try:
+                original_fare = self._get_original_wga_points_fare(flight)
+            except (FlightChangeError, KeyError, ValueError, RuntimeError) as err:
+                logger.debug(
+                    "Could not retrieve WGA points activity for %s: %s", flight.flight_number, err
+                )
+        else:
+            try:
+                original_fare = self._get_cancel_refund_total(flight, currency_code)
+            except (FlightChangeError, KeyError, ValueError) as err:
+                logger.debug(
+                    "Could not retrieve WGA refund quote for %s: %s", flight.flight_number, err
+                )
 
-        self._cancel_refund_cache[cache_key] = original_fare
+        self._original_fare_cache[cache_key] = original_fare
         return original_fare
+
+    def _get_original_wga_points_fare(self, flight: Flight) -> JSON | None:
+        transactions = self._get_points_transactions()
+        if transactions is None:
+            return None
+
+        matching_transaction = self._match_points_redemption_transaction(flight, transactions)
+        if matching_transaction is None:
+            return None
+
+        points_detail = matching_transaction["points_detail"]["transaction_points"]
+        return {"amount": int(points_detail["amount"].replace(",", "")), "currencyCode": "PTS"}
+
+    def _get_points_transactions(self) -> list[JSON] | None:
+        if not hasattr(self.reservation_monitor, "username") or not hasattr(
+            self.reservation_monitor, "password"
+        ):
+            return None
+
+        today = datetime.now(timezone.utc).date()
+        start_at = (today - timedelta(days=365)).isoformat()
+        end_at = today.isoformat()
+        cache_key = (start_at, end_at)
+        if cache_key not in self._points_transactions_cache:
+            webdriver = WebDriver(self.reservation_monitor.checkin_scheduler)
+            transactions = webdriver.get_points_transactions(
+                self.reservation_monitor, start_at, end_at
+            )
+            self._points_transactions_cache[cache_key] = transactions.get("data", [])
+
+        return self._points_transactions_cache[cache_key]
+
+    def _match_points_redemption_transaction(
+        self, flight: Flight, transactions: list[JSON]
+    ) -> JSON | None:
+        bound = self._get_matching_bound_info(flight)
+        if bound is None:
+            return None
+
+        departure_date = bound["departureDate"]
+        origin_code = bound["departureAirport"]["code"]
+        destination_code = bound["arrivalAirport"]["code"]
+
+        matching_transactions = []
+        for transaction in transactions:
+            flight_details = transaction.get("flight_details") or {}
+            points_detail = transaction.get("points_detail", {}).get("transaction_points", {})
+            if (
+                transaction.get("product_category") == "FLIGHT"
+                and transaction.get("transaction_type") == "REDEEM"
+                and points_detail.get("currency") == "PTS"
+                and flight_details.get("record_locator") == flight.confirmation_number
+                and flight_details.get("origination_airport_code") == origin_code
+                and flight_details.get("destination_airport_code") == destination_code
+                and (flight_details.get("depart_at") or "").startswith(departure_date)
+            ):
+                matching_transactions.append(transaction)
+
+        if not matching_transactions:
+            return None
+
+        return max(matching_transactions, key=lambda transaction: transaction.get("transaction_at", ""))
+
+    def _get_matching_bound_info(self, flight: Flight) -> JSON | None:
+        for bound in flight.reservation_info["bounds"]:
+            if self._get_bound_flight_number(bound) == flight.flight_number:
+                return bound
+
+        return None
+
+    def _get_bound_flight_number(self, bound: JSON) -> str:
+        flight_number = ""
+        for flight in bound["flights"]:
+            flight_number += flight["number"].removeprefix("WN")
+            flight_number += "\u200b/\u200b"
+
+        return flight_number.rstrip("/\u200b")
 
     def _get_wga_currency(self, flight: Flight, flights: list[JSON]) -> str | None:
         for new_flight in flights:

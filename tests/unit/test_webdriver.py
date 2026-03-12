@@ -9,6 +9,7 @@ from lib.utils import DriverTimeoutError, LoginError
 from lib.webdriver import (
     INVALID_CREDENTIALS_CODE,
     MOBILE_HEADERS_URL,
+    RAPID_REWARDS_URL,
     SUCCESSFUL_LOGIN_URL,
     TRIPS_URL,
     WebDriver,
@@ -77,6 +78,30 @@ class TestWebDriver:
         mock_chrome.add_cdp_listener.assert_called_once()
         # Ensure the driver navigates to the normal website to fetch reservations
         mock_chrome.get.assert_called_once()
+        mock_chrome.quit.assert_called_once()
+
+    def test_get_points_transactions_fetches_activity(
+        self, mocker: MockerFixture, mock_chrome: mock.Mock, mock_account_monitor: mock.Mock
+    ) -> None:
+        mocker.patch("time.sleep")
+        mocker.patch.object(WebDriver, "_get_driver", return_value=mock_chrome)
+        mock_wait_for_attribute = mocker.patch.object(self.driver, "_wait_for_attribute")
+        mock_wait_for_login = mocker.patch.object(WebDriver, "_wait_for_login")
+        mock_fetch_points_transactions = mocker.patch.object(
+            WebDriver, "_fetch_points_transactions", return_value={"data": ["txn"]}
+        )
+
+        transactions = self.driver.get_points_transactions(
+            mock_account_monitor, "2025-03-12", "2026-03-12"
+        )
+
+        assert transactions == {"data": ["txn"]}
+        mock_wait_for_attribute.assert_called_once()
+        mock_wait_for_login.assert_called_once()
+        mock_fetch_points_transactions.assert_called_once_with(
+            mock_chrome, "2025-03-12", "2026-03-12"
+        )
+        mock_chrome.get.assert_called_once_with(RAPID_REWARDS_URL)
         mock_chrome.quit.assert_called_once()
 
     def test_get_driver_returns_a_webdriver_with_one_request(self, mock_chrome: mock.Mock) -> None:
@@ -237,6 +262,18 @@ class TestWebDriver:
         mocker.patch.object(WebDriver, "_get_response_body", return_value=trips_response)
 
         assert self.driver._fetch_reservations(None) == ["flight1", "flight2"]
+
+    def test_fetch_points_transactions_returns_json(self, mock_chrome: mock.Mock) -> None:
+        mock_chrome.execute_async_script.return_value = {
+            "status": 200,
+            "body": '{"data": [{"id": "transaction"}]}',
+        }
+
+        transactions = self.driver._fetch_points_transactions(
+            mock_chrome, "2025-03-12", "2026-03-12"
+        )
+
+        assert transactions == {"data": [{"id": "transaction"}]}
 
     def test_get_response_body_loads_body_from_response(self, mock_chrome: mock.Mock) -> None:
         mock_chrome.execute_cdp_cmd.return_value = {"body": '{"response": "body"}'}
