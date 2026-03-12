@@ -14,9 +14,12 @@ from lib.fare_checker import BOOKING_URL, FareChecker
 from lib.flight import Flight
 from lib.reservation_monitor import ReservationMonitor
 from lib.utils import BASE_URL, CheckFaresOption, FlightChangeError
+from lib.webdriver import WebDriver
 
 CHANGE_FLIGHT_URL = BASE_URL + BOOKING_URL + "change_page"
 MATCHING_FLIGHTS_URL = BASE_URL + BOOKING_URL + "matching_flights"
+CANCEL_BOUND_URL = BASE_URL + BOOKING_URL + "cancel_bound"
+REFUND_QUOTE_URL = BASE_URL + BOOKING_URL + "refund_quote"
 
 CHANGE_FLIGHT_PAGE = {
     "changeFlightPage": {
@@ -104,7 +107,7 @@ def monitor() -> ReservationMonitor:
 @pytest.fixture
 def flight() -> Flight:
     flight_info = {
-        "arrivalAirport": {"name": "test_inbound", "country": None},
+        "arrivalAirport": {"code": "SYD", "name": "test_inbound", "country": None},
         "departureAirport": {"code": "LAX", "name": "test_outbound"},
         "departureDate": "2021-12-06",
         "departureTime": "14:40",
@@ -220,13 +223,57 @@ def test_no_fare_drop(
     monitor.notification_handler.lower_fare.assert_not_called()
 
 
-def test_flight_error_with_companion(monitor: ReservationMonitor, flight: Flight) -> None:
+def test_flight_error_with_companion(
+    requests_mock: RequestMocker, monitor: ReservationMonitor, flight: Flight
+) -> None:
     message = {"body": "You must first cancel the associated companion reservation."}
     flight.reservation_info["greyBoxMessage"] = message
+    flight.reservation_info["bounds"][0]["fareProductDetails"] = {"fareProductId": "WGARED"}
+    monitor.username = "test-user"
+    monitor.password = "test-password"
 
-    fare_checker = FareChecker(monitor)
-    with pytest.raises(FlightChangeError):
+    mock_points_transactions = mock.Mock(
+        return_value={
+            "data": [
+                {
+                    "product_category": "FLIGHT",
+                    "transaction_type": "REDEEM",
+                    "transaction_at": "2026-01-01T12:00:00Z",
+                    "flight_details": {
+                        "record_locator": "TEST",
+                        "origination_airport_code": "LAX",
+                        "destination_airport_code": "SYD",
+                        "depart_at": "2021-12-06T14:40:00",
+                    },
+                    "points_detail": {
+                        "transaction_points": {"amount": "20,000", "currency": "PTS"}
+                    },
+                }
+            ]
+        }
+    )
+
+    flights = copy.deepcopy(FLIGHT_CARDS)
+    flights[2]["fares"] = [
+        {"_meta": {"fareProductId": "WGARED"}, "reasonIfUnavailable": "Unavailable"},
+        {
+            "_meta": {"fareProductId": "PLURED"},
+            "price": {"amount": "20,000", "currencyCode": "PTS"},
+            "priceDifference": {"sign": "+", "amount": "0", "currencyCode": "PTS"},
+        },
+    ]
+
+    matching_flights = copy.deepcopy(MATCHING_FLIGHTS)
+    matching_flights["changeShoppingPage"]["flights"]["outboundPage"]["cards"] = flights
+
+    requests_mock.get(CHANGE_FLIGHT_URL, [{"json": CHANGE_FLIGHT_PAGE, "status_code": 200}])
+    requests_mock.post(MATCHING_FLIGHTS_URL, [{"json": matching_flights, "status_code": 200}])
+    with mock.patch.object(WebDriver, "get_points_transactions", mock_points_transactions):
+        fare_checker = FareChecker(monitor)
         fare_checker.check_flight_price(flight)
+
+    monitor.notification_handler.lower_fare.assert_not_called()
+    mock_points_transactions.assert_called_once()
 
 
 def test_flight_error_when_no_change_link_exists(
@@ -237,6 +284,63 @@ def test_flight_error_when_no_change_link_exists(
     fare_checker = FareChecker(monitor)
     with pytest.raises(FlightChangeError):
         fare_checker.check_flight_price(flight)
+
+
+def test_basic_fare_drop_uses_upgrade_prices_when_basic_is_unavailable(
+    requests_mock: RequestMocker, monitor: ReservationMonitor, flight: Flight
+) -> None:
+    flights = copy.deepcopy(FLIGHT_CARDS)
+    flights[2]["fares"] = [
+        {
+            "_meta": {"fareProductId": "WGA"},
+            "reasonIfUnavailable": "Unavailable",
+        },
+        {
+            "_meta": {"fareProductId": "PLU"},
+            "price": {"amount": "60", "currencyCode": "USD"},
+            "priceDifference": {"sign": "+", "amount": "19", "currencyCode": "USD"},
+        },
+        {
+            "_meta": {"fareProductId": "ANY"},
+            "price": {"amount": "130", "currencyCode": "USD"},
+            "priceDifference": {"sign": "+", "amount": "51", "currencyCode": "USD"},
+        },
+    ]
+
+    matching_flights = copy.deepcopy(MATCHING_FLIGHTS)
+    matching_flights["changeShoppingPage"]["flights"]["outboundPage"]["cards"] = flights
+    flight.reservation_info["_links"]["cancelBound"] = {
+        "href": "cancel_bound",
+        "method": "GET",
+        "query": {},
+    }
+    cancel_bound_page = {
+        "viewForCancelBoundPage": {
+            "_links": {
+                "refundQuote": {
+                    "href": "refund_quote",
+                    "method": "POST",
+                    "body": {},
+                }
+            }
+        }
+    }
+    refund_quote_page = {
+        "cancelRefundQuotePage": {
+            "cancelBounds": [{"flight": "100\u200b/\u200b101"}],
+            "tripTotals": [{"amount": "79", "currencyCode": "USD"}],
+        }
+    }
+
+    requests_mock.get(CHANGE_FLIGHT_URL, [{"json": CHANGE_FLIGHT_PAGE, "status_code": 200}])
+    requests_mock.get(CANCEL_BOUND_URL, [{"json": cancel_bound_page, "status_code": 200}])
+    requests_mock.post(MATCHING_FLIGHTS_URL, [{"json": matching_flights, "status_code": 200}])
+    requests_mock.post(REFUND_QUOTE_URL, [{"json": refund_quote_page, "status_code": 200}])
+
+    fare_checker = FareChecker(monitor)
+    fare_checker.check_flight_price(flight)
+
+    monitor.notification_handler.lower_fare.assert_called_once_with(flight, "-38 USD")
 
 
 @pytest.mark.parametrize(

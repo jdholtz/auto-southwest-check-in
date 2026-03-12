@@ -23,9 +23,10 @@ def mock_sleep(mocker: MockerFixture) -> None:
 def test_flight(mocker: MockerFixture) -> Flight:
     mocker.patch.object(Flight, "_set_flight_time")
     flight_info = {
-        "departureAirport": {"name": None},
-        "arrivalAirport": {"name": None, "country": None},
-        "departureTime": None,
+        "departureAirport": {"code": "LAX", "name": None},
+        "arrivalAirport": {"code": "DAL", "name": None, "country": None},
+        "departureDate": "2026-03-27",
+        "departureTime": "18:05",
         "flights": [{"number": "WN100"}],
     }
 
@@ -78,7 +79,27 @@ class TestFareChecker:
         price = self.checker._get_flight_price(test_flight)
 
         assert price == {"amount": -300, "currencyCode": "PTS"}
-        mock_get_matching_fare.assert_called_once_with(["fare_one", "fare_two"], "test_fare")
+        mock_get_matching_fare.assert_called_once_with(["fare_one", "fare_two"], "test_fare", None)
+
+    def test_get_flight_price_retrieves_original_fare_for_wga_fares(
+        self, mocker: MockerFixture, test_flight: Flight
+    ) -> None:
+        flights = [{"flightNumbers": "100", "fares": ["fare_one"]}]
+        mocker.patch.object(FareChecker, "_get_matching_flights", return_value=(flights, "WGARED"))
+        mock_get_original_wga_fare = mocker.patch.object(
+            FareChecker, "_get_original_wga_fare", return_value={"amount": 21000, "currencyCode": "PTS"}
+        )
+        mock_get_matching_fare = mocker.patch.object(
+            FareChecker, "_get_matching_fare", return_value={"amount": 4000, "currencyCode": "PTS"}
+        )
+
+        price = self.checker._get_flight_price(test_flight)
+
+        assert price == {"amount": 4000, "currencyCode": "PTS"}
+        mock_get_original_wga_fare.assert_called_once_with(test_flight, flights)
+        mock_get_matching_fare.assert_called_once_with(
+            ["fare_one"], "WGARED", {"amount": 21000, "currencyCode": "PTS"}
+        )
 
     @pytest.mark.parametrize("bound", ["outbound", "inbound"])
     def test_get_matching_flights_retrieves_correct_bound_page(
@@ -140,11 +161,9 @@ class TestFareChecker:
         }
         flight_page = {"changeFlightPage": "test_page"}
         mock_make_request = mocker.patch("lib.fare_checker.make_request", return_value=flight_page)
-        mock_check_for_companion = mocker.patch.object(FareChecker, "_check_for_companion")
 
         change_flight_page, fare_type_bounds = self.checker._get_change_flight_page(res_info)
 
-        mock_check_for_companion.assert_called_once()
         assert change_flight_page == "test_page"
         assert fare_type_bounds == ["bound_one", "bound_two"]
 
@@ -175,6 +194,76 @@ class TestFareChecker:
             self.checker._get_change_flight_page(reservation_info)
 
         assert "cannot be changed" in str(err.value).lower()
+
+    def test_get_cancel_bound_page_retrieves_cancel_bound_page(
+        self, mocker: MockerFixture
+    ) -> None:
+        reservation_info = {
+            "greyBoxMessage": None,
+            "_links": {"cancelBound": {"href": "cancel_page", "method": "GET", "query": "query"}},
+        }
+        response = {"viewForCancelBoundPage": "test_page"}
+        mock_make_request = mocker.patch("lib.fare_checker.make_request", return_value=response)
+        mock_check_for_companion = mocker.patch.object(FareChecker, "_check_for_companion")
+
+        cancel_page = self.checker._get_cancel_bound_page(reservation_info)
+
+        mock_check_for_companion.assert_called_once_with(reservation_info)
+        assert cancel_page == "test_page"
+
+        call_args = mock_make_request.call_args[0]
+        assert call_args[1] == fare_checker.BOOKING_URL + "cancel_page"
+        assert call_args[3] == "query"
+
+    def test_get_cancel_bound_page_raises_exception_when_flight_cannot_be_cancelled(self) -> None:
+        reservation_info = {"greyBoxMessage": None, "_links": {"cancelBound": None}}
+
+        with pytest.raises(FlightChangeError) as err:
+            self.checker._get_cancel_bound_page(reservation_info)
+
+        assert "cannot be cancelled" in str(err.value).lower()
+
+    def test_get_cancel_refund_quote_page_retrieves_quote_page(
+        self, mocker: MockerFixture
+    ) -> None:
+        mocker.patch.object(
+            FareChecker,
+            "_get_cancel_bound_page",
+            return_value={"_links": {"refundQuote": {"href": "refund_quote", "method": "POST"}}},
+        )
+        mock_make_request = mocker.patch(
+            "lib.fare_checker.make_request", return_value={"cancelRefundQuotePage": "quote_page"}
+        )
+
+        quote_page = self.checker._get_cancel_refund_quote_page({"_links": {"cancelBound": "test"}})
+
+        assert quote_page == "quote_page"
+        call_args = mock_make_request.call_args[0]
+        assert call_args[1] == fare_checker.BOOKING_URL + "refund_quote"
+
+    def test_get_cancel_refund_total_returns_matching_trip_total(
+        self, mocker: MockerFixture, test_flight: Flight
+    ) -> None:
+        refund_quote_page = {
+            "cancelBounds": [{"flight": "100"}],
+            "tripTotals": [
+                {"amount": "21,000", "currencyCode": "PTS"},
+                {"amount": "5.60", "currencyCode": "USD"},
+            ],
+        }
+        mocker.patch.object(FareChecker, "_get_cancel_refund_quote_page", return_value=refund_quote_page)
+
+        amount = self.checker._get_cancel_refund_total(test_flight, "PTS")
+
+        assert amount == {"amount": 21000, "currencyCode": "PTS"}
+
+    def test_validate_cancel_refund_quote_raises_on_ambiguous_bounds(
+        self, test_flight: Flight
+    ) -> None:
+        refund_quote_page = {"cancelBounds": [{"flight": "100"}, {"flight": "200"}]}
+
+        with pytest.raises(FlightChangeError):
+            self.checker._validate_cancel_refund_quote(refund_quote_page, test_flight)
 
     def test_get_search_query_returns_the_correct_query_for_one_way(
         self, test_flight: Flight
@@ -269,6 +358,90 @@ class TestFareChecker:
         # An exception will be thrown if the test does not pass
         self.checker._check_for_companion(reservation)
 
+    def test_get_original_wga_fare_uses_points_activity_for_points_bookings(
+        self, mocker: MockerFixture, test_flight: Flight
+    ) -> None:
+        mocker.patch.object(FareChecker, "_get_wga_currency", return_value="PTS")
+        mock_get_points_fare = mocker.patch.object(
+            FareChecker,
+            "_get_original_wga_points_fare",
+            return_value={"amount": 21000, "currencyCode": "PTS"},
+        )
+        mock_get_cancel_refund_total = mocker.patch.object(FareChecker, "_get_cancel_refund_total")
+
+        original_fare = self.checker._get_original_wga_fare(test_flight, [])
+
+        assert original_fare == {"amount": 21000, "currencyCode": "PTS"}
+        mock_get_points_fare.assert_called_once_with(test_flight)
+        mock_get_cancel_refund_total.assert_not_called()
+
+    def test_get_original_wga_fare_uses_cancel_flow_for_cash_bookings(
+        self, mocker: MockerFixture, test_flight: Flight
+    ) -> None:
+        mocker.patch.object(FareChecker, "_get_wga_currency", return_value="USD")
+        mock_get_points_fare = mocker.patch.object(FareChecker, "_get_original_wga_points_fare")
+        mock_get_cancel_refund_total = mocker.patch.object(
+            FareChecker, "_get_cancel_refund_total", return_value={"amount": 79, "currencyCode": "USD"}
+        )
+
+        original_fare = self.checker._get_original_wga_fare(test_flight, [])
+
+        assert original_fare == {"amount": 79, "currencyCode": "USD"}
+        mock_get_points_fare.assert_not_called()
+        mock_get_cancel_refund_total.assert_called_once_with(test_flight, "USD")
+
+    def test_get_original_wga_points_fare_returns_matching_transaction(
+        self, mocker: MockerFixture, test_flight: Flight
+    ) -> None:
+        transaction = {
+            "points_detail": {"transaction_points": {"amount": "21,000", "currency": "PTS"}}
+        }
+        mocker.patch.object(FareChecker, "_get_points_transactions", return_value=[transaction])
+        mocker.patch.object(
+            FareChecker, "_match_points_redemption_transaction", return_value=transaction
+        )
+
+        original_fare = self.checker._get_original_wga_points_fare(test_flight)
+
+        assert original_fare == {"amount": 21000, "currencyCode": "PTS"}
+
+    def test_match_points_redemption_transaction_returns_latest_match(
+        self, test_flight: Flight
+    ) -> None:
+        transactions = [
+            {
+                "product_category": "FLIGHT",
+                "transaction_type": "REDEEM",
+                "transaction_at": "2026-01-01T12:00:00Z",
+                "flight_details": {
+                    "record_locator": "",
+                    "origination_airport_code": "LAX",
+                    "destination_airport_code": "DAL",
+                    "depart_at": "2026-03-27T18:05:00",
+                },
+                "points_detail": {"transaction_points": {"currency": "PTS", "amount": "20000"}},
+            },
+            {
+                "product_category": "FLIGHT",
+                "transaction_type": "REDEEM",
+                "transaction_at": "2026-01-02T12:00:00Z",
+                "flight_details": {
+                    "record_locator": "",
+                    "origination_airport_code": "LAX",
+                    "destination_airport_code": "DAL",
+                    "depart_at": "2026-03-27T18:05:00",
+                },
+                "points_detail": {"transaction_points": {"currency": "PTS", "amount": "21000"}},
+            },
+        ]
+
+        match = self.checker._match_points_redemption_transaction(test_flight, transactions)
+
+        assert match == transactions[1]
+
+    def test_get_points_transactions_returns_none_without_account_credentials(self) -> None:
+        assert self.checker._get_points_transactions() is None
+
     def test_get_lowest_fare_returns_lowest_matching_fare(
         self, mocker: MockerFixture, test_flight: Flight
     ) -> None:
@@ -326,6 +499,74 @@ class TestFareChecker:
         ]
         fare_price = self.checker._get_matching_fare(fares, "right_fare")
         assert fare_price == {"amount": -3000, "currencyCode": "PTS"}
+
+    def test_get_matching_fare_derives_basic_fare_difference_when_basic_is_unavailable(
+        self,
+    ) -> None:
+        fares = [
+            {
+                "_meta": {"fareProductId": "WGA"},
+                "reasonIfUnavailable": "Unavailable",
+            },
+            {
+                "_meta": {"fareProductId": "PLU"},
+                "price": {"amount": "179", "currencyCode": "USD"},
+                "priceDifference": {"amount": "100", "sign": "+", "currencyCode": "USD"},
+            },
+            {
+                "_meta": {"fareProductId": "ANY"},
+                "price": {"amount": "249", "currencyCode": "USD"},
+                "priceDifference": {"amount": "170", "sign": "+", "currencyCode": "USD"},
+            },
+        ]
+
+        fare_price = self.checker._get_matching_fare(
+            fares, "WGA", {"amount": 79, "currencyCode": "USD"}
+        )
+
+        assert fare_price == {"amount": 0, "currencyCode": "USD"}
+
+    def test_get_matching_fare_derives_red_basic_fare_difference_when_basic_is_unavailable(
+        self,
+    ) -> None:
+        fares = [
+            {
+                "_meta": {"fareProductId": "PLURED"},
+                "price": {"amount": "28,000", "currencyCode": "PTS"},
+                "priceDifference": {"amount": "7,000", "sign": "+", "currencyCode": "PTS"},
+            },
+            {
+                "_meta": {"fareProductId": "ANYRED"},
+                "price": {"amount": "34,500", "currencyCode": "PTS"},
+                "priceDifference": {"amount": "13,500", "sign": "+", "currencyCode": "PTS"},
+            },
+        ]
+
+        fare_price = self.checker._get_matching_fare(
+            fares, "WGARED", {"amount": 21000, "currencyCode": "PTS"}
+        )
+
+        assert fare_price == {"amount": 0, "currencyCode": "PTS"}
+
+    def test_get_matching_fare_falls_back_to_old_basic_fare_derivation_without_original_fare(
+        self,
+    ) -> None:
+        fares = [
+            {
+                "_meta": {"fareProductId": "PLURED"},
+                "price": {"amount": "28,000", "currencyCode": "PTS"},
+                "priceDifference": {"amount": "7,000", "sign": "+", "currencyCode": "PTS"},
+            },
+            {
+                "_meta": {"fareProductId": "ANYRED"},
+                "price": {"amount": "34,500", "currencyCode": "PTS"},
+                "priceDifference": {"amount": "13,500", "sign": "+", "currencyCode": "PTS"},
+            },
+        ]
+
+        fare_price = self.checker._get_matching_fare(fares, "WGARED")
+
+        assert fare_price == {"amount": 0, "currencyCode": "PTS"}
 
     @pytest.mark.parametrize("fares", [None, [], [{"_meta": {"fareProductId": "right_fare"}}]])
     def test_get_matching_fare_returns_nothing_when_price_is_not_available(

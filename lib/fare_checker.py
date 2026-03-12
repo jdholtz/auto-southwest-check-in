@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING, Any, Callable
 
 from .log import get_logger
 from .utils import CheckFaresOption, FlightChangeError, make_request, time
+from .webdriver import WebDriver
 
 if TYPE_CHECKING:
     from .flight import Flight
@@ -21,6 +23,8 @@ class FareChecker:
         self.reservation_monitor = reservation_monitor
         self.headers = reservation_monitor.checkin_scheduler.headers
         self.filter = get_fare_check_filter(self.reservation_monitor.config.check_fares)
+        self._original_fare_cache = {}
+        self._points_transactions_cache = {}
 
     def check_flight_price(self, flight: Flight) -> None:
         """
@@ -46,7 +50,11 @@ class FareChecker:
         flights, fare_type = self._get_matching_flights(flight)
         logger.debug("Found %d matching flights", len(flights))
 
-        lowest_fare = self._get_lowest_fare(flight, flights, fare_type)
+        original_fare = None
+        if fare_type.startswith("WGA"):
+            original_fare = self._get_original_wga_fare(flight, flights)
+
+        lowest_fare = self._get_lowest_fare(flight, flights, fare_type, original_fare)
         return lowest_fare
 
     def _get_matching_flights(self, flight: Flight) -> tuple[list[JSON], str]:
@@ -86,10 +94,6 @@ class FareChecker:
 
     def _get_change_flight_page(self, reservation_info: JSON) -> tuple[JSON, list[JSON]]:
         fare_type_bounds = reservation_info["bounds"]
-
-        # Ensure the flight does not have a companion pass connected to it
-        # as companion passes are not supported.
-        self._check_for_companion(reservation_info)
 
         # Next, get the search information needed to change the flight
         logger.debug("Retrieving search information for the current flight")
@@ -139,7 +143,13 @@ class FareChecker:
         if grey_box_message and "companion" in (grey_box_message.get("body") or ""):
             raise FlightChangeError("Fare check is not supported with companion passes")
 
-    def _get_lowest_fare(self, flight: Flight, flights: list[JSON], fare_type: str) -> JSON:
+    def _get_lowest_fare(
+        self,
+        flight: Flight,
+        flights: list[JSON],
+        fare_type: str,
+        original_fare: JSON | None = None,
+    ) -> JSON:
         """
         Get the lowest fare for the queried flights based on the filter being used. If no fare is
         available for the specific fare type, a 0 USD difference will be returned.
@@ -149,7 +159,7 @@ class FareChecker:
         for new_flight in flights:
             # Only compare flight fares that match the current filter
             if self.filter(flight, new_flight):
-                fare = self._get_matching_fare(new_flight["fares"], fare_type)
+                fare = self._get_matching_fare(new_flight["fares"], fare_type, original_fare)
                 # Check if this fare is the lowest encountered so far
                 if not lowest_fare or (fare and fare["amount"] < lowest_fare["amount"]):
                     lowest_fare = fare
@@ -162,7 +172,9 @@ class FareChecker:
 
         return lowest_fare
 
-    def _get_matching_fare(self, fares: list[JSON], fare_type: str) -> JSON | None:
+    def _get_matching_fare(
+        self, fares: list[JSON], fare_type: str, original_fare: JSON | None = None
+    ) -> JSON | None:
         """
         Get the fare that matches the fare type. If a fare exists, the amount will be returned, as
         an integer, and the currency code (USD or points). If no fare exists, nothing will be
@@ -174,15 +186,308 @@ class FareChecker:
         for fare in fares:
             if fare["_meta"]["fareProductId"] == fare_type:
                 if "priceDifference" in fare:
-                    flight_price = fare["priceDifference"]
-                    # Format the amount correctly
-                    sign = flight_price.get("sign", "")
-                    parsed_amount = int(sign + flight_price["amount"].replace(",", ""))
-                    return {"amount": parsed_amount, "currencyCode": flight_price["currencyCode"]}
+                    return self._parse_amount(fare["priceDifference"])
 
                 break
 
+        if fare_type.startswith("WGA"):
+            return self._get_basic_fare_difference(fares, original_fare)
+
         return None
+
+    def _get_basic_fare_difference(
+        self, fares: list[JSON], original_fare: JSON | None = None
+    ) -> JSON | None:
+        """
+        Basic fares can be unavailable on the change page even when the flight can still be
+        cancelled and rebooked more cheaply. If the originally paid fare is available from the
+        cancel flow, derive the current Basic fare using the available upgrade fares:
+
+            current basic fare = current upgrade fare - displayed price difference
+
+        Otherwise, derive the originally paid fare from an available upgrade fare using:
+
+            paid fare = current fare price - displayed price difference
+
+        Then compare the cheapest current Basic fare against the originally paid fare.
+        """
+        if original_fare is None:
+            original_fare = self._derive_original_basic_fare(fares)
+
+        if original_fare is None:
+            return None
+
+        lowest_current_basic_fare = self._get_lowest_current_basic_fare(
+            fares, original_fare["currencyCode"]
+        )
+        if lowest_current_basic_fare is None:
+            return None
+
+        return {
+            "amount": lowest_current_basic_fare["amount"] - original_fare["amount"],
+            "currencyCode": lowest_current_basic_fare["currencyCode"],
+        }
+
+    def _derive_original_basic_fare(self, fares: list[JSON]) -> JSON | None:
+        original_basic_fare = None
+        for fare in fares:
+            current_price = self._get_fare_price(fare)
+            price_difference = fare.get("priceDifference")
+
+            if current_price is None or price_difference is None:
+                continue
+
+            parsed_current_price = self._parse_amount(current_price)
+            parsed_difference = self._parse_amount(price_difference)
+            if parsed_current_price["currencyCode"] != parsed_difference["currencyCode"]:
+                continue
+
+            calculated_original_price = {
+                "amount": parsed_current_price["amount"] - parsed_difference["amount"],
+                "currencyCode": parsed_current_price["currencyCode"],
+            }
+
+            if original_basic_fare is None:
+                original_basic_fare = calculated_original_price
+
+        return original_basic_fare
+
+    def _get_lowest_available_fare(
+        self, fares: list[JSON], currency_code: str | None = None
+    ) -> JSON | None:
+        lowest_available_fare = None
+        for fare in fares:
+            current_price = self._get_fare_price(fare)
+            if current_price is None:
+                continue
+
+            parsed_current_price = self._parse_amount(current_price)
+            if currency_code and parsed_current_price["currencyCode"] != currency_code:
+                continue
+
+            if (
+                lowest_available_fare is None
+                or parsed_current_price["amount"] < lowest_available_fare["amount"]
+            ):
+                lowest_available_fare = parsed_current_price
+
+        return lowest_available_fare
+
+    def _get_lowest_current_basic_fare(
+        self, fares: list[JSON], currency_code: str | None = None
+    ) -> JSON | None:
+        lowest_current_basic_fare = None
+
+        for fare in fares:
+            current_price = self._get_fare_price(fare)
+            price_difference = fare.get("priceDifference")
+
+            if current_price is None or price_difference is None:
+                continue
+
+            parsed_current_price = self._parse_amount(current_price)
+            parsed_difference = self._parse_amount(price_difference)
+
+            if parsed_current_price["currencyCode"] != parsed_difference["currencyCode"]:
+                continue
+
+            if currency_code and parsed_current_price["currencyCode"] != currency_code:
+                continue
+
+            current_basic_fare = {
+                "amount": parsed_current_price["amount"] - parsed_difference["amount"],
+                "currencyCode": parsed_current_price["currencyCode"],
+            }
+
+            if (
+                lowest_current_basic_fare is None
+                or current_basic_fare["amount"] < lowest_current_basic_fare["amount"]
+            ):
+                lowest_current_basic_fare = current_basic_fare
+
+        return lowest_current_basic_fare
+
+    def _get_original_wga_fare(self, flight: Flight, flights: list[JSON]) -> JSON | None:
+        currency_code = self._get_wga_currency(flight, flights)
+        if currency_code is None:
+            return None
+
+        cache_key = (flight.confirmation_number, flight.flight_number, currency_code)
+        if cache_key in self._original_fare_cache:
+            return self._original_fare_cache[cache_key]
+
+        original_fare = None
+        if currency_code == "PTS":
+            try:
+                original_fare = self._get_original_wga_points_fare(flight)
+            except (FlightChangeError, KeyError, ValueError, RuntimeError) as err:
+                logger.debug(
+                    "Could not retrieve WGA points activity for %s: %s", flight.flight_number, err
+                )
+        else:
+            try:
+                original_fare = self._get_cancel_refund_total(flight, currency_code)
+            except (FlightChangeError, KeyError, ValueError) as err:
+                logger.debug(
+                    "Could not retrieve WGA refund quote for %s: %s", flight.flight_number, err
+                )
+
+        self._original_fare_cache[cache_key] = original_fare
+        return original_fare
+
+    def _get_original_wga_points_fare(self, flight: Flight) -> JSON | None:
+        transactions = self._get_points_transactions()
+        if transactions is None:
+            return None
+
+        matching_transaction = self._match_points_redemption_transaction(flight, transactions)
+        if matching_transaction is None:
+            return None
+
+        points_detail = matching_transaction["points_detail"]["transaction_points"]
+        return {"amount": int(points_detail["amount"].replace(",", "")), "currencyCode": "PTS"}
+
+    def _get_points_transactions(self) -> list[JSON] | None:
+        if not hasattr(self.reservation_monitor, "username") or not hasattr(
+            self.reservation_monitor, "password"
+        ):
+            return None
+
+        today = datetime.now(timezone.utc).date()
+        start_at = (today - timedelta(days=365)).isoformat()
+        end_at = today.isoformat()
+        cache_key = (start_at, end_at)
+        if cache_key not in self._points_transactions_cache:
+            webdriver = WebDriver(self.reservation_monitor.checkin_scheduler)
+            transactions = webdriver.get_points_transactions(
+                self.reservation_monitor, start_at, end_at
+            )
+            self._points_transactions_cache[cache_key] = transactions.get("data", [])
+
+        return self._points_transactions_cache[cache_key]
+
+    def _match_points_redemption_transaction(
+        self, flight: Flight, transactions: list[JSON]
+    ) -> JSON | None:
+        bound = self._get_matching_bound_info(flight)
+        if bound is None:
+            return None
+
+        departure_date = bound["departureDate"]
+        origin_code = bound["departureAirport"]["code"]
+        destination_code = bound["arrivalAirport"]["code"]
+
+        matching_transactions = []
+        for transaction in transactions:
+            flight_details = transaction.get("flight_details") or {}
+            points_detail = transaction.get("points_detail", {}).get("transaction_points", {})
+            if (
+                transaction.get("product_category") == "FLIGHT"
+                and transaction.get("transaction_type") == "REDEEM"
+                and points_detail.get("currency") == "PTS"
+                and flight_details.get("record_locator") == flight.confirmation_number
+                and flight_details.get("origination_airport_code") == origin_code
+                and flight_details.get("destination_airport_code") == destination_code
+                and (flight_details.get("depart_at") or "").startswith(departure_date)
+            ):
+                matching_transactions.append(transaction)
+
+        if not matching_transactions:
+            return None
+
+        return max(matching_transactions, key=lambda transaction: transaction.get("transaction_at", ""))
+
+    def _get_matching_bound_info(self, flight: Flight) -> JSON | None:
+        for bound in flight.reservation_info["bounds"]:
+            if self._get_bound_flight_number(bound) == flight.flight_number:
+                return bound
+
+        return None
+
+    def _get_bound_flight_number(self, bound: JSON) -> str:
+        flight_number = ""
+        for flight in bound["flights"]:
+            flight_number += flight["number"].removeprefix("WN")
+            flight_number += "\u200b/\u200b"
+
+        return flight_number.rstrip("/\u200b")
+
+    def _get_wga_currency(self, flight: Flight, flights: list[JSON]) -> str | None:
+        for new_flight in flights:
+            if self.filter(flight, new_flight):
+                lowest_fare = self._get_lowest_available_fare(new_flight.get("fares") or [])
+                if lowest_fare is not None:
+                    return lowest_fare["currencyCode"]
+
+        return None
+
+    def _get_cancel_refund_total(self, flight: Flight, currency_code: str) -> JSON | None:
+        refund_quote_page = self._get_cancel_refund_quote_page(flight.reservation_info)
+        self._validate_cancel_refund_quote(refund_quote_page, flight)
+
+        for trip_total in refund_quote_page.get("tripTotals") or []:
+            if trip_total["currencyCode"] == currency_code:
+                return self._parse_amount(trip_total)
+
+        return None
+
+    def _get_cancel_refund_quote_page(self, reservation_info: JSON) -> JSON:
+        cancel_page = self._get_cancel_bound_page(reservation_info)
+        refund_quote_link = cancel_page["_links"]["refundQuote"]
+        site = BOOKING_URL + refund_quote_link["href"]
+
+        logger.debug("Retrieving refund quote information for the current flight")
+        time.sleep(2)
+
+        response = make_request(
+            refund_quote_link["method"],
+            site,
+            self.headers,
+            refund_quote_link.get("body", {}),
+            max_attempts=7,
+        )
+        return response["cancelRefundQuotePage"]
+
+    def _get_cancel_bound_page(self, reservation_info: JSON) -> JSON:
+        self._check_for_companion(reservation_info)
+
+        cancel_link = reservation_info["_links"].get("cancelBound")
+        if cancel_link is None:
+            raise FlightChangeError("Flight cannot be cancelled online")
+
+        site = BOOKING_URL + cancel_link["href"]
+        time.sleep(2)
+
+        response = make_request(
+            cancel_link["method"],
+            site,
+            self.headers,
+            cancel_link.get("query", {}),
+            max_attempts=7,
+        )
+        return response["viewForCancelBoundPage"]
+
+    def _validate_cancel_refund_quote(self, refund_quote_page: JSON, flight: Flight) -> None:
+        cancel_bounds = refund_quote_page.get("cancelBounds") or []
+        matching_bounds = [
+            bound for bound in cancel_bounds if bound.get("flight") == flight.flight_number
+        ]
+
+        if len(matching_bounds) != 1 or len(cancel_bounds) != 1:
+            raise FlightChangeError("Could not determine the refund quote for the exact flight")
+
+    def _get_fare_price(self, fare: JSON) -> JSON | None:
+        for price_key in ["discountedPrice", "price"]:
+            price = fare.get(price_key)
+            if price is not None:
+                return price
+
+        return None
+
+    def _parse_amount(self, price_info: JSON) -> JSON:
+        sign = price_info.get("sign", "")
+        parsed_amount = int(sign + price_info["amount"].replace(",", ""))
+        return {"amount": parsed_amount, "currencyCode": price_info["currencyCode"]}
 
 
 def get_fare_check_filter(check_fares: CheckFaresOption) -> Callable[[Flight, JSON], bool]:

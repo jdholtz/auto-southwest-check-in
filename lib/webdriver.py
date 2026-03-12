@@ -22,10 +22,15 @@ if TYPE_CHECKING:
 # URLs for the normal website
 BASE_URL = "https://www.southwest.com"
 ACCOUNT_URL = BASE_URL + "/loyalty/myaccount"
+RAPID_REWARDS_URL = ACCOUNT_URL + "/rapid-rewards"
 SUCCESSFUL_LOGIN_URL = BASE_URL + "/api/security/v4/security/token"
 TRIPS_URL = (
     BASE_URL
     + "/api/loyalty-management/v2/loyalty-management/accounts/self/future-air-reservations-secure"
+)
+POINTS_TRANSACTIONS_URL = (
+    BASE_URL
+    + "/api/loyalty-management/v2/loyalty-management/accounts/self/points-transactions-secure"
 )
 
 # URLs for the mobile website
@@ -140,6 +145,33 @@ class WebDriver:
 
         self._quit_driver(driver)
         return reservations
+
+    def get_points_transactions(
+        self, account_monitor: AccountMonitor, start_at: str, end_at: str
+    ) -> JSON:
+        """
+        Logs into the account being monitored and fetches the Rapid Rewards points
+        activity for the provided date window.
+        """
+        driver = self._get_driver()
+        driver.add_cdp_listener("Network.responseReceived", self._login_listener)
+
+        logger.debug("Loading Rapid Rewards activity page (this may take a moment)")
+        driver.get(RAPID_REWARDS_URL)
+
+        logger.debug("Logging into account to get Rapid Rewards points activity")
+        self._take_debug_screenshot(driver, "pre_points_login.png")
+        time.sleep(random_sleep_duration(1, 3))
+        driver.type('input[id="username"]', account_monitor.username)
+        driver.type('input[id="password"]', f"{account_monitor.password}\n")
+
+        self._wait_for_attribute(driver, "headers_set")
+        self._wait_for_login(driver, account_monitor)
+        self._take_debug_screenshot(driver, "post_points_login.png")
+
+        transactions = self._fetch_points_transactions(driver, start_at, end_at)
+        self._quit_driver(driver)
+        return transactions
 
     def _get_driver(self) -> Driver:
         logger.debug("Starting webdriver for current session")
@@ -257,6 +289,30 @@ class WebDriver:
         trips_response = self._get_response_body(driver, self.trips_request_id)
         reservations = trips_response["data"]
         return reservations
+
+    def _fetch_points_transactions(self, driver: Driver, start_at: str, end_at: str) -> JSON:
+        logger.debug("Retrieving Rapid Rewards points activity from %s to %s", start_at, end_at)
+        response = driver.execute_async_script(
+            """
+            const [baseUrl, startAt, endAt, done] = arguments;
+            const url = `${baseUrl}?start_at=${encodeURIComponent(startAt)}&end_at=${encodeURIComponent(endAt)}`;
+
+            fetch(url, { credentials: "include" })
+              .then(async response => {
+                const text = await response.text();
+                done({ status: response.status, body: text });
+              })
+              .catch(error => done({ error: String(error) }));
+            """,
+            POINTS_TRANSACTIONS_URL,
+            start_at,
+            end_at,
+        )
+
+        if response.get("error"):
+            raise RuntimeError(f"Failed to retrieve points activity: {response['error']}")
+
+        return json.loads(response["body"])
 
     def _get_response_body(self, driver: Driver, request_id: str) -> JSON:
         response = driver.execute_cdp_cmd("Network.getResponseBody", {"requestId": request_id})
