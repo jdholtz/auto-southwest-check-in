@@ -1,0 +1,38 @@
+FROM python:3.13.7-alpine3.22 AS base
+
+# Install system dependencies: Node.js, Chromium, xvfb
+RUN apk add --update --no-cache \
+    nodejs npm \
+    chromium chromium-chromedriver \
+    xvfb xauth \
+    supervisor
+
+ENV AUTO_SOUTHWEST_CHECK_IN_DOCKER=1
+
+WORKDIR /app
+
+# --- Python dependencies ---
+COPY worker/requirements.txt /app/worker/requirements.txt
+RUN pip3 install --upgrade pip && \
+    pip3 install --no-cache-dir -r /app/worker/requirements.txt
+
+# --- Node dependencies ---
+COPY frontend/package.json frontend/package-lock.json /app/frontend/
+RUN cd /app/frontend && npm ci --production=false
+
+# --- Copy application code ---
+COPY frontend/ /app/frontend/
+COPY worker/ /app/worker/
+COPY data/ /app/data/
+COPY supervisord.conf /app/supervisord.conf
+COPY init-db.sql /app/init-db.sql
+
+# --- Build Next.js ---
+RUN cd /app/frontend && npm run build
+
+# --- Create data directory for SQLite ---
+RUN mkdir -p /app/data
+
+EXPOSE 3000
+
+CMD ["supervisord", "-c", "/app/supervisord.conf"]

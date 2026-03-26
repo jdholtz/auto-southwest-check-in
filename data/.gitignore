@@ -1,0 +1,5 @@
+*.db
+*.db-wal
+*.db-shm
+!.gitkeep
+!.gitignore
