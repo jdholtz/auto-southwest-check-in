@@ -104,9 +104,22 @@ def process_reservation(
     bounds = reservation_info.get("bounds", [])
     flights_data = []
 
+    # Log the first bound's airport structure for diagnostic purposes
+    if bounds:
+        first_bound = bounds[0]
+        dep_raw = first_bound.get("departureAirport", {})
+        arr_raw = first_bound.get("arrivalAirport", {})
+        # Also check for alternative field names
+        dest_raw = first_bound.get("destinationAirport", {})
+        add_log(
+            conn,
+            f"Airport data for {confirmation_number}: dep={json.dumps(dep_raw)}, arr={json.dumps(arr_raw)}, dest={json.dumps(dest_raw)}, bound_keys={list(first_bound.keys())}",
+            "info",
+        )
+
     for bound in bounds:
         dep = bound.get("departureAirport", {})
-        arr = bound.get("arrivalAirport", {})
+        arr = bound.get("arrivalAirport", bound.get("destinationAirport", {}))
         departure_airport = dep.get("code", dep.get("name", ""))
         destination_airport = arr.get("code", arr.get("name", ""))
         flight_number = bound.get("flights", [{}])[0].get("number", "") if bound.get("flights") else ""
@@ -340,7 +353,25 @@ def check_fares(conn: sqlite3.Connection) -> None:
                     "GET", change_site, {}, change_link.get("query"), max_attempts=3
                 )
             except RequestError as e:
-                add_log(conn, f"Fare check failed (change page) for {flight_row['confirmation_number']}: {e}", "warning", flight_row["id"])
+                add_log(
+                    conn,
+                    f"Fare check failed (change page) for {flight_row['confirmation_number']}: {e}",
+                    "warning",
+                    flight_row["id"],
+                )
+                # Log diagnostic with the full change_link for debugging
+                log_diagnostic(
+                    conn,
+                    category="fare_check_failure",
+                    endpoint=f"GET {change_site}",
+                    expected_behavior="200 OK with changeFlightPage",
+                    actual_behavior=str(e),
+                    headers_snapshot=json.dumps(list(browser_session.headers.keys())),
+                    response_snapshot=json.dumps({
+                        "change_link": change_link,
+                        "error_response_body": getattr(e, "response_body", ""),
+                    })[:1000],
+                )
                 continue
 
             change_flight_page = change_response.get("changeFlightPage", {})
