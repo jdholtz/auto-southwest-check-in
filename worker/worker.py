@@ -54,11 +54,20 @@ def refresh_headers_via_webdriver() -> dict:
     """Use webdriver to get fresh Southwest API headers."""
     global headers
 
+    class FakeConfig:
+        browser_path = None
+
+    class FakeMonitor:
+        config = FakeConfig()
+        first_name = ""
+        last_name = ""
+
     class FakeScheduler:
         """Minimal scheduler interface for WebDriver compatibility."""
 
         def __init__(self):
             self.headers = {}
+            self.reservation_monitor = FakeMonitor()
 
     scheduler = FakeScheduler()
     try:
