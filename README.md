@@ -1,194 +1,324 @@
 ## Auto-Southwest Check-In
-A Python script that automatically checks you in to your Southwest flight. Additionally,
-the script can notify you if the price of your flight drops before departure
-(see [Check Fares](CONFIGURATION.md#check-fares)).
 
-This script can also log in to your Southwest account and automatically schedule check-ins as
-flights are scheduled.
+A web application and Python script that automatically checks you in to your Southwest flights. Features a web dashboard for managing accounts, monitoring flights, and tracking fare changes. The system also attempts seat selection based on your preferences, adapting to Southwest's assigned seating model (effective January 2026).
 
-**Note**: If you are checking into an international flight, make sure to fill out all the passport
-information beforehand.
+**Note**: If you are checking into an international flight, make sure to fill out all the passport information beforehand.
 
 ## Table of Contents
+- [Features](#features)
+- [Architecture](#architecture)
 - [Installation](#installation)
-    * [Prerequisites](#prerequisites)
-    * [Upgrading](#upgrading)
-- [Using the Script](#using-the-script)
-    * [Running in Docker](#running-in-docker)
+    * [Option 1: Web App (Railway)](#option-1-web-app-railway)
+    * [Option 2: Web App (Docker - Self-hosted)](#option-2-web-app-docker---self-hosted)
+    * [Option 3: CLI Only](#option-3-cli-only)
+- [Web App Usage](#web-app-usage)
+- [CLI Usage](#cli-usage)
 - [Configuration](#configuration)
+    * [Environment Variables](#environment-variables)
+    * [Seat Preferences](#seat-preferences)
+    * [Notifications](#notifications)
 - [Troubleshooting](#troubleshooting)
 - [Contributing](#contributing)
 - [FAQ](#faq)
 
+## Features
+
+- **Automatic Check-In**: Checks in to flights exactly 24 hours before departure
+- **Web Dashboard**: Monitor all flights, accounts, and check-in status from a browser
+- **Account Monitoring**: Log in with your Southwest account to automatically track all reservations
+- **Manual Reservations**: Add individual reservations by confirmation number
+- **Fare Monitoring**: Checks for fare drops every 4 hours and logs price changes
+- **Seat Preferences**: Configure preferred seats (letter, row) for automatic selection
+- **A-List Support**: Flag accounts as A-List for automatic seat upgrades 48 hours before departure
+- **Activity Log**: Full activity log with filtering by level (info/warning/error)
+- **Notifications**: Send alerts via 100+ services (Telegram, Discord, Slack, email, etc.) using Apprise
+- **Login Authentication**: Password-protected web interface
+
+## Architecture
+
+The web app runs as a single Docker container with two processes managed by supervisord:
+
+```
+┌─────────────────────────────────────────────┐
+│              Docker Container               │
+│                                             │
+│  ┌──────────────┐    ┌──────────────────┐   │
+│  │  Next.js App │    │  Python Worker   │   │
+│  │  (Frontend + │◄──►│  (Check-in       │   │
+│  │   API Routes)│    │   Engine)        │   │
+│  └──────┬───────┘    └────────┬─────────┘   │
+│         │                     │             │
+│         └────────┬────────────┘             │
+│                  ▼                          │
+│           ┌────────────┐                    │
+│           │   SQLite   │                    │
+│           │  Database  │                    │
+│           └────────────┘                    │
+└─────────────────────────────────────────────┘
+```
+
+- **Next.js** serves the web UI and API routes on port 3000
+- **Python Worker** handles check-ins, fare monitoring, and seat selection using SeleniumBase + headless Chromium
+- **SQLite** stores accounts, reservations, flights, preferences, and logs
+
 ## Installation
 
-### Prerequisites
+### Option 1: Web App (Railway)
+
+The easiest way to deploy. Railway provides container hosting with persistent storage.
+
+1. **Fork this repository** on GitHub
+
+2. **Create a Railway project**:
+   - Go to [railway.app](https://railway.app) and create a new project
+   - Select "Deploy from GitHub repo" and choose your fork
+   - Railway will auto-detect the `Dockerfile` and build
+
+3. **Add a persistent volume**:
+   - In your service settings, go to **Volumes**
+   - Add a volume mounted at `/app/data` (this persists your SQLite database across deploys)
+
+4. **Set environment variables** (in the Railway **Variables** tab):
+   ```
+   AUTH_USERNAME=your_username
+   AUTH_PASSWORD=your_secure_password
+   AUTH_SECRET=a_random_secret_string
+   ```
+
+5. **Generate a public domain**:
+   - Go to **Settings** > **Networking** > **Generate Domain**
+   - Your app will be available at `https://your-app.up.railway.app`
+
+6. **Access the web UI** at your Railway URL and log in
+
+### Option 2: Web App (Docker - Self-hosted)
+
+Run the web app on any server with Docker installed.
+
+1. **Clone the repository**:
+   ```shell
+   git clone https://github.com/jdholtz/auto-southwest-check-in.git
+   cd auto-southwest-check-in
+   ```
+
+2. **Build the Docker image**:
+   ```shell
+   docker build -t sw-checkin .
+   ```
+
+3. **Run the container**:
+   ```shell
+   docker run -d \
+     --name sw-checkin \
+     -p 3000:3000 \
+     -v sw-checkin-data:/app/data \
+     -e AUTH_USERNAME=admin \
+     -e AUTH_PASSWORD=your_secure_password \
+     -e AUTH_SECRET=your_random_secret \
+     --restart on-failure \
+     sw-checkin
+   ```
+
+4. **Access the web UI** at `http://localhost:3000`
+
+#### Docker Compose (Web App)
+```yaml
+services:
+  sw-checkin:
+    build: .
+    container_name: sw-checkin
+    restart: on-failure
+    ports:
+      - "3000:3000"
+    volumes:
+      - sw-checkin-data:/app/data
+    environment:
+      - AUTH_USERNAME=admin
+      - AUTH_PASSWORD=your_secure_password
+      - AUTH_SECRET=your_random_secret
+
+volumes:
+  sw-checkin-data:
+```
+
+### Option 3: CLI Only
+
+Use the original command-line interface without the web dashboard.
+
+#### Prerequisites
 - [Python 3.9+]
 - [Pip]
 - [Any Chromium-based browser]
 
-First, download the script onto your computer
+#### Setup
 ```shell
 git clone https://github.com/jdholtz/auto-southwest-check-in.git
 cd auto-southwest-check-in
-```
-Then, install the needed packages for the script
-```shell
 pip3 install -r requirements.txt
 ```
-You may want to install the requirements in a [Python virtual environment] to ensure they don't conflict
-with other Python projects on your system.
 
-### Upgrading
-When updating the script, it is important to follow the [Changelog](CHANGELOG.md) for any actions
-that need to be performed.
-
-To get the script's current version, run the following command:
+#### Run
 ```shell
-python3 southwest.py --version
-```
-
-To update the script, simply run:
-```shell
-git pull
-```
-
-## Using the Script
-To schedule a check-in, run the following command:
-```shell
+# Check in by confirmation number
 python3 southwest.py CONFIRMATION_NUMBER FIRST_NAME LAST_NAME
-```
-Alternatively, you can log in to your account, which will automatically check you in to all of your flights
-```shell
+
+# Or log in to monitor all flights
 python3 southwest.py USERNAME PASSWORD
 ```
-**Note**: If any arguments contain special characters, make sure to escape them or use
-environment variables so they are passed into the script correctly.
 
-For the full usage of the script, run:
+#### CLI Docker
+```shell
+docker build -f Dockerfile.cli -t sw-checkin-cli .
+docker run -d sw-checkin-cli CONFIRMATION_NUMBER FIRST_NAME LAST_NAME
+```
+
+## Web App Usage
+
+### Dashboard (`/`)
+Overview of your check-in system:
+- Stats cards: active accounts, reservations, upcoming check-ins, success/fail counts
+- Upcoming check-ins with live countdown timers
+- Recent activity feed
+
+### Accounts (`/accounts`)
+Manage your Southwest accounts:
+- Add accounts with username and password
+- Toggle **A-List** status for accounts with A-List or A-List Preferred membership
+- Enable **Auto Seat Upgrade** to attempt preferred seat selection 48 hours before departure
+- Enable/disable account monitoring
+
+### Reservations (`/reservations`)
+Track all reservations:
+- Reservations are auto-discovered when accounts are monitored
+- Add manual reservations by confirmation number + passenger name
+- Expand to see flights with departure times, check-in countdowns, and status
+
+### Flights (`/flights`)
+Monitor all tracked flights:
+- Flight number, route, departure time, check-in countdown
+- Assigned seat (after check-in or seat selection)
+- Status: pending, scheduled, checking_in, success, failed
+- Click a flight to view worker logs
+
+### Activity (`/activity`)
+Full activity log:
+- Filter by level: All, Info, Warning, Error
+- Shows worker actions: account processing, reservation retrieval, check-ins, fare checks, seat upgrades
+- Pagination with load more
+
+### Settings (`/settings`)
+Configure preferences:
+- **Seat Preferences**: Choose preferred seat letters (A-F), preferred rows, and fallback letters
+- **Notifications**: Add notification service URLs using [Apprise format](https://github.com/caronc/apprise#supported-notifications)
+
+## CLI Usage
+
+For the full usage of the CLI script, run:
 ```shell
 python3 southwest.py --help
 ```
 
-If you want the latest features of the script, you can use the `develop` branch (documented changes
-can be viewed in the Changelog). However, keep in mind that changes to this branch do not ensure reliability.
-
-### Running in Docker
-The application can also be run in a container using [Docker]. The Docker repository for this project
-can be found [here][Docker repository]. To pull the latest image, run:
-```shell
-docker pull jdholtz/auto-southwest-check-in
-```
-To download a specific version, append `:vX.X` to the end of the image name. You can also append the
-`:develop` tag instead to use the latest development version.
-
-To run the image, you can use a command such as:
-```shell
-docker run -d jdholtz/auto-southwest-check-in CONFIRMATION_NUMBER FIRST_NAME LAST_NAME
-```
-or
-```shell
-docker run -d jdholtz/auto-southwest-check-in USERNAME PASSWORD
-```
-Additional arguments for the script can be passed in after the image name.
-
-You can optionally attach a configuration file to the container by adding the
-`--volume /full-path/to/config.json:/app/config.json` flag before the image name.
-
-**Note**: The recommended restart policy for the container is `on-failure` or `no`
-
-#### Docker Compose Example Using Config
-```yaml
-services:
-  auto-southwest:
-    image: jdholtz/auto-southwest-check-in
-    container_name: auto-southwest
-    restart: on-failure
-    volumes:
-      - /full-path/to/config.json:/app/config.json
-```
-
-#### Docker Compose Example Using Environment Variables
-```yaml
-services:
-  auto-southwest:
-    image: jdholtz/auto-southwest-check-in
-    container_name: auto-southwest
-    restart: on-failure
-    environment:
-      - AUTO_SOUTHWEST_CHECK_IN_USERNAME=MyUsername
-      - AUTO_SOUTHWEST_CHECK_IN_PASSWORD=TopsyKretts
-```
-
-Additional information on the Docker container can be found in the [public repository][Docker repository].
-
 ## Configuration
-To use the default configuration file, copy `config.example.json` to `config.json`.
 
-For information on how to set up the configuration, see [Configuration.md](CONFIGURATION.md)
+### Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `AUTH_USERNAME` | Web UI login username | `admin` |
+| `AUTH_PASSWORD` | Web UI login password | `admin` |
+| `AUTH_SECRET` | Secret key for signing auth tokens | `change-me-in-production` |
+| `DB_PATH` | Path to SQLite database file | `/app/data/checkin.db` |
+
+**Important**: Change the default credentials before deploying to production.
+
+### Seat Preferences
+
+Southwest uses assigned seating (effective January 27, 2026). Configure your preferences in the Settings page:
+
+- **Preferred Letters**: Seat letters to target first (e.g., A, F for window seats)
+- **Preferred Rows**: Row numbers where preferred letters are prioritized (e.g., 1-6 for front rows)
+- **Fallback Letters**: Alternative seat letters if preferred seats are unavailable (e.g., A, C, D, F for aisle/window)
+
+For **A-List members**: Enable "Auto Seat Upgrade" on your account to attempt upgrading to Extra Legroom or Preferred seats 48 hours before departure.
+
+### Notifications
+
+Add notification URLs in Settings using [Apprise URL format](https://github.com/caronc/apprise#supported-notifications). Examples:
+
+| Service | URL Format |
+|---------|------------|
+| Telegram | `tgram://BotToken/ChatID` |
+| Discord | `discord://WebhookID/WebhookToken` |
+| Slack | `slack://TokenA/TokenB/TokenC/Channel` |
+| Email (SMTP) | `mailto://user:pass@gmail.com` |
+| Pushover | `pover://user@token` |
 
 ## Troubleshooting
-To troubleshoot a problem, run the script with the `--verbose` flag. This will display debug messages so you can
-get a better overview of the problem. You can also run the script with the `--debug-screenshots` flag which will
-take screenshots of the browser (stored in the logs/ directory) so you can see it at different stages in the script.
 
-If you run into any issues, please file it via [GitHub Issues]. Please attach any relevant logs (found in
-`logs/auto-southwest-check-in.log`) to the issue. The logs should not have any personal information but check to make
-sure before attaching it.
+### Web App
+- Check the **Activity** page for worker logs and errors
+- If the dashboard shows all 0s, ensure the worker process is running (check Railway deploy logs)
+- If login fails, verify your `AUTH_USERNAME` and `AUTH_PASSWORD` environment variables
+- For database issues, ensure the `/app/data` volume is properly mounted
 
-For any common questions or issues, visit the [FAQ](#faq). If you have any additional questions or discussion topics,
-you can start a [GitHub Discussion].
+### CLI
+To troubleshoot the CLI, run with the `--verbose` flag for debug messages, or `--debug-screenshots` for browser screenshots (stored in `logs/`).
+
+If you run into any issues, please file it via [GitHub Issues]. Please attach any relevant logs (found in `logs/auto-southwest-check-in.log`) to the issue.
+
+For common questions, visit the [FAQ](#faq). For discussions, start a [GitHub Discussion].
 
 ## Contributing
 Contributions are always welcome. Please read [Contributing.md](CONTRIBUTING.md) if you are considering making contributions.
 
 ## FAQ
-Below, a list of answers to frequently asked questions about Auto-Southwest Check-In can be found. If you believe any more
-questions should be added to this list, please submit a [Discussion][GitHub Discussion] or [Pull Request] so the addition can be made.
 
 <details>
-<summary>Do I Need to Set up a Different Instance of the Script for Each Passenger on My Reservation?</summary>
+<summary>Do I Need to Set up a Different Instance for Each Passenger on My Reservation?</summary>
 
-This script will check the entire party in under the same reservation, so there is no need to create more than one instance
-of the script per reservation.
+This script will check the entire party in under the same reservation, so there is no need to create more than one instance per reservation.
 
-However, this is not the case if you have a companion attached to your reservation. See the next question for information on
-checking in a companion.
+However, this is not the case if you have a companion attached to your reservation. See the next question for information on checking in a companion.
 </details>
 
 <details>
 <summary>Will This Script Also Check in the Companion Attached to My Reservation?</summary>
 
-Unfortunately, this is not possible due to how Southwest's companion system works. To ensure your companion is also checked in,
-you can add their reservation or account separately in the configuration file.
+Unfortunately, this is not possible due to how Southwest's companion system works. To ensure your companion is also checked in, you can add their reservation or account separately.
 </details>
 
 <details>
-<summary>Will This Script Check Me in Even if I Put My Computer to Sleep?</summary>
+<summary>How Does the Seat Selection Work with Southwest's New Assigned Seating?</summary>
 
-No, the script will stop while your computer is asleep and only continue once it wakes. You will need to rerun the script
-if your computer goes to sleep while it is running because the timing will be off, causing your reservations to not be checked
-in at the correct time.
+Southwest switched from open seating to assigned seats on January 27, 2026. The app adapts to this:
+
+- **At check-in (24h before)**: The app checks in and logs the seat assignment from the API response
+- **For A-List members (48h before)**: If "Auto Seat Upgrade" is enabled, the app attempts to select/upgrade your seat based on your preferences
+- **Seat preferences**: Configure preferred seat letters and rows in Settings
+
+The seat selection feature uses a progressive discovery approach to work with Southwest's API, logging response structures to help refine the selection logic over time.
 </details>
 
 <details>
-<summary>While Attempting to Run This Script, I Get a [SSL: CERTIFICATE_VERIFY_FAILED] Error. How Can I Fix It?</summary>
+<summary>What Is the Difference Between the Web App and the CLI?</summary>
 
-If you are on MacOS, this error most likely occurred because your Python installation does not have any root certificates. To
-install these certificates, follow the directions found at [this Stack Overflow question].
+The **Web App** provides a browser-based dashboard, persistent database, automatic account monitoring, fare checking, and seat management. It runs continuously on a server.
 
-Credit to [@greennayr](https://github.com/greennayr) for the answer to this question.
+The **CLI** is the original command-line script. It runs on your local machine and exits after check-in completes. Use the CLI if you just need a quick one-time check-in.
 </details>
 
 <details>
-<summary>The Script Is Stuck on 'Starting webdriver for current session' or 'Loading Southwest Check-In page'. How Can I Fix It?</summary>
+<summary>I Get a [SSL: CERTIFICATE_VERIFY_FAILED] Error. How Can I Fix It?</summary>
 
-Depending on your network speed or your compute power, it may take 3 to 5 minutes to start the browser and load the Southwest website.
-If you are still running into this issue after waiting for 8+ minutes, please file an [issue][GitHub Issues] (see below if you are running Docker).
+If you are on MacOS, this error most likely occurred because your Python installation does not have any root certificates. To install these certificates, follow the directions found at [this Stack Overflow question].
+</details>
 
+<details>
+<summary>The Script Is Stuck on 'Starting webdriver for current session'. How Can I Fix It?</summary>
 
-If you are running the script with Docker, the current workaround is to run the Docker container with the `--privileged` flag
-(see [the comment on #96]. However, this is not a great solution. If anyone figures out a better solution, please let me know.
+Depending on your network speed or compute power, it may take 3 to 5 minutes to start the browser and load the Southwest website. If you are still running into this issue after 8+ minutes, please file an [issue][GitHub Issues].
+
+If running Docker, the current workaround is to run with the `--privileged` flag (see [the comment on #96]).
 </details>
 
 
