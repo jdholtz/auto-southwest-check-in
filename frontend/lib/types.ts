@@ -1,5 +1,6 @@
 export interface Account {
   id: string;
+  display_name: string;
   username: string;
   password: string;
   is_active: number;

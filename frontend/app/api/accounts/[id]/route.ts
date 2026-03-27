@@ -7,6 +7,10 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   const fields: string[] = [];
   const values: unknown[] = [];
 
+  if (body.display_name !== undefined) {
+    fields.push("display_name = ?");
+    values.push(body.display_name);
+  }
   if (body.is_active !== undefined) {
     fields.push("is_active = ?");
     values.push(body.is_active ? 1 : 0);

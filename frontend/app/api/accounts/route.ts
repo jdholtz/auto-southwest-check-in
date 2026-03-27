@@ -16,15 +16,15 @@ export function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const { username, password, is_alist, auto_upgrade_seats } = await req.json();
+  const { display_name, username, password, is_alist, auto_upgrade_seats } = await req.json();
   if (!username || !password) {
     return NextResponse.json({ error: "Username and password required" }, { status: 400 });
   }
   const db = getDb();
   const id = crypto.randomUUID();
   db.prepare(
-    "INSERT INTO accounts (id, username, password, is_alist, auto_upgrade_seats) VALUES (?, ?, ?, ?, ?)"
-  ).run(id, username, password, is_alist ? 1 : 0, auto_upgrade_seats ? 1 : 0);
+    "INSERT INTO accounts (id, display_name, username, password, is_alist, auto_upgrade_seats) VALUES (?, ?, ?, ?, ?, ?)"
+  ).run(id, display_name || "", username, password, is_alist ? 1 : 0, auto_upgrade_seats ? 1 : 0);
   const account = db.prepare("SELECT * FROM accounts WHERE id = ?").get(id);
   return NextResponse.json(account, { status: 201 });
 }
