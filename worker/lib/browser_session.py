@@ -74,6 +74,24 @@ try {
 """
 
 
+def _flatten_params(params: dict, prefix: str = "") -> list[tuple[str, str]]:
+    """Flatten nested dicts into a list of (key, value) tuples for URL encoding.
+    Handles Southwest's nested query params like {"key": {"subkey": "value"}}."""
+    items: list[tuple[str, str]] = []
+    for key, value in params.items():
+        full_key = f"{prefix}[{key}]" if prefix else key
+        if isinstance(value, dict):
+            items.extend(_flatten_params(value, full_key))
+        elif isinstance(value, (list, tuple)):
+            for item in value:
+                items.append((full_key, str(item)))
+        elif isinstance(value, bool):
+            items.append((full_key, str(value).lower()))
+        else:
+            items.append((full_key, str(value)))
+    return items
+
+
 class BrowserSession:
     """Manages a persistent browser session for routing API requests through the WAF."""
 
@@ -205,7 +223,8 @@ class BrowserSession:
         url = API_BASE_URL + site
 
         if method.upper() == "GET" and info:
-            url = url + "?" + urlencode(info)
+            flat_params = _flatten_params(info)
+            url = url + "?" + urlencode(flat_params)
             body = None
         else:
             body = json.dumps(info) if info else None

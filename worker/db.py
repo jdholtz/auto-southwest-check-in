@@ -164,11 +164,13 @@ def upsert_flight(
         (reservation_id, flight_number, departure_time),
     ).fetchone()
     if existing:
-        # Update destination_airport if it was previously empty
+        # Always update airports if the new value is non-empty (fixes stale/wrong data)
         conn.execute(
-            "UPDATE flights SET departure_airport = COALESCE(NULLIF(departure_airport, ''), ?), "
-            "destination_airport = COALESCE(NULLIF(destination_airport, ''), ?) WHERE id = ?",
-            (departure_airport, destination_airport, existing["id"]),
+            "UPDATE flights SET "
+            "departure_airport = CASE WHEN ? != '' THEN ? ELSE departure_airport END, "
+            "destination_airport = CASE WHEN ? != '' THEN ? ELSE destination_airport END "
+            "WHERE id = ?",
+            (departure_airport, departure_airport, destination_airport, destination_airport, existing["id"]),
         )
         conn.commit()
         return existing["id"]

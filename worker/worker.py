@@ -308,7 +308,7 @@ def process_manual_reservations(conn: sqlite3.Connection) -> None:
 
 
 last_fare_check: float = 0
-FARE_CHECK_INTERVAL = 4 * 3600  # Check fares every 4 hours
+FARE_CHECK_INTERVAL = 10 * 60  # Check fares every 10 minutes (for debugging, change to 4 * 3600 later)
 
 
 def check_fares(conn: sqlite3.Connection) -> None:
