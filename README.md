@@ -1,6 +1,8 @@
 ## Auto-Southwest Check-In
 
-A web application and Python script that automatically checks you in to your Southwest flights. Features a web dashboard for managing accounts, monitoring flights, and tracking fare changes. The system also attempts seat selection based on your preferences, adapting to Southwest's assigned seating model (effective January 2026).
+A web application that automatically checks you in to your Southwest Airlines flights. Features a full web dashboard for managing accounts, monitoring flights, tracking fare changes, and configuring seat preferences. Built on top of [jdholtz/auto-southwest-check-in](https://github.com/jdholtz/auto-southwest-check-in) with a complete web frontend and enhanced worker process.
+
+**Repository**: [github.com/ctkubik/auto-southwest-check-in](https://github.com/ctkubik/auto-southwest-check-in/tree/claude/flight-monitoring-app-Bm8hC)
 
 **Note**: If you are checking into an international flight, make sure to fill out all the passport information beforehand.
 
@@ -17,6 +19,7 @@ A web application and Python script that automatically checks you in to your Sou
     * [Environment Variables](#environment-variables)
     * [Seat Preferences](#seat-preferences)
     * [Notifications](#notifications)
+- [Self-Healing Diagnostics](#self-healing-diagnostics)
 - [Troubleshooting](#troubleshooting)
 - [Contributing](#contributing)
 - [FAQ](#faq)
@@ -26,13 +29,18 @@ A web application and Python script that automatically checks you in to your Sou
 - **Automatic Check-In**: Checks in to flights exactly 24 hours before departure
 - **Web Dashboard**: Monitor all flights, accounts, and check-in status from a browser
 - **Account Monitoring**: Log in with your Southwest account to automatically track all reservations
+- **Account Display Names**: Assign friendly names to accounts for easy identification (e.g., "Mom", "Dad")
 - **Manual Reservations**: Add individual reservations by confirmation number
-- **Fare Monitoring**: Checks for fare drops every 4 hours and logs price changes
-- **Seat Preferences**: Configure preferred seats (letter, row) for automatic selection
+- **Fare Monitoring**: Checks for fare drops every 4 hours, logs price changes, and shows fare history per flight
+- **Seat Preferences**: Configure preferred seats (letter, row, fallback) for Southwest's assigned seating system
 - **A-List Support**: Flag accounts as A-List for automatic seat upgrades 48 hours before departure
-- **Activity Log**: Full activity log with filtering by level (info/warning/error)
-- **Notifications**: Send alerts via 100+ services (Telegram, Discord, Slack, email, etc.) using Apprise
-- **Login Authentication**: Password-protected web interface
+- **Activity Log**: Full activity log with level filtering (info/warning/error) and pagination
+- **API Diagnostics**: Structured diagnostic entries logged when Southwest API calls fail, helping track API changes over time
+- **Push Notifications**: Send alerts for check-ins, fare drops, and status updates via Telegram, Discord, Slack, email, and 100+ other services using [Apprise](https://github.com/caronc/apprise)
+- **SMS Text Notifications**: Built-in Twilio SMS setup for text message alerts
+- **Test Notifications**: One-click test button to verify notification delivery
+- **Browser-Routed API Calls**: All Southwest API requests are routed through a persistent headless Chrome session to bypass WAF/anti-bot protections on cloud hosting
+- **Login Authentication**: Password-protected web interface with HMAC-signed auth cookies
 
 ## Architecture
 
@@ -57,9 +65,16 @@ The web app runs as a single Docker container with two processes managed by supe
 └─────────────────────────────────────────────┘
 ```
 
-- **Next.js** serves the web UI and API routes on port 3000
-- **Python Worker** handles check-ins, fare monitoring, and seat selection using SeleniumBase + headless Chromium
-- **SQLite** stores accounts, reservations, flights, preferences, and logs
+| Component | Technology |
+|-----------|------------|
+| Frontend | Next.js 14 (App Router) + Tailwind CSS |
+| API | Next.js API Routes (read/write SQLite via `better-sqlite3`) |
+| Database | SQLite (via `better-sqlite3` for Node, `sqlite3` for Python) |
+| Auth | HMAC-signed cookies (Edge-compatible middleware) |
+| Worker | Python 3.13 with SeleniumBase + headless Chromium |
+| Browser Session | Persistent Chrome instance routing API calls via `fetch()` to bypass WAF |
+| Process Manager | supervisord (runs Next.js + Python worker) |
+| Notifications | Apprise (Telegram, Twilio SMS, Discord, Slack, email, etc.) |
 
 ## Installation
 
@@ -67,37 +82,48 @@ The web app runs as a single Docker container with two processes managed by supe
 
 The easiest way to deploy. Railway provides container hosting with persistent storage.
 
-1. **Fork this repository** on GitHub
+1. **Fork the repository**:
+   - Go to [github.com/ctkubik/auto-southwest-check-in](https://github.com/ctkubik/auto-southwest-check-in/tree/claude/flight-monitoring-app-Bm8hC)
+   - Click **Fork** to create your own copy
 
 2. **Create a Railway project**:
-   - Go to [railway.app](https://railway.app) and create a new project
-   - Select "Deploy from GitHub repo" and choose your fork
-   - Railway will auto-detect the `Dockerfile` and build
+   - Go to [railway.app](https://railway.app) and sign up/log in
+   - Click **New Project** > **Deploy from GitHub repo**
+   - Select your forked repository
+   - Set the branch to `claude/flight-monitoring-app-Bm8hC`
+   - Railway will auto-detect the `Dockerfile` and start building
 
-3. **Add a persistent volume**:
-   - In your service settings, go to **Volumes**
-   - Add a volume mounted at `/app/data` (this persists your SQLite database across deploys)
+3. **Add a persistent volume** (required for data persistence across deploys):
+   - Open the **Command Palette** with `Cmd+K` (Mac) or `Ctrl+K` (Windows)
+   - Search for **"Volume"** and select **Create Volume**
+   - Set the **Mount Path** to `/app/data`
+   - Attach it to your service
+
+   > **Note**: If you can't find Volumes in the UI, right-click the project canvas background to access the menu.
 
 4. **Set environment variables** (in the Railway **Variables** tab):
    ```
    AUTH_USERNAME=your_username
    AUTH_PASSWORD=your_secure_password
-   AUTH_SECRET=a_random_secret_string
+   AUTH_SECRET=a_random_secret_string_at_least_20_chars
    ```
 
 5. **Generate a public domain**:
-   - Go to **Settings** > **Networking** > **Generate Domain**
+   - Go to your service's **Settings** > **Networking**
+   - Click **Generate Domain**
    - Your app will be available at `https://your-app.up.railway.app`
 
-6. **Access the web UI** at your Railway URL and log in
+6. **Access the web UI** at your Railway URL and log in with the credentials you set
+
+> **Tip**: If the volume isn't persisting data, add the environment variable `RAILWAY_RUN_UID=0` to your service.
 
 ### Option 2: Web App (Docker - Self-hosted)
 
-Run the web app on any server with Docker installed.
+Run the web app on any server or local machine with Docker installed.
 
 1. **Clone the repository**:
    ```shell
-   git clone https://github.com/jdholtz/auto-southwest-check-in.git
+   git clone -b claude/flight-monitoring-app-Bm8hC https://github.com/ctkubik/auto-southwest-check-in.git
    cd auto-southwest-check-in
    ```
 
@@ -122,6 +148,9 @@ Run the web app on any server with Docker installed.
 4. **Access the web UI** at `http://localhost:3000`
 
 #### Docker Compose (Web App)
+
+Create a `docker-compose.yml`:
+
 ```yaml
 services:
   sw-checkin:
@@ -141,6 +170,11 @@ volumes:
   sw-checkin-data:
 ```
 
+Then run:
+```shell
+docker compose up -d
+```
+
 ### Option 3: CLI Only
 
 Use the original command-line interface without the web dashboard.
@@ -152,7 +186,7 @@ Use the original command-line interface without the web dashboard.
 
 #### Setup
 ```shell
-git clone https://github.com/jdholtz/auto-southwest-check-in.git
+git clone -b claude/flight-monitoring-app-Bm8hC https://github.com/ctkubik/auto-southwest-check-in.git
 cd auto-southwest-check-in
 pip3 install -r requirements.txt
 ```
@@ -176,40 +210,62 @@ docker run -d sw-checkin-cli CONFIRMATION_NUMBER FIRST_NAME LAST_NAME
 
 ### Dashboard (`/`)
 Overview of your check-in system:
-- Stats cards: active accounts, reservations, upcoming check-ins, success/fail counts
-- Upcoming check-ins with live countdown timers
-- Recent activity feed
+- **Stats cards**: Active accounts, total reservations, upcoming check-ins, successful/failed counts
+- **Upcoming check-ins** with live countdown timers
+- **Recent activity feed** from the worker process
 
 ### Accounts (`/accounts`)
 Manage your Southwest accounts:
-- Add accounts with username and password
-- Toggle **A-List** status for accounts with A-List or A-List Preferred membership
-- Enable **Auto Seat Upgrade** to attempt preferred seat selection 48 hours before departure
-- Enable/disable account monitoring
+- **Display names**: Assign friendly names (click the pencil icon to rename)
+- **A-List toggle**: Click the tier badge to mark accounts as A-List/A-List Preferred
+- **Auto Seat Upgrade**: Enable to attempt seat upgrades 48 hours before departure
+- **Enable/disable** account monitoring
+- **Delete** accounts and their linked reservations
 
 ### Reservations (`/reservations`)
 Track all reservations:
-- Reservations are auto-discovered when accounts are monitored
-- Add manual reservations by confirmation number + passenger name
-- Expand to see flights with departure times, check-in countdowns, and status
+- Reservations are **auto-discovered** when accounts are monitored
+- **Add manual reservations** by confirmation number + passenger name
+- **Expand** to see flights with routes, departure times, check-in countdowns, and status
 
 ### Flights (`/flights`)
-Monitor all tracked flights:
-- Flight number, route, departure time, check-in countdown
-- Assigned seat (after check-in or seat selection)
-- Status: pending, scheduled, checking_in, success, failed
-- Click a flight to view worker logs
+Monitor all tracked flights with fare data:
+- **Card layout** showing confirmation, passenger, route, departure, fare change, seat, countdown, status
+- **Fare tracking**: Latest fare check result color-coded (green = drop, red = increase)
+- **Click to expand**: View fare history timeline and flight-specific activity logs side-by-side
+- Flights auto-refresh every 30 seconds
 
 ### Activity (`/activity`)
-Full activity log:
+Two tabs for monitoring system behavior:
+
+**Activity Log tab:**
 - Filter by level: All, Info, Warning, Error
-- Shows worker actions: account processing, reservation retrieval, check-ins, fare checks, seat upgrades
-- Pagination with load more
+- Shows all worker actions with timestamps and flight context
+- Auto-refreshes every 15 seconds
+
+**Diagnostics tab:**
+- Structured API diagnostic entries
+- Filter by category (auth_failure, api_error, checkin_failure, etc.)
+- Click to expand: expected vs actual behavior, headers sent, response body
+- Helps track Southwest API changes over time
 
 ### Settings (`/settings`)
-Configure preferences:
-- **Seat Preferences**: Choose preferred seat letters (A-F), preferred rows, and fallback letters
-- **Notifications**: Add notification service URLs using [Apprise format](https://github.com/caronc/apprise#supported-notifications)
+Configure preferences and notifications:
+
+**Seat Preferences:**
+- Select preferred seat letters (A-F toggle buttons)
+- Set preferred rows (comma-separated, e.g., `1,2,3,4,5,6`)
+- Set fallback seat letters for when preferred seats are unavailable
+
+**SMS Text Notifications:**
+- Built-in Twilio quick setup form
+- Enter Account SID, Auth Token, From Number, To Number
+- Auto-generates the Apprise URL
+
+**Notification Services:**
+- Add any notification service using Apprise URL format
+- **Test Notification** button to verify delivery
+- Supports 100+ services including Telegram, Discord, Slack, email, SMS
 
 ## CLI Usage
 
@@ -226,40 +282,64 @@ python3 southwest.py --help
 |----------|-------------|---------|
 | `AUTH_USERNAME` | Web UI login username | `admin` |
 | `AUTH_PASSWORD` | Web UI login password | `admin` |
-| `AUTH_SECRET` | Secret key for signing auth tokens | `change-me-in-production` |
+| `AUTH_SECRET` | Secret key for signing auth tokens (use 20+ random chars) | `change-me-in-production` |
 | `DB_PATH` | Path to SQLite database file | `/app/data/checkin.db` |
+| `RAILWAY_RUN_UID` | Set to `0` if Railway volume has permission issues | (unset) |
 
-**Important**: Change the default credentials before deploying to production.
+**Important**: Change the default `AUTH_USERNAME`, `AUTH_PASSWORD`, and `AUTH_SECRET` before deploying to production.
 
 ### Seat Preferences
 
 Southwest uses assigned seating (effective January 27, 2026). Configure your preferences in the Settings page:
 
 - **Preferred Letters**: Seat letters to target first (e.g., A, F for window seats)
-- **Preferred Rows**: Row numbers where preferred letters are prioritized (e.g., 1-6 for front rows)
-- **Fallback Letters**: Alternative seat letters if preferred seats are unavailable (e.g., A, C, D, F for aisle/window)
+- **Preferred Rows**: Row numbers where preferred letters are prioritized (e.g., 1-6 for front/extra legroom)
+- **Fallback Letters**: Alternative seat letters if preferred are unavailable (e.g., A, C, D, F for aisle/window)
 
-For **A-List members**: Enable "Auto Seat Upgrade" on your account to attempt upgrading to Extra Legroom or Preferred seats 48 hours before departure.
+For **A-List members**: Enable "Auto Seat Upgrade" on your account to attempt upgrading to Extra Legroom or Preferred seats 48 hours before departure. Toggle A-List status by clicking the tier badge on the Accounts page.
 
 ### Notifications
 
-Add notification URLs in Settings using [Apprise URL format](https://github.com/caronc/apprise#supported-notifications). Examples:
+Notifications are sent for:
+- **Check-in success/failure**: Includes confirmation number, route, and passenger name
+- **Fare drops**: When a lower fare (> $1 savings) is detected
+- **Test messages**: Via the "Send Test Notification" button in Settings
+
+#### Notification Service Examples
 
 | Service | URL Format |
 |---------|------------|
 | Telegram | `tgram://BotToken/ChatID` |
+| Twilio SMS | Use the built-in SMS setup form, or: `twilio://AccountSid:AuthToken@+FromPhone/+ToPhone` |
 | Discord | `discord://WebhookID/WebhookToken` |
 | Slack | `slack://TokenA/TokenB/TokenC/Channel` |
 | Email (SMTP) | `mailto://user:pass@gmail.com` |
 | Pushover | `pover://user@token` |
+| AWS SNS | `sns://AccessKeyID/SecretAccessKey/Region/+PhoneNumber` |
+
+See the full list of [Apprise supported notifications](https://github.com/caronc/apprise#supported-notifications).
+
+## Self-Healing Diagnostics
+
+The system includes a structured diagnostics framework to track Southwest API changes:
+
+- **Every API failure** is logged with: category, endpoint, expected vs actual behavior, headers sent, and response body
+- **Categories**: `auth_failure`, `api_error`, `api_change`, `checkin_failure`, `unexpected_response`
+- **View diagnostics** in the Activity page > Diagnostics tab
+- **Expandable entries** show full detail for debugging
+
+This enables progressive adaptation to Southwest's API changes without requiring code updates for every change. Check the Diagnostics tab when things aren't working to see exactly what Southwest is returning.
 
 ## Troubleshooting
 
 ### Web App
-- Check the **Activity** page for worker logs and errors
-- If the dashboard shows all 0s, ensure the worker process is running (check Railway deploy logs)
-- If login fails, verify your `AUTH_USERNAME` and `AUTH_PASSWORD` environment variables
-- For database issues, ensure the `/app/data` volume is properly mounted
+- **Dashboard shows all 0s**: Ensure the worker process is running. Check the Activity page for logs. The worker polls every 60 seconds.
+- **Flights not appearing**: Check Activity > Diagnostics for API errors. The worker needs to successfully log in and retrieve reservations before flights appear.
+- **403 errors in diagnostics**: The browser session may need to restart. The worker auto-restarts the browser every 25 minutes or when a 403 is detected.
+- **Login fails**: Verify `AUTH_USERNAME` and `AUTH_PASSWORD` environment variables are set correctly.
+- **Data lost after redeploy**: Ensure a persistent volume is mounted at `/app/data`. On Railway, use the Command Palette (`Cmd+K`) to create a volume.
+- **Notifications not sending**: Check that notification URLs are correctly formatted. Use the "Send Test Notification" button. The test is processed on the next worker poll cycle (up to 60 seconds).
+- **Missing destination airports**: This was a known bug (fixed). The worker will auto-update existing flights on the next processing cycle.
 
 ### CLI
 To troubleshoot the CLI, run with the `--verbose` flag for debug messages, or `--debug-screenshots` for browser screenshots (stored in `logs/`).
@@ -293,18 +373,36 @@ Unfortunately, this is not possible due to how Southwest's companion system work
 Southwest switched from open seating to assigned seats on January 27, 2026. The app adapts to this:
 
 - **At check-in (24h before)**: The app checks in and logs the seat assignment from the API response
-- **For A-List members (48h before)**: If "Auto Seat Upgrade" is enabled, the app attempts to select/upgrade your seat based on your preferences
-- **Seat preferences**: Configure preferred seat letters and rows in Settings
+- **For A-List members (48h before)**: If "Auto Seat Upgrade" is enabled, the app attempts to select/upgrade your seat based on your preferences in Settings
+- **Seat preferences**: Configure preferred seat letters, rows, and fallback letters in Settings
 
-The seat selection feature uses a progressive discovery approach to work with Southwest's API, logging response structures to help refine the selection logic over time.
+The seat selection feature uses a progressive discovery approach - it logs Southwest's API response structures in the Activity page, allowing the logic to be refined as the API evolves.
 </details>
 
 <details>
 <summary>What Is the Difference Between the Web App and the CLI?</summary>
 
-The **Web App** provides a browser-based dashboard, persistent database, automatic account monitoring, fare checking, and seat management. It runs continuously on a server.
+| Feature | Web App | CLI |
+|---------|---------|-----|
+| Interface | Browser dashboard | Command line |
+| Account monitoring | Automatic, continuous | Manual, one-time |
+| Fare checking | Every 4 hours | With config file |
+| Seat management | UI with preferences | Not available |
+| Notifications | Telegram, SMS, Discord, etc. | With config file |
+| Data persistence | SQLite database | None (in-memory) |
+| Hosting | Railway, Docker, VPS | Local machine |
+| Activity logs | Web-based viewer | Log files |
+| Diagnostics | Structured API tracking | Verbose flag |
 
-The **CLI** is the original command-line script. It runs on your local machine and exits after check-in completes. Use the CLI if you just need a quick one-time check-in.
+Use the **Web App** for always-on monitoring. Use the **CLI** for quick one-time check-ins.
+</details>
+
+<details>
+<summary>How Do API Calls Work on Cloud Hosting?</summary>
+
+Southwest's website uses a WAF (Web Application Firewall) that blocks raw HTTP requests from cloud/datacenter IPs. The web app solves this by routing all API calls through a persistent headless Chrome browser session. The browser passes the WAF anti-bot challenge, and subsequent API calls are made via JavaScript `fetch()` inside the browser context, inheriting all cookies and WAF tokens.
+
+The browser session auto-restarts every 25 minutes to keep WAF tokens fresh, and restarts immediately if a 403 error is detected.
 </details>
 
 <details>
@@ -314,11 +412,11 @@ If you are on MacOS, this error most likely occurred because your Python install
 </details>
 
 <details>
-<summary>The Script Is Stuck on 'Starting webdriver for current session'. How Can I Fix It?</summary>
+<summary>The Worker Is Stuck on 'Starting browser session'. How Can I Fix It?</summary>
 
-Depending on your network speed or compute power, it may take 3 to 5 minutes to start the browser and load the Southwest website. If you are still running into this issue after 8+ minutes, please file an [issue][GitHub Issues].
+Depending on your network speed or compute power, it may take 3 to 5 minutes to start the browser and load the Southwest website. If you are still running into this issue after 8+ minutes, check the deploy logs.
 
-If running Docker, the current workaround is to run with the `--privileged` flag (see [the comment on #96]).
+If running Docker, try running with the `--privileged` flag. On Railway, this is handled automatically.
 </details>
 
 
@@ -327,9 +425,7 @@ If running Docker, the current workaround is to run with the `--privileged` flag
 [Any Chromium-based browser]: https://en.wikipedia.org/wiki/Chromium_(web_browser)#Browsers_based_on_Chromium
 [Python virtual environment]: https://virtualenv.pypa.io/en/stable/
 [Docker]: https://www.docker.com/
-[Docker repository]: https://hub.docker.com/repository/docker/jdholtz/auto-southwest-check-in
-[GitHub Issues]: https://github.com/jdholtz/auto-southwest-check-in/issues/new/choose
-[GitHub Discussion]: https://github.com/jdholtz/auto-southwest-check-in/discussions/new/choose
-[Pull Request]: https://github.com/jdholtz/auto-southwest-check-in/pulls
+[GitHub Issues]: https://github.com/ctkubik/auto-southwest-check-in/issues
+[GitHub Discussion]: https://github.com/ctkubik/auto-southwest-check-in/discussions
+[Pull Request]: https://github.com/ctkubik/auto-southwest-check-in/pulls
 [this Stack Overflow question]: https://stackoverflow.com/questions/42098126/mac-osx-python-ssl-sslerror-ssl-certificate-verify-failed-certificate-verify
-[the comment on #96]: https://github.com/jdholtz/auto-southwest-check-in/issues/96#issuecomment-1587779388
