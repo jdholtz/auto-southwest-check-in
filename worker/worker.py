@@ -333,7 +333,23 @@ def check_fares(conn: sqlite3.Connection) -> None:
 
     for flight_row in flights:
         try:
-            reservation_info = json.loads(flight_row["reservation_info_json"])
+            # Re-fetch reservation to get fresh passenger-search-token
+            # (stored tokens expire due to inactivity)
+            res_info = {
+                "firstName": flight_row["first_name"],
+                "lastName": flight_row["last_name"],
+                "recordLocator": flight_row["confirmation_number"],
+            }
+            res_site = VIEW_RESERVATION_URL + flight_row["confirmation_number"]
+            try:
+                fresh_response = browser_session.make_request("POST", res_site, {}, res_info, max_attempts=3)
+                reservation_info = fresh_response.get("viewReservationViewPage", {})
+                # Update stored reservation_info with fresh data
+                update_flight_reservation_info(conn, flight_row["id"], json.dumps(reservation_info))
+            except RequestError as e:
+                add_log(conn, f"Fare check: failed to refresh reservation {flight_row['confirmation_number']}: {e}", "warning", flight_row["id"])
+                continue
+
             bounds = reservation_info.get("bounds", [])
             if not bounds:
                 add_log(conn, f"No bounds in reservation_info for {flight_row['confirmation_number']}", "warning", flight_row["id"])
