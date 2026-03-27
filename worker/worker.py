@@ -20,6 +20,8 @@ from db import (
     get_active_reservations,
     get_pending_flights,
     upsert_flight,
+    upsert_reservation,
+    deactivate_stale_reservations,
     update_flight_status,
     add_log,
     get_notification_configs,
@@ -50,25 +52,37 @@ last_reservation_check: dict[str, float] = {}
 shutdown_event = threading.Event()
 
 
+class FakeConfig:
+    browser_path = None
+
+
+class FakeMonitor:
+    config = FakeConfig()
+    first_name = ""
+    last_name = ""
+
+
+class FakeScheduler:
+    """Minimal scheduler interface for WebDriver compatibility."""
+
+    def __init__(self):
+        self.headers = {}
+        self.reservation_monitor = FakeMonitor()
+
+
+class AccountMonitorStub:
+    """Minimal stand-in for AccountMonitor, satisfying WebDriver.get_reservations()."""
+
+    def __init__(self, username: str, password: str, first_name: str = "", last_name: str = ""):
+        self.username = username
+        self.password = password
+        self.first_name = first_name
+        self.last_name = last_name
+
+
 def refresh_headers_via_webdriver() -> dict:
-    """Use webdriver to get fresh Southwest API headers."""
+    """Use webdriver to get fresh Southwest API headers (no login)."""
     global headers
-
-    class FakeConfig:
-        browser_path = None
-
-    class FakeMonitor:
-        config = FakeConfig()
-        first_name = ""
-        last_name = ""
-
-    class FakeScheduler:
-        """Minimal scheduler interface for WebDriver compatibility."""
-
-        def __init__(self):
-            self.headers = {}
-            self.reservation_monitor = FakeMonitor()
-
     scheduler = FakeScheduler()
     try:
         webdriver = WebDriver(scheduler)
@@ -235,15 +249,58 @@ def process_accounts(conn: sqlite3.Connection) -> None:
         logger.info("Processing account: %s", account["username"])
         add_log(conn, f"Processing account: {account['username']}", "info")
 
+        # Create stubs for WebDriver compatibility
+        scheduler = FakeScheduler()
+        account_stub = AccountMonitorStub(
+            username=account["username"],
+            password=account["password"],
+        )
+
         try:
             with headers_lock:
-                refresh_headers_via_webdriver()
+                webdriver = WebDriver(scheduler)
+                sw_reservations = webdriver.get_reservations(account_stub)
+                headers = scheduler.headers
+        except DriverTimeoutError:
+            logger.warning("Timeout logging into account %s", account["username"])
+            add_log(conn, f"Timeout logging into account {account['username']}", "warning")
+            continue
+        except LoginError as e:
+            logger.error("Login failed for account %s: %s", account["username"], e)
+            add_log(conn, f"Login failed for {account['username']}: {e}", "error")
+            if e.status_code not in (429, 500):
+                # Bad credentials - deactivate account
+                conn.execute("UPDATE accounts SET is_active = 0 WHERE id = ?", (account_id,))
+                conn.commit()
+                add_log(conn, f"Deactivated account {account['username']} due to login failure", "warning")
+            continue
         except Exception as e:
-            logger.error("Failed to get headers for account %s: %s", account["username"], e)
-            add_log(conn, f"Failed to get headers for account {account['username']}: {e}", "error")
+            logger.error("Failed to process account %s: %s", account["username"], e)
+            add_log(conn, f"Failed to process account {account['username']}: {e}", "error")
             continue
 
-        # Get reservations linked to this account
+        logger.info("Retrieved %d reservations for account %s", len(sw_reservations), account["username"])
+        add_log(conn, f"Retrieved {len(sw_reservations)} reservations for {account['username']}", "info")
+
+        # Upsert reservations from Southwest into the database
+        active_conf_numbers = []
+        for sw_res in sw_reservations:
+            conf_number = sw_res.get("record_locator", sw_res.get("recordLocator", ""))
+            if not conf_number:
+                continue
+            active_conf_numbers.append(conf_number)
+            upsert_reservation(
+                conn,
+                account_id,
+                conf_number,
+                account_stub.first_name or account["username"],
+                account_stub.last_name or "",
+            )
+
+        # Deactivate reservations no longer in the account
+        deactivate_stale_reservations(conn, account_id, active_conf_numbers)
+
+        # Now fetch flight details for each active reservation
         reservations = conn.execute(
             "SELECT * FROM reservations WHERE account_id = ? AND is_active = 1",
             (account_id,),

@@ -161,6 +161,56 @@ def add_log(
     conn.commit()
 
 
+def upsert_reservation(
+    conn: sqlite3.Connection,
+    account_id: str,
+    confirmation_number: str,
+    first_name: str,
+    last_name: str,
+) -> str:
+    """Insert or update a reservation tied to an account. Returns the reservation id."""
+    existing = conn.execute(
+        "SELECT id FROM reservations WHERE account_id = ? AND confirmation_number = ?",
+        (account_id, confirmation_number),
+    ).fetchone()
+
+    if existing:
+        conn.execute(
+            "UPDATE reservations SET first_name = ?, last_name = ?, is_active = 1, "
+            "updated_at = datetime('now') WHERE id = ?",
+            (first_name, last_name, existing["id"]),
+        )
+        conn.commit()
+        return existing["id"]
+
+    import uuid
+    res_id = str(uuid.uuid4())
+    conn.execute(
+        "INSERT INTO reservations (id, account_id, confirmation_number, first_name, last_name) "
+        "VALUES (?, ?, ?, ?, ?)",
+        (res_id, account_id, confirmation_number, first_name, last_name),
+    )
+    conn.commit()
+    return res_id
+
+
+def deactivate_stale_reservations(
+    conn: sqlite3.Connection,
+    account_id: str,
+    active_confirmation_numbers: list[str],
+) -> None:
+    """Mark reservations as inactive if they're no longer returned by the API."""
+    if not active_confirmation_numbers:
+        return
+    placeholders = ",".join("?" for _ in active_confirmation_numbers)
+    conn.execute(
+        f"UPDATE reservations SET is_active = 0, updated_at = datetime('now') "
+        f"WHERE account_id = ? AND confirmation_number NOT IN ({placeholders})",
+        [account_id] + active_confirmation_numbers,
+    )
+    conn.commit()
+
+
 def get_notification_configs(conn: sqlite3.Connection) -> list[dict]:
     rows = conn.execute(
         "SELECT * FROM notification_configs WHERE is_active = 1"
