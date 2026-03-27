@@ -1,26 +1,41 @@
 import { NextRequest, NextResponse } from "next/server";
-import crypto from "crypto";
 
 function getSecret(): string {
   return process.env.AUTH_SECRET || "change-me-in-production";
 }
 
-function verifyToken(token: string): boolean {
-  const [payload, hmac] = token.split(".");
-  if (!payload || !hmac) return false;
+async function verifyToken(token: string): Promise<boolean> {
+  const parts = token.split(".");
+  if (parts.length !== 2) return false;
+  const [payload, hmac] = parts;
 
   const expiry = parseInt(payload, 10);
   if (isNaN(expiry) || Date.now() > expiry) return false;
 
-  const expected = crypto.createHmac("sha256", getSecret()).update(payload).digest("hex");
-  try {
-    return crypto.timingSafeEqual(Buffer.from(hmac), Buffer.from(expected));
-  } catch {
-    return false;
+  // Use Web Crypto API (Edge-compatible)
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(getSecret()),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  const signature = await crypto.subtle.sign("HMAC", key, encoder.encode(payload));
+  const expected = Array.from(new Uint8Array(signature))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+
+  // Constant-time comparison
+  if (expected.length !== hmac.length) return false;
+  let mismatch = 0;
+  for (let i = 0; i < expected.length; i++) {
+    mismatch |= expected.charCodeAt(i) ^ hmac.charCodeAt(i);
   }
+  return mismatch === 0;
 }
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Allow login page and auth API without authentication
@@ -35,12 +50,10 @@ export function middleware(request: NextRequest) {
 
   const token = request.cookies.get("sw-checkin-auth")?.value;
 
-  if (!token || !verifyToken(token)) {
-    // API routes return 401
+  if (!token || !(await verifyToken(token))) {
     if (pathname.startsWith("/api/")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    // Pages redirect to login
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
