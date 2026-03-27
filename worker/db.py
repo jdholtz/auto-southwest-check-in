@@ -137,12 +137,14 @@ def get_active_reservations(conn: sqlite3.Connection) -> list[dict]:
 
 
 def get_pending_flights(conn: sqlite3.Connection) -> list[dict]:
+    now = datetime.utcnow().isoformat()
     rows = conn.execute(
         "SELECT f.*, r.confirmation_number, r.first_name, r.last_name "
         "FROM flights f JOIN reservations r ON r.id = f.reservation_id "
         "WHERE f.checkin_status IN ('pending', 'scheduled') "
-        "AND f.departure_time > datetime('now') "
-        "ORDER BY f.departure_time ASC"
+        "AND f.departure_time > ? "
+        "ORDER BY f.departure_time ASC",
+        (now,),
     ).fetchall()
     return [dict(r) for r in rows]
 
@@ -326,13 +328,16 @@ def update_flight_reservation_info(
 
 def get_flights_for_fare_check(conn: sqlite3.Connection) -> list[dict]:
     """Get flights that have reservation_info and are still upcoming."""
+    now = datetime.utcnow().isoformat()
     rows = conn.execute(
         "SELECT f.*, r.confirmation_number, r.first_name, r.last_name "
         "FROM flights f JOIN reservations r ON r.id = f.reservation_id "
         "WHERE f.reservation_info_json IS NOT NULL "
-        "AND f.departure_time > datetime('now') "
+        "AND f.reservation_info_json != '' "
+        "AND f.departure_time > ? "
         "AND f.checkin_status IN ('pending', 'scheduled') "
-        "ORDER BY f.departure_time ASC"
+        "ORDER BY f.departure_time ASC",
+        (now,),
     ).fetchall()
     return [dict(r) for r in rows]
 

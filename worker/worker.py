@@ -135,11 +135,11 @@ def process_reservation(
             )
             # Store reservation_info for fare checking
             try:
-                update_flight_reservation_info(
-                    conn, flight_id, json.dumps(reservation_info)
-                )
-            except Exception:
-                pass
+                info_json = json.dumps(reservation_info)
+                update_flight_reservation_info(conn, flight_id, info_json)
+            except Exception as e:
+                logger.error("Failed to store reservation_info for %s: %s", flight_id, e)
+                add_log(conn, f"Failed to store reservation info for fare checking: {e}", "warning")
             flights_data.append(
                 {
                     "id": flight_id,
@@ -299,7 +299,7 @@ FARE_CHECK_INTERVAL = 4 * 3600  # Check fares every 4 hours
 
 
 def check_fares(conn: sqlite3.Connection) -> None:
-    """Check for fare drops on upcoming flights."""
+    """Check for fare drops on upcoming flights using the browser session."""
     global last_fare_check
 
     if time.time() - last_fare_check < FARE_CHECK_INTERVAL:
@@ -316,7 +316,6 @@ def check_fares(conn: sqlite3.Connection) -> None:
     logger.info("Checking fares for %d flights", len(flights))
     add_log(conn, f"Checking fares for {len(flights)} flights", "info")
 
-    from lib.fare_checker import FareChecker, get_fare_check_filter, same_flight_filter
     from lib.flight import Flight
 
     for flight_row in flights:
@@ -324,62 +323,116 @@ def check_fares(conn: sqlite3.Connection) -> None:
             reservation_info = json.loads(flight_row["reservation_info_json"])
             bounds = reservation_info.get("bounds", [])
             if not bounds:
+                add_log(conn, f"No bounds in reservation_info for {flight_row['confirmation_number']}", "warning", flight_row["id"])
                 continue
 
-            # Find the matching bound for this flight
-            for bound in bounds:
-                flight_nums = bound.get("flights", [])
-                if flight_nums and flight_nums[0].get("number") == flight_row["flight_number"]:
-                    flight_obj = Flight(bound, reservation_info, flight_row["confirmation_number"])
+            # Check for change link
+            links = reservation_info.get("_links", {})
+            change_link = links.get("change")
+            if not change_link:
+                add_log(conn, f"No change link for {flight_row['confirmation_number']} - fare check not available", "info", flight_row["id"])
+                continue
 
-                    # Create a minimal fare checker that doesn't need ReservationMonitor
-                    class FareCheckerStub:
-                        def __init__(self):
-                            self.headers = headers
-                            self.filter = same_flight_filter
+            # Step 1: Get the change flight page
+            change_site = "mobile-air-booking/" + change_link["href"]
+            try:
+                change_response = browser_session.make_request(
+                    "GET", change_site, {}, change_link.get("query"), max_attempts=3
+                )
+            except RequestError as e:
+                add_log(conn, f"Fare check failed (change page) for {flight_row['confirmation_number']}: {e}", "warning", flight_row["id"])
+                continue
 
-                    checker = FareCheckerStub()
-                    # Use the _get_flight_price method logic
-                    try:
-                        fc = FareChecker.__new__(FareChecker)
-                        fc.headers = browser_session.headers
-                        fc.filter = same_flight_filter
-                        price = fc._get_flight_price(flight_obj)
-                        add_fare_check(
-                            conn,
-                            flight_row["id"],
-                            price["amount"],
-                            price.get("currencyCode", "USD"),
-                        )
-                        price_str = f"{price['amount']:+,} {price['currencyCode']}"
-                        if price["amount"] < -1:
-                            route = f"{flight_row['departure_airport']} -> {flight_row.get('destination_airport', '?')}"
-                            add_log(
-                                conn,
-                                f"Lower fare found for {flight_row['confirmation_number']} ({route}): {price_str}",
-                                "info",
-                                flight_row["id"],
-                            )
-                            try:
-                                from notifications import notify_fare_drop
-                                notify_fare_drop(flight_row["confirmation_number"], route, price_str)
-                            except Exception:
-                                pass
-                        else:
-                            add_log(
-                                conn,
-                                f"Fare check for {flight_row['confirmation_number']}: {price_str}",
-                                "info",
-                                flight_row["id"],
-                            )
-                    except (FlightChangeError, RequestError) as e:
-                        logger.debug("Fare check skipped for %s: %s", flight_row["confirmation_number"], e)
-                    except Exception as e:
-                        logger.error("Fare check error: %s", e)
-                        add_log(conn, f"Fare check error for {flight_row['confirmation_number']}: {e}", "error", flight_row["id"])
-                    break
+            change_flight_page = change_response.get("changeFlightPage", {})
+            if not change_flight_page:
+                add_log(conn, f"No changeFlightPage in response for {flight_row['confirmation_number']}", "warning", flight_row["id"])
+                continue
+
+            # Build search query
+            bound_references = change_flight_page.get("_links", {}).get("changeShopping", {})
+            shopping_body = bound_references.get("body", [])
+            bound_selections = change_flight_page.get("boundSelections", [])
+
+            query = {}
+            bound_keys = ["outbound", "inbound"]
+            target_bound_page = None
+            for idx, bound_sel in enumerate(bound_selections):
+                if idx < len(bound_keys) and idx < len(shopping_body):
+                    is_match = bound_sel.get("flight") == flight_row["flight_number"]
+                    query[bound_keys[idx]] = {
+                        "boundReference": shopping_body[idx].get("boundReference", ""),
+                        "date": bound_sel.get("originalDate", ""),
+                        "destination-airport": bound_sel.get("toAirportCode", ""),
+                        "origin-airport": bound_sel.get("fromAirportCode", ""),
+                        "isChangeBound": is_match,
+                    }
+                    if is_match:
+                        target_bound_page = f"{bound_keys[idx]}Page"
+
+            if not target_bound_page:
+                add_log(conn, f"Flight number {flight_row['flight_number']} didn't match any bound", "warning", flight_row["id"])
+                continue
+
+            # Step 2: Get matching flights
+            shopping_href = bound_references.get("href", "")
+            if not shopping_href:
+                continue
+            shopping_site = "mobile-air-booking/" + shopping_href
+
+            time.sleep(2)  # Be polite
+            try:
+                shopping_response = browser_session.make_request(
+                    "POST", shopping_site, {}, query, max_attempts=3
+                )
+            except RequestError as e:
+                add_log(conn, f"Fare check failed (shopping) for {flight_row['confirmation_number']}: {e}", "warning", flight_row["id"])
+                continue
+
+            # Extract fare type from reservation bounds
+            fare_type_bounds = reservation_info.get("bounds", [])
+            bound_idx = 0 if target_bound_page == "outboundPage" else 1
+            if bound_idx < len(fare_type_bounds):
+                fare_details = fare_type_bounds[bound_idx].get("fareProductDetails", {})
+                fare_type = fare_details.get("fareProductId", "")
+            else:
+                continue
+
+            cards = shopping_response.get("changeShoppingPage", {}).get("flights", {}).get(target_bound_page, {}).get("cards", [])
+
+            # Find lowest fare matching our fare type
+            lowest_fare = None
+            for card in cards:
+                if card.get("flightNumbers") == flight_row["flight_number"]:
+                    for fare in (card.get("fares") or []):
+                        if fare.get("_meta", {}).get("fareProductId") == fare_type:
+                            if "priceDifference" in fare:
+                                price_diff = fare["priceDifference"]
+                                sign = price_diff.get("sign", "")
+                                amount = int(sign + price_diff["amount"].replace(",", ""))
+                                currency = price_diff.get("currencyCode", "USD")
+                                if not lowest_fare or amount < lowest_fare["amount"]:
+                                    lowest_fare = {"amount": amount, "currencyCode": currency}
+
+            if not lowest_fare:
+                lowest_fare = {"amount": 0, "currencyCode": "USD"}
+
+            add_fare_check(conn, flight_row["id"], lowest_fare["amount"], lowest_fare.get("currencyCode", "USD"))
+            price_str = f"{lowest_fare['amount']:+,} {lowest_fare['currencyCode']}"
+
+            if lowest_fare["amount"] < -1:
+                route = f"{flight_row['departure_airport']} -> {flight_row.get('destination_airport', '?')}"
+                add_log(conn, f"Lower fare found for {flight_row['confirmation_number']} ({route}): {price_str}", "info", flight_row["id"])
+                try:
+                    from notifications import notify_fare_drop
+                    notify_fare_drop(flight_row["confirmation_number"], route, price_str)
+                except Exception:
+                    pass
+            else:
+                add_log(conn, f"Fare check for {flight_row['confirmation_number']}: {price_str}", "info", flight_row["id"])
+
         except Exception as e:
             logger.error("Error processing fare check for flight %s: %s", flight_row["id"], e)
+            add_log(conn, f"Fare check error for {flight_row['confirmation_number']}: {e}", "error", flight_row["id"])
 
     last_fare_check = time.time()
 
