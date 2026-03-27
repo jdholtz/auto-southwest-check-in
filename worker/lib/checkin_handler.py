@@ -34,7 +34,7 @@ class CheckInHandler:
 
     def __init__(
         self,
-        headers: dict,
+        browser_session,
         flight_db_id: str,
         confirmation_number: str,
         first_name: str,
@@ -43,12 +43,10 @@ class CheckInHandler:
         departure_airport: str,
         destination_airport: str,
         is_same_day: bool,
-        lock: threading.Lock,
         db_conn_factory,
-        notification_handler=None,
-        refresh_headers_fn=None,
     ) -> None:
-        self.headers = headers
+        self.browser_session = browser_session
+        self.headers = browser_session.headers if browser_session else {}
         self.flight_db_id = flight_db_id
         self.confirmation_number = confirmation_number
         self.first_name = first_name
@@ -57,10 +55,7 @@ class CheckInHandler:
         self.departure_airport = departure_airport
         self.destination_airport = destination_airport
         self.is_same_day = is_same_day
-        self.lock = lock
         self.db_conn_factory = db_conn_factory
-        self.notification_handler = notification_handler
-        self.refresh_headers_fn = refresh_headers_fn
         self._thread: threading.Thread | None = None
         self._stop_event = threading.Event()
 
@@ -130,14 +125,13 @@ class CheckInHandler:
             if self._stop_event.is_set():
                 return
 
-            if self.refresh_headers_fn:
-                with self.lock:
-                    try:
-                        new_headers = self.refresh_headers_fn()
-                        if new_headers:
-                            self.headers.update(new_headers)
-                    except DriverTimeoutError:
-                        logger.debug("Timeout while refreshing headers before check-in")
+            # Ensure browser session is alive before check-in
+            if self.browser_session:
+                try:
+                    self.browser_session.ensure_alive()
+                    self.headers = self.browser_session.headers
+                except DriverTimeoutError:
+                    logger.debug("Timeout while refreshing browser session before check-in")
 
             current_time = get_current_time()
 
@@ -304,9 +298,16 @@ class CheckInHandler:
             "recordLocator": self.confirmation_number,
         }
         site = CHECKIN_URL + self.confirmation_number
-        response = make_request("POST", site, self.headers, info, random_sleep=False)
 
-        info = response["checkInViewReservationPage"]["_links"]["checkIn"]
-        site = f"mobile-air-operations{info['href']}"
-        reservation = make_request("POST", site, self.headers, info["body"], random_sleep=False)
+        # Use browser session if available, otherwise fall back to raw HTTP
+        if self.browser_session:
+            response = self.browser_session.make_request("POST", site, {}, info, random_sleep=False)
+            info = response["checkInViewReservationPage"]["_links"]["checkIn"]
+            site = f"mobile-air-operations{info['href']}"
+            reservation = self.browser_session.make_request("POST", site, {}, info["body"], random_sleep=False)
+        else:
+            response = make_request("POST", site, self.headers, info, random_sleep=False)
+            info = response["checkInViewReservationPage"]["_links"]["checkIn"]
+            site = f"mobile-air-operations{info['href']}"
+            reservation = make_request("POST", site, self.headers, info["body"], random_sleep=False)
         return reservation

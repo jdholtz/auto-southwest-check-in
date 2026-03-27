@@ -41,9 +41,8 @@ from lib.utils import (
     LoginError,
     RequestError,
     get_current_time,
-    make_request,
 )
-from lib.webdriver import WebDriver
+from lib.browser_session import BrowserSession
 from lib.checkin_handler import CheckInHandler
 
 logger = get_logger(__name__)
@@ -53,54 +52,11 @@ POLL_INTERVAL = 60  # seconds
 RETRIEVAL_INTERVAL_DEFAULT = 24 * 3600  # 24 hours in seconds
 
 # Shared state
-headers = {}
-headers_lock = threading.Lock()
+browser_session: BrowserSession | None = None
 active_handlers: dict[str, CheckInHandler] = {}
 last_account_check: dict[str, float] = {}
 last_reservation_check: dict[str, float] = {}
 shutdown_event = threading.Event()
-
-
-class FakeConfig:
-    browser_path = None
-
-
-class FakeMonitor:
-    config = FakeConfig()
-    first_name = ""
-    last_name = ""
-
-
-class FakeScheduler:
-    """Minimal scheduler interface for WebDriver compatibility."""
-
-    def __init__(self):
-        self.headers = {}
-        self.reservation_monitor = FakeMonitor()
-
-
-class AccountMonitorStub:
-    """Minimal stand-in for AccountMonitor, satisfying WebDriver.get_reservations()."""
-
-    def __init__(self, username: str, password: str, first_name: str = "", last_name: str = ""):
-        self.username = username
-        self.password = password
-        self.first_name = first_name
-        self.last_name = last_name
-
-
-def refresh_headers_via_webdriver() -> dict:
-    """Use webdriver to get fresh Southwest API headers (no login)."""
-    global headers
-    scheduler = FakeScheduler()
-    try:
-        webdriver = WebDriver(scheduler)
-        webdriver.set_headers()
-        headers = scheduler.headers
-        return headers
-    except Exception as e:
-        logger.error("Failed to refresh headers: %s", e)
-        raise
 
 
 def get_db():
@@ -111,10 +67,8 @@ def get_db():
 def process_reservation(
     conn: sqlite3.Connection,
     reservation: dict,
-    current_headers: dict,
 ) -> list[dict]:
     """Retrieve flights for a reservation from Southwest API and sync to database."""
-    global headers
     confirmation_number = reservation["confirmation_number"]
     first_name = reservation["first_name"]
     last_name = reservation["last_name"]
@@ -128,40 +82,23 @@ def process_reservation(
     site = VIEW_RESERVATION_URL + confirmation_number
 
     try:
-        response = make_request("POST", site, current_headers, info, max_attempts=3)
+        response = browser_session.make_request("POST", site, {}, info, max_attempts=3)
     except RequestError as err:
         err_str = str(err)
         logger.error("Failed to retrieve reservation %s: %s", confirmation_number, err_str)
-
-        # Log diagnostic with header and response info
-        header_keys = list(current_headers.keys()) if current_headers else []
         resp_body = getattr(err, "response_body", "") or ""
+        header_keys = list(browser_session.headers.keys()) if browser_session else []
         log_diagnostic(
             conn,
             category="auth_failure" if "403" in err_str or "Forbidden" in err_str else "api_error",
             endpoint=f"POST {VIEW_RESERVATION_URL}{confirmation_number}",
             expected_behavior="200 OK with viewReservationViewPage",
-            actual_behavior=f"{err_str} | Headers count: {len(header_keys)} | Keys: {header_keys}",
+            actual_behavior=f"{err_str} | Headers: {header_keys}",
             headers_snapshot=json.dumps(header_keys),
             response_snapshot=resp_body[:500],
         )
-
-        # If 403/Forbidden, try refreshing headers and retry once
-        if "403" in err_str or "Forbidden" in err_str:
-            add_log(conn, f"Got 403 for {confirmation_number}, refreshing headers and retrying...", "warning")
-            try:
-                with headers_lock:
-                    refresh_headers_via_webdriver()
-                current_headers = headers
-                response = make_request("POST", site, current_headers, info, max_attempts=3)
-                add_log(conn, f"Retry succeeded for {confirmation_number} after header refresh", "info")
-            except Exception as retry_err:
-                logger.error("Retry also failed for %s: %s", confirmation_number, retry_err)
-                add_log(conn, f"Retry also failed for {confirmation_number}: {retry_err}", "error")
-                return []
-        else:
-            add_log(conn, f"Failed to retrieve reservation {confirmation_number}: {err}", "error")
-            return []
+        add_log(conn, f"Failed to retrieve reservation {confirmation_number}: {err}", "error")
+        return []
 
     reservation_info = response.get("viewReservationViewPage", {})
     bounds = reservation_info.get("bounds", [])
@@ -253,7 +190,7 @@ def schedule_pending_flights(conn: sqlite3.Connection) -> None:
                 continue
 
         handler = CheckInHandler(
-            headers=dict(headers),
+            browser_session=browser_session,
             flight_db_id=flight_id,
             confirmation_number=flight_row["confirmation_number"],
             first_name=flight_row["first_name"],
@@ -262,9 +199,7 @@ def schedule_pending_flights(conn: sqlite3.Connection) -> None:
             departure_airport=flight_row["departure_airport"],
             destination_airport=flight_row["destination_airport"],
             is_same_day=False,
-            lock=headers_lock,
             db_conn_factory=get_db,
-            refresh_headers_fn=refresh_headers_via_webdriver,
         )
         handler.schedule_check_in()
         active_handlers[flight_id] = handler
@@ -279,15 +214,12 @@ def schedule_pending_flights(conn: sqlite3.Connection) -> None:
 
 
 def process_accounts(conn: sqlite3.Connection) -> None:
-    """Process all active accounts - log in via webdriver and retrieve reservations."""
-    global headers
-
+    """Process all active accounts - log in via browser and retrieve reservations."""
     accounts = get_active_accounts(conn)
     for account in accounts:
         account_id = account["id"]
         retrieval_interval = account.get("retrieval_interval", 24) * 3600
 
-        # Check if we need to refresh this account
         last_check = last_account_check.get(account_id, 0)
         if time.time() - last_check < retrieval_interval:
             continue
@@ -295,18 +227,10 @@ def process_accounts(conn: sqlite3.Connection) -> None:
         logger.info("Processing account: %s", account["username"])
         add_log(conn, f"Processing account: {account['username']}", "info")
 
-        # Create stubs for WebDriver compatibility
-        scheduler = FakeScheduler()
-        account_stub = AccountMonitorStub(
-            username=account["username"],
-            password=account["password"],
-        )
-
         try:
-            with headers_lock:
-                webdriver = WebDriver(scheduler)
-                sw_reservations = webdriver.get_reservations(account_stub)
-                headers = scheduler.headers
+            sw_reservations, first_name, last_name = browser_session.login_and_get_reservations(
+                account["username"], account["password"]
+            )
         except DriverTimeoutError:
             logger.warning("Timeout logging into account %s", account["username"])
             add_log(conn, f"Timeout logging into account {account['username']}", "warning")
@@ -315,7 +239,6 @@ def process_accounts(conn: sqlite3.Connection) -> None:
             logger.error("Login failed for account %s: %s", account["username"], e)
             add_log(conn, f"Login failed for {account['username']}: {e}", "error")
             if e.status_code not in (429, 500):
-                # Bad credentials - deactivate account
                 conn.execute("UPDATE accounts SET is_active = 0 WHERE id = ?", (account_id,))
                 conn.commit()
                 add_log(conn, f"Deactivated account {account['username']} due to login failure", "warning")
@@ -328,50 +251,30 @@ def process_accounts(conn: sqlite3.Connection) -> None:
         logger.info("Retrieved %d reservations for account %s", len(sw_reservations), account["username"])
         add_log(conn, f"Retrieved {len(sw_reservations)} reservations for {account['username']}", "info")
 
-        # Upsert reservations from Southwest into the database
         active_conf_numbers = []
         for sw_res in sw_reservations:
             conf_number = sw_res.get("record_locator", sw_res.get("recordLocator", ""))
             if not conf_number:
                 continue
             active_conf_numbers.append(conf_number)
-            upsert_reservation(
-                conn,
-                account_id,
-                conf_number,
-                account_stub.first_name or account["username"],
-                account_stub.last_name or "",
-            )
+            upsert_reservation(conn, account_id, conf_number, first_name or account["username"], last_name or "")
 
-        # Deactivate reservations no longer in the account
         deactivate_stale_reservations(conn, account_id, active_conf_numbers)
 
-        # Refresh headers for mobile API calls (login headers may not work for view-reservation)
-        add_log(conn, "Refreshing headers for API calls after login", "info")
-        try:
-            with headers_lock:
-                refresh_headers_via_webdriver()
-            add_log(conn, f"Headers refreshed successfully. Keys: {list(headers.keys())}", "info")
-        except Exception as e:
-            add_log(conn, f"Header refresh failed after login: {e}. Using login headers.", "warning")
-
-        # Now fetch flight details for each active reservation
+        # Fetch flight details for each reservation via browser session
         reservations = conn.execute(
             "SELECT * FROM reservations WHERE account_id = ? AND is_active = 1",
             (account_id,),
         ).fetchall()
 
         for res_row in reservations:
-            res = dict(res_row)
-            process_reservation(conn, res, headers)
+            process_reservation(conn, dict(res_row))
 
         last_account_check[account_id] = time.time()
 
 
 def process_manual_reservations(conn: sqlite3.Connection) -> None:
     """Process reservations not linked to any account."""
-    global headers
-
     reservations = conn.execute(
         "SELECT * FROM reservations WHERE account_id IS NULL AND is_active = 1"
     ).fetchall()
@@ -379,24 +282,13 @@ def process_manual_reservations(conn: sqlite3.Connection) -> None:
     for res_row in reservations:
         res = dict(res_row)
         res_id = res["id"]
-        retrieval_interval = RETRIEVAL_INTERVAL_DEFAULT
 
         last_check = last_reservation_check.get(res_id, 0)
-        if time.time() - last_check < retrieval_interval:
+        if time.time() - last_check < RETRIEVAL_INTERVAL_DEFAULT:
             continue
 
         logger.info("Processing reservation: %s", res["confirmation_number"])
-
-        if not headers:
-            try:
-                with headers_lock:
-                    refresh_headers_via_webdriver()
-            except Exception as e:
-                logger.error("Failed to get headers: %s", e)
-                add_log(conn, f"Failed to get headers: {e}", "error")
-                continue
-
-        process_reservation(conn, res, headers)
+        process_reservation(conn, res)
         last_reservation_check[res_id] = time.time()
 
 
@@ -406,12 +298,12 @@ FARE_CHECK_INTERVAL = 4 * 3600  # Check fares every 4 hours
 
 def check_fares(conn: sqlite3.Connection) -> None:
     """Check for fare drops on upcoming flights."""
-    global last_fare_check, headers
+    global last_fare_check
 
     if time.time() - last_fare_check < FARE_CHECK_INTERVAL:
         return
 
-    if not headers:
+    if not browser_session:
         return
 
     flights = get_flights_for_fare_check(conn)
@@ -448,7 +340,7 @@ def check_fares(conn: sqlite3.Connection) -> None:
                     # Use the _get_flight_price method logic
                     try:
                         fc = FareChecker.__new__(FareChecker)
-                        fc.headers = headers
+                        fc.headers = browser_session.headers
                         fc.filter = same_flight_filter
                         price = fc._get_flight_price(flight_obj)
                         add_fare_check(
@@ -487,9 +379,7 @@ def check_fares(conn: sqlite3.Connection) -> None:
 
 def attempt_seat_upgrades(conn: sqlite3.Connection) -> None:
     """For A-List accounts, attempt seat upgrade 48 hours before departure."""
-    global headers
-
-    if not headers:
+    if not browser_session:
         return
 
     flights = get_flights_for_seat_upgrade(conn)
@@ -526,7 +416,7 @@ def attempt_seat_upgrades(conn: sqlite3.Connection) -> None:
         site = VIEW_RESERVATION_URL + conf_num
 
         try:
-            response = make_request("POST", site, headers, info)
+            response = browser_session.make_request("POST", site, {}, info)
             reservation_info = response.get("viewReservationViewPage", {})
 
             # Look for seat-related _links
@@ -571,13 +461,27 @@ def cleanup_handlers() -> None:
 
 def main_loop() -> None:
     """Main worker loop - polls database and manages check-ins."""
+    global browser_session
+
     logger.info("Worker started")
     conn = get_db()
     add_log(conn, "Worker started", "info")
 
+    # Start persistent browser session
+    browser_session = BrowserSession()
+    try:
+        browser_session.start()
+        add_log(conn, f"Browser session started with {len(browser_session.headers)} headers", "info")
+    except Exception as e:
+        logger.error("Failed to start browser session: %s", e)
+        add_log(conn, f"Failed to start browser session: {e}", "error")
+
     while not shutdown_event.is_set():
         try:
             conn = get_db()
+
+            # Ensure browser is alive and session is fresh
+            browser_session.ensure_alive()
 
             # Process accounts (login + retrieve reservations)
             process_accounts(conn)
@@ -610,10 +514,12 @@ def main_loop() -> None:
         # Wait for next poll
         shutdown_event.wait(timeout=POLL_INTERVAL)
 
-    # Shutdown: stop all handlers
+    # Shutdown
     logger.info("Worker shutting down...")
     for handler in active_handlers.values():
         handler.stop_check_in()
+    if browser_session:
+        browser_session.stop()
 
 
 def signal_handler(signum, frame):
