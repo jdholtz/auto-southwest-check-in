@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/flights/status-badge";
+import { CountdownTimer } from "@/components/flights/countdown-timer";
 import {
   Dialog,
   DialogContent,
@@ -180,20 +181,27 @@ export default function ReservationsPage() {
                             <th className="pb-2 font-medium">Flight</th>
                             <th className="pb-2 font-medium">Route</th>
                             <th className="pb-2 font-medium">Departure</th>
+                            <th className="pb-2 font-medium">Check-in In</th>
                             <th className="pb-2 font-medium">Status</th>
                           </tr>
                         </thead>
                         <tbody>
                           {res.flights.map((f) => (
                             <tr key={f.id}>
-                              <td className="py-1">{f.flight_number || "—"}</td>
-                              <td className="py-1">
-                                {f.departure_airport} &rarr; {f.destination_airport}
+                              <td className="py-2 font-mono">{f.flight_number || "—"}</td>
+                              <td className="py-2">
+                                <span className="font-medium">{f.departure_airport}</span>
+                                {" "}&rarr;{" "}
+                                <span className="font-medium">{f.destination_airport}</span>
                               </td>
-                              <td className="py-1">
-                                {new Date(f.departure_time).toLocaleString()}
+                              <td className="py-2">
+                                <div>{new Date(f.departure_time).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}</div>
+                                <div className="text-xs text-gray-400">{new Date(f.departure_time).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}</div>
                               </td>
-                              <td className="py-1">
+                              <td className="py-2">
+                                <CountdownTimer departureTime={f.departure_time} status={f.checkin_status} />
+                              </td>
+                              <td className="py-2">
                                 <StatusBadge status={f.checkin_status} />
                               </td>
                             </tr>

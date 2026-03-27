@@ -23,12 +23,17 @@ from db import (
     upsert_reservation,
     deactivate_stale_reservations,
     update_flight_status,
+    update_flight_reservation_info,
     add_log,
+    add_fare_check,
+    get_flights_for_fare_check,
     get_notification_configs,
 )
 from lib.log import get_logger
 from lib.utils import (
+    CheckFaresOption,
     DriverTimeoutError,
+    FlightChangeError,
     LoginError,
     RequestError,
     get_current_time,
@@ -155,6 +160,13 @@ def process_reservation(
                 departure_utc,
                 is_international,
             )
+            # Store reservation_info for fare checking
+            try:
+                update_flight_reservation_info(
+                    conn, flight_id, json.dumps(reservation_info)
+                )
+            except Exception:
+                pass
             flights_data.append(
                 {
                     "id": flight_id,
@@ -345,6 +357,91 @@ def process_manual_reservations(conn: sqlite3.Connection) -> None:
         last_reservation_check[res_id] = time.time()
 
 
+last_fare_check: float = 0
+FARE_CHECK_INTERVAL = 4 * 3600  # Check fares every 4 hours
+
+
+def check_fares(conn: sqlite3.Connection) -> None:
+    """Check for fare drops on upcoming flights."""
+    global last_fare_check, headers
+
+    if time.time() - last_fare_check < FARE_CHECK_INTERVAL:
+        return
+
+    if not headers:
+        return
+
+    flights = get_flights_for_fare_check(conn)
+    if not flights:
+        last_fare_check = time.time()
+        return
+
+    logger.info("Checking fares for %d flights", len(flights))
+    add_log(conn, f"Checking fares for {len(flights)} flights", "info")
+
+    from lib.fare_checker import FareChecker, get_fare_check_filter, same_flight_filter
+    from lib.flight import Flight
+
+    for flight_row in flights:
+        try:
+            reservation_info = json.loads(flight_row["reservation_info_json"])
+            bounds = reservation_info.get("bounds", [])
+            if not bounds:
+                continue
+
+            # Find the matching bound for this flight
+            for bound in bounds:
+                flight_nums = bound.get("flights", [])
+                if flight_nums and flight_nums[0].get("number") == flight_row["flight_number"]:
+                    flight_obj = Flight(bound, reservation_info, flight_row["confirmation_number"])
+
+                    # Create a minimal fare checker that doesn't need ReservationMonitor
+                    class FareCheckerStub:
+                        def __init__(self):
+                            self.headers = headers
+                            self.filter = same_flight_filter
+
+                    checker = FareCheckerStub()
+                    # Use the _get_flight_price method logic
+                    try:
+                        fc = FareChecker.__new__(FareChecker)
+                        fc.headers = headers
+                        fc.filter = same_flight_filter
+                        price = fc._get_flight_price(flight_obj)
+                        add_fare_check(
+                            conn,
+                            flight_row["id"],
+                            price["amount"],
+                            price.get("currencyCode", "USD"),
+                        )
+                        price_str = f"{price['amount']:+,} {price['currencyCode']}"
+                        if price["amount"] < -1:
+                            add_log(
+                                conn,
+                                f"Lower fare found for {flight_row['confirmation_number']} "
+                                f"({flight_row['departure_airport']}->{flight_row['destination_airport']}): {price_str}",
+                                "info",
+                                flight_row["id"],
+                            )
+                        else:
+                            add_log(
+                                conn,
+                                f"Fare check for {flight_row['confirmation_number']}: {price_str}",
+                                "info",
+                                flight_row["id"],
+                            )
+                    except (FlightChangeError, RequestError) as e:
+                        logger.debug("Fare check skipped for %s: %s", flight_row["confirmation_number"], e)
+                    except Exception as e:
+                        logger.error("Fare check error: %s", e)
+                        add_log(conn, f"Fare check error for {flight_row['confirmation_number']}: {e}", "error", flight_row["id"])
+                    break
+        except Exception as e:
+            logger.error("Error processing fare check for flight %s: %s", flight_row["id"], e)
+
+    last_fare_check = time.time()
+
+
 def cleanup_handlers() -> None:
     """Remove handlers for flights that are no longer pending."""
     conn = get_db()
@@ -377,6 +474,9 @@ def main_loop() -> None:
 
             # Schedule check-ins for pending flights
             schedule_pending_flights(conn)
+
+            # Check for fare drops
+            check_fares(conn)
 
             # Clean up completed handlers
             cleanup_handlers()

@@ -4,8 +4,10 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Trash2, Plus } from "lucide-react";
+import { Trash2, Plus, Save } from "lucide-react";
 import type { NotificationConfig } from "@/lib/types";
+
+const ALL_SEAT_LETTERS = ["A", "B", "C", "D", "E", "F"];
 
 export default function SettingsPage() {
   const [notifications, setNotifications] = useState<NotificationConfig[]>([]);
@@ -13,13 +15,28 @@ export default function SettingsPage() {
   const [notificationLevel, setNotificationLevel] = useState(1);
   const [loading, setLoading] = useState(false);
 
+  // Seat preferences
+  const [preferredLetters, setPreferredLetters] = useState<string[]>(["A", "F"]);
+  const [preferredRows, setPreferredRows] = useState("1,2,3,4,5,6");
+  const [fallbackLetters, setFallbackLetters] = useState<string[]>(["A", "C", "D", "F"]);
+  const [seatSaved, setSeatSaved] = useState(false);
+
   useEffect(() => {
     fetchNotifications();
+    fetchPreferences();
   }, []);
 
   async function fetchNotifications() {
     const res = await fetch("/api/notifications");
     setNotifications(await res.json());
+  }
+
+  async function fetchPreferences() {
+    const res = await fetch("/api/preferences");
+    const data = await res.json();
+    if (data.preferred_letters) setPreferredLetters(data.preferred_letters.split(","));
+    if (data.preferred_rows) setPreferredRows(data.preferred_rows);
+    if (data.fallback_letters) setFallbackLetters(data.fallback_letters.split(","));
   }
 
   async function addNotification(e: React.FormEvent) {
@@ -41,10 +58,111 @@ export default function SettingsPage() {
     fetchNotifications();
   }
 
+  async function savePreferences() {
+    setSeatSaved(false);
+    await fetch("/api/preferences", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        preferred_letters: preferredLetters.join(","),
+        preferred_rows: preferredRows,
+        fallback_letters: fallbackLetters.join(","),
+      }),
+    });
+    setSeatSaved(true);
+    setTimeout(() => setSeatSaved(false), 2000);
+  }
+
+  function toggleLetter(letter: string, list: string[], setList: (v: string[]) => void) {
+    if (list.includes(letter)) {
+      setList(list.filter((l) => l !== letter));
+    } else {
+      setList([...list, letter].sort());
+    }
+  }
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
 
+      {/* Seat Preferences */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Seat Preferences</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-gray-500">
+            Configure your preferred seat selections. These preferences are used to guide seat
+            selection after check-in based on your boarding position.
+          </p>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Preferred Seat Letters
+            </label>
+            <div className="flex gap-2">
+              {ALL_SEAT_LETTERS.map((letter) => (
+                <button
+                  key={letter}
+                  onClick={() => toggleLetter(letter, preferredLetters, setPreferredLetters)}
+                  className={`w-10 h-10 rounded-md text-sm font-medium border transition-colors ${
+                    preferredLetters.includes(letter)
+                      ? "bg-blue-600 text-white border-blue-600"
+                      : "bg-white text-gray-600 border-gray-300 hover:bg-gray-50"
+                  }`}
+                >
+                  {letter}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Preferred Rows (comma-separated)
+            </label>
+            <Input
+              value={preferredRows}
+              onChange={(e) => setPreferredRows(e.target.value)}
+              placeholder="1,2,3,4,5,6"
+            />
+            <p className="text-xs text-gray-400 mt-1">
+              Rows where your preferred letters will be prioritized (e.g., rows 1-6 for front seats)
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Fallback Seat Letters
+            </label>
+            <div className="flex gap-2">
+              {ALL_SEAT_LETTERS.map((letter) => (
+                <button
+                  key={letter}
+                  onClick={() => toggleLetter(letter, fallbackLetters, setFallbackLetters)}
+                  className={`w-10 h-10 rounded-md text-sm font-medium border transition-colors ${
+                    fallbackLetters.includes(letter)
+                      ? "bg-orange-500 text-white border-orange-500"
+                      : "bg-white text-gray-600 border-gray-300 hover:bg-gray-50"
+                  }`}
+                >
+                  {letter}
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-gray-400 mt-1">
+              Used when preferred seats in your target rows are not available
+            </p>
+          </div>
+
+          <Button onClick={savePreferences}>
+            <Save className="mr-2 h-4 w-4" />
+            {seatSaved ? "Saved!" : "Save Preferences"}
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Notifications */}
       <Card>
         <CardHeader>
           <CardTitle>Notification Services</CardTitle>

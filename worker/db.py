@@ -15,6 +15,7 @@ def get_connection() -> sqlite3.Connection:
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA foreign_keys=ON")
     _init_tables(conn)
+    _migrate(conn)
     return conn
 
 
@@ -53,6 +54,21 @@ def _init_tables(conn: sqlite3.Connection) -> None:
             checkin_attempted_at TEXT,
             created_at TEXT DEFAULT (datetime('now'))
         );
+        CREATE TABLE IF NOT EXISTS fare_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            flight_id TEXT NOT NULL REFERENCES flights(id) ON DELETE CASCADE,
+            price_change INTEGER NOT NULL,
+            currency_code TEXT NOT NULL DEFAULT 'USD',
+            checked_at TEXT DEFAULT (datetime('now'))
+        );
+        CREATE TABLE IF NOT EXISTS seat_preferences (
+            id TEXT PRIMARY KEY DEFAULT 'default',
+            preferred_letters TEXT DEFAULT 'A,F',
+            preferred_rows TEXT DEFAULT '1,2,3,4,5,6',
+            fallback_letters TEXT DEFAULT 'A,C,D,F',
+            created_at TEXT DEFAULT (datetime('now')),
+            updated_at TEXT DEFAULT (datetime('now'))
+        );
         CREATE TABLE IF NOT EXISTS notification_configs (
             id TEXT PRIMARY KEY,
             service_url TEXT NOT NULL,
@@ -68,6 +84,15 @@ def _init_tables(conn: sqlite3.Connection) -> None:
         );
         """
     )
+
+
+def _migrate(conn: sqlite3.Connection) -> None:
+    """Run schema migrations that can't be handled by CREATE TABLE IF NOT EXISTS."""
+    # Add reservation_info_json column to flights if missing
+    cols = [row[1] for row in conn.execute("PRAGMA table_info(flights)").fetchall()]
+    if "reservation_info_json" not in cols:
+        conn.execute("ALTER TABLE flights ADD COLUMN reservation_info_json TEXT")
+        conn.commit()
 
 
 def get_active_accounts(conn: sqlite3.Connection) -> list[dict]:
@@ -209,6 +234,44 @@ def deactivate_stale_reservations(
         [account_id] + active_confirmation_numbers,
     )
     conn.commit()
+
+
+def add_fare_check(
+    conn: sqlite3.Connection,
+    flight_id: str,
+    price_change: int,
+    currency_code: str = "USD",
+) -> None:
+    conn.execute(
+        "INSERT INTO fare_history (flight_id, price_change, currency_code) VALUES (?, ?, ?)",
+        (flight_id, price_change, currency_code),
+    )
+    conn.commit()
+
+
+def update_flight_reservation_info(
+    conn: sqlite3.Connection,
+    flight_id: str,
+    reservation_info_json: str,
+) -> None:
+    conn.execute(
+        "UPDATE flights SET reservation_info_json = ? WHERE id = ?",
+        (reservation_info_json, flight_id),
+    )
+    conn.commit()
+
+
+def get_flights_for_fare_check(conn: sqlite3.Connection) -> list[dict]:
+    """Get flights that have reservation_info and are still upcoming."""
+    rows = conn.execute(
+        "SELECT f.*, r.confirmation_number, r.first_name, r.last_name "
+        "FROM flights f JOIN reservations r ON r.id = f.reservation_id "
+        "WHERE f.reservation_info_json IS NOT NULL "
+        "AND f.departure_time > datetime('now') "
+        "AND f.checkin_status IN ('pending', 'scheduled') "
+        "ORDER BY f.departure_time ASC"
+    ).fetchall()
+    return [dict(r) for r in rows]
 
 
 def get_notification_configs(conn: sqlite3.Connection) -> list[dict]:

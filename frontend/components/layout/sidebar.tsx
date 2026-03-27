@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Plane, LayoutDashboard, Users, CalendarCheck, Settings, LogOut } from "lucide-react";
+import { Plane, LayoutDashboard, Users, CalendarCheck, Settings, LogOut, Activity } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -10,6 +10,7 @@ const navItems = [
   { href: "/accounts", label: "Accounts", icon: Users },
   { href: "/reservations", label: "Reservations", icon: CalendarCheck },
   { href: "/flights", label: "Flights", icon: Plane },
+  { href: "/activity", label: "Activity", icon: Activity },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 

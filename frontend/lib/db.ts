@@ -70,5 +70,22 @@ function initTables(db: Database.Database) {
       message TEXT NOT NULL,
       created_at TEXT DEFAULT (datetime('now'))
     );
+
+    CREATE TABLE IF NOT EXISTS fare_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      flight_id TEXT NOT NULL,
+      price_change INTEGER NOT NULL,
+      currency_code TEXT NOT NULL DEFAULT 'USD',
+      checked_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS seat_preferences (
+      id TEXT PRIMARY KEY DEFAULT 'default',
+      preferred_letters TEXT DEFAULT 'A,F',
+      preferred_rows TEXT DEFAULT '1,2,3,4,5,6',
+      fallback_letters TEXT DEFAULT 'A,C,D,F',
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    );
   `);
 }
