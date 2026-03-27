@@ -1,11 +1,6 @@
 {
   "$schema": "https://railway.com/railway.schema.json",
-  "build": {
-    "dockerfilePath": "Dockerfile.web"
-  },
   "deploy": {
-    "startCommand": "supervisord -c /app/supervisord.conf",
-    "healthcheckPath": "/",
     "restartPolicyType": "ON_FAILURE"
   }
 }
