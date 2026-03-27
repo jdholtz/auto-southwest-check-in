@@ -5,7 +5,7 @@ import os
 import sqlite3
 from datetime import datetime
 
-DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "checkin.db")
+DB_PATH = os.environ.get("DB_PATH", os.path.join("/app", "data", "checkin.db"))
 
 
 def get_connection() -> sqlite3.Connection:
