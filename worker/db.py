@@ -3,7 +3,7 @@
 import json
 import os
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timedelta
 
 DB_PATH = os.environ.get("DB_PATH", os.path.join("/app", "data", "checkin.db"))
 
@@ -88,11 +88,21 @@ def _init_tables(conn: sqlite3.Connection) -> None:
 
 def _migrate(conn: sqlite3.Connection) -> None:
     """Run schema migrations that can't be handled by CREATE TABLE IF NOT EXISTS."""
-    # Add reservation_info_json column to flights if missing
-    cols = [row[1] for row in conn.execute("PRAGMA table_info(flights)").fetchall()]
-    if "reservation_info_json" not in cols:
+    # Flights table migrations
+    flight_cols = [row[1] for row in conn.execute("PRAGMA table_info(flights)").fetchall()]
+    if "reservation_info_json" not in flight_cols:
         conn.execute("ALTER TABLE flights ADD COLUMN reservation_info_json TEXT")
-        conn.commit()
+    if "assigned_seat" not in flight_cols:
+        conn.execute("ALTER TABLE flights ADD COLUMN assigned_seat TEXT")
+
+    # Accounts table migrations
+    account_cols = [row[1] for row in conn.execute("PRAGMA table_info(accounts)").fetchall()]
+    if "is_alist" not in account_cols:
+        conn.execute("ALTER TABLE accounts ADD COLUMN is_alist INTEGER DEFAULT 0")
+    if "auto_upgrade_seats" not in account_cols:
+        conn.execute("ALTER TABLE accounts ADD COLUMN auto_upgrade_seats INTEGER DEFAULT 0")
+
+    conn.commit()
 
 
 def get_active_accounts(conn: sqlite3.Connection) -> list[dict]:
@@ -270,6 +280,35 @@ def get_flights_for_fare_check(conn: sqlite3.Connection) -> list[dict]:
         "AND f.departure_time > datetime('now') "
         "AND f.checkin_status IN ('pending', 'scheduled') "
         "ORDER BY f.departure_time ASC"
+    ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def get_seat_preferences(conn: sqlite3.Connection) -> dict | None:
+    row = conn.execute("SELECT * FROM seat_preferences WHERE id = 'default'").fetchone()
+    return dict(row) if row else None
+
+
+def update_flight_seat(conn: sqlite3.Connection, flight_id: str, seat: str) -> None:
+    conn.execute("UPDATE flights SET assigned_seat = ? WHERE id = ?", (seat, flight_id))
+    conn.commit()
+
+
+def get_flights_for_seat_upgrade(conn: sqlite3.Connection) -> list[dict]:
+    """Get flights departing in 47-49 hours linked to A-List accounts with auto_upgrade enabled."""
+    now = datetime.utcnow().isoformat()
+    hours_47 = (datetime.utcnow() + timedelta(hours=47)).isoformat()
+    hours_49 = (datetime.utcnow() + timedelta(hours=49)).isoformat()
+    rows = conn.execute(
+        "SELECT f.*, r.confirmation_number, r.first_name, r.last_name, a.is_alist, a.auto_upgrade_seats "
+        "FROM flights f "
+        "JOIN reservations r ON r.id = f.reservation_id "
+        "LEFT JOIN accounts a ON a.id = r.account_id "
+        "WHERE f.departure_time BETWEEN ? AND ? "
+        "AND a.is_alist = 1 AND a.auto_upgrade_seats = 1 "
+        "AND (f.assigned_seat IS NULL OR f.assigned_seat = '') "
+        "ORDER BY f.departure_time ASC",
+        (hours_47, hours_49),
     ).fetchall()
     return [dict(r) for r in rows]
 

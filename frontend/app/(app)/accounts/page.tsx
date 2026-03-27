@@ -20,6 +20,8 @@ export default function AccountsPage() {
   const [open, setOpen] = useState(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [isAlist, setIsAlist] = useState(false);
+  const [autoUpgrade, setAutoUpgrade] = useState(false);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -37,12 +39,23 @@ export default function AccountsPage() {
     await fetch("/api/accounts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, password }),
+      body: JSON.stringify({ username, password, is_alist: isAlist, auto_upgrade_seats: autoUpgrade }),
     });
     setUsername("");
     setPassword("");
+    setIsAlist(false);
+    setAutoUpgrade(false);
     setOpen(false);
     setLoading(false);
+    fetchAccounts();
+  }
+
+  async function toggleField(id: string, field: string, currentValue: number) {
+    await fetch(`/api/accounts/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ [field]: !currentValue }),
+    });
     fetchAccounts();
   }
 
@@ -95,6 +108,32 @@ export default function AccountsPage() {
                   required
                 />
               </div>
+              <div className="flex items-center justify-between rounded-lg border border-gray-200 p-3">
+                <div>
+                  <div className="text-sm font-medium">A-List Status</div>
+                  <div className="text-xs text-gray-400">Enable for A-List or A-List Preferred members</div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsAlist(!isAlist)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${isAlist ? "bg-blue-600" : "bg-gray-200"}`}
+                >
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isAlist ? "translate-x-6" : "translate-x-1"}`} />
+                </button>
+              </div>
+              <div className="flex items-center justify-between rounded-lg border border-gray-200 p-3">
+                <div>
+                  <div className="text-sm font-medium">Auto Seat Upgrade</div>
+                  <div className="text-xs text-gray-400">Attempt seat upgrade 48h before departure</div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setAutoUpgrade(!autoUpgrade)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${autoUpgrade ? "bg-blue-600" : "bg-gray-200"}`}
+                >
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${autoUpgrade ? "translate-x-6" : "translate-x-1"}`} />
+                </button>
+              </div>
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? "Adding..." : "Add Account"}
               </Button>
@@ -117,9 +156,9 @@ export default function AccountsPage() {
                   <tr className="border-b text-left text-gray-500">
                     <th className="pb-3 font-medium">Username</th>
                     <th className="pb-3 font-medium">Status</th>
+                    <th className="pb-3 font-medium">Tier</th>
+                    <th className="pb-3 font-medium">Seat Upgrade</th>
                     <th className="pb-3 font-medium">Reservations</th>
-                    <th className="pb-3 font-medium">Refresh Interval</th>
-                    <th className="pb-3 font-medium">Added</th>
                     <th className="pb-3 font-medium">Actions</th>
                   </tr>
                 </thead>
@@ -132,11 +171,21 @@ export default function AccountsPage() {
                           {account.is_active ? "Active" : "Inactive"}
                         </Badge>
                       </td>
-                      <td className="py-3">{account.reservation_count ?? 0}</td>
-                      <td className="py-3">{account.retrieval_interval}h</td>
-                      <td className="py-3 text-gray-500">
-                        {new Date(account.created_at).toLocaleDateString()}
+                      <td className="py-3">
+                        <button onClick={() => toggleField(account.id, "is_alist", account.is_alist)}>
+                          <Badge variant={account.is_alist ? "success" : "default"}>
+                            {account.is_alist ? "A-List" : "Standard"}
+                          </Badge>
+                        </button>
                       </td>
+                      <td className="py-3">
+                        <button onClick={() => toggleField(account.id, "auto_upgrade_seats", account.auto_upgrade_seats)}>
+                          <Badge variant={account.auto_upgrade_seats ? "scheduled" : "default"}>
+                            {account.auto_upgrade_seats ? "Auto" : "Off"}
+                          </Badge>
+                        </button>
+                      </td>
+                      <td className="py-3">{account.reservation_count ?? 0}</td>
                       <td className="py-3">
                         <div className="flex gap-2">
                           <Button

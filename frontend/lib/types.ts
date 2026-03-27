@@ -3,6 +3,8 @@ export interface Account {
   username: string;
   password: string;
   is_active: number;
+  is_alist: number;
+  auto_upgrade_seats: number;
   retrieval_interval: number;
   created_at: string;
   updated_at: string;

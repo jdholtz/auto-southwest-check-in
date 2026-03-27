@@ -15,6 +15,14 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     fields.push("retrieval_interval = ?");
     values.push(body.retrieval_interval);
   }
+  if (body.is_alist !== undefined) {
+    fields.push("is_alist = ?");
+    values.push(body.is_alist ? 1 : 0);
+  }
+  if (body.auto_upgrade_seats !== undefined) {
+    fields.push("auto_upgrade_seats = ?");
+    values.push(body.auto_upgrade_seats ? 1 : 0);
+  }
 
   if (fields.length === 0) {
     return NextResponse.json({ error: "No fields to update" }, { status: 400 });

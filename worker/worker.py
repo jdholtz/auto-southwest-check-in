@@ -27,6 +27,9 @@ from db import (
     add_log,
     add_fare_check,
     get_flights_for_fare_check,
+    get_flights_for_seat_upgrade,
+    get_seat_preferences,
+    update_flight_seat,
     get_notification_configs,
 )
 from lib.log import get_logger
@@ -442,6 +445,76 @@ def check_fares(conn: sqlite3.Connection) -> None:
     last_fare_check = time.time()
 
 
+def attempt_seat_upgrades(conn: sqlite3.Connection) -> None:
+    """For A-List accounts, attempt seat upgrade 48 hours before departure."""
+    global headers
+
+    if not headers:
+        return
+
+    flights = get_flights_for_seat_upgrade(conn)
+    if not flights:
+        return
+
+    logger.info("Attempting seat upgrades for %d flights", len(flights))
+    add_log(conn, f"Attempting seat upgrades for {len(flights)} A-List flights", "info")
+
+    prefs = get_seat_preferences(conn)
+    if not prefs:
+        add_log(conn, "No seat preferences set, skipping seat upgrades", "info")
+        return
+
+    for flight_row in flights:
+        flight_id = flight_row["id"]
+        conf_num = flight_row["confirmation_number"]
+        first_name = flight_row["first_name"]
+        last_name = flight_row["last_name"]
+
+        add_log(
+            conn,
+            f"Attempting seat upgrade for {conf_num} ({flight_row['departure_airport']}->{flight_row['destination_airport']})",
+            "info",
+            flight_id,
+        )
+
+        # Try to view the reservation to find seat-related links
+        info = {
+            "firstName": first_name,
+            "lastName": last_name,
+            "recordLocator": conf_num,
+        }
+        site = VIEW_RESERVATION_URL + conf_num
+
+        try:
+            response = make_request("POST", site, headers, info)
+            reservation_info = response.get("viewReservationViewPage", {})
+
+            # Look for seat-related _links
+            links = reservation_info.get("_links", {})
+            seat_links = {k: v for k, v in links.items() if "seat" in k.lower()}
+
+            if seat_links:
+                add_log(conn, f"Seat links found for upgrade: {list(seat_links.keys())}", "info", flight_id)
+                # TODO: Follow seat selection links once API structure is discovered
+                # For now, log what we find for refinement
+                for link_name, link_data in seat_links.items():
+                    add_log(
+                        conn,
+                        f"Seat link '{link_name}': {json.dumps(link_data)[:300]}",
+                        "info",
+                        flight_id,
+                    )
+            else:
+                available_links = list(links.keys()) if links else []
+                add_log(conn, f"No seat links found. Available links: {available_links}", "info", flight_id)
+
+        except RequestError as e:
+            add_log(conn, f"Failed to retrieve reservation for seat upgrade: {e}", "error", flight_id)
+        except Exception as e:
+            logger.error("Seat upgrade error for %s: %s", conf_num, e)
+            add_log(conn, f"Seat upgrade error: {e}", "error", flight_id)
+
+
 def cleanup_handlers() -> None:
     """Remove handlers for flights that are no longer pending."""
     conn = get_db()
@@ -477,6 +550,9 @@ def main_loop() -> None:
 
             # Check for fare drops
             check_fares(conn)
+
+            # Attempt seat upgrades for A-List accounts (48h before departure)
+            attempt_seat_upgrades(conn)
 
             # Clean up completed handlers
             cleanup_handlers()

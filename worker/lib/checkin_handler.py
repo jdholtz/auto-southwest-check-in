@@ -156,9 +156,107 @@ class CheckInHandler:
             self._update_status("failed", str(err))
             return
 
-        result_json = json.dumps(reservation.get("checkInConfirmationPage", {}))
+        confirmation_page = reservation.get("checkInConfirmationPage", {})
+        result_json = json.dumps(confirmation_page)
         self._update_status("success", result_json)
         logger.info("Successfully checked in for flight %s", self.flight_db_id)
+
+        # Discovery: log response structure for seat assignment analysis
+        self._discover_seat_info(reservation)
+
+    def _discover_seat_info(self, reservation: JSON) -> None:
+        """Log check-in response structure to help discover seat selection endpoints."""
+        from db import add_log, update_flight_seat, get_seat_preferences
+
+        conn = self.db_conn_factory()
+        try:
+            # Log top-level keys
+            top_keys = list(reservation.keys())
+            add_log(conn, f"Check-in response keys: {top_keys}", "info", self.flight_db_id)
+
+            # Look for seat-related data anywhere in the response
+            confirmation_page = reservation.get("checkInConfirmationPage", {})
+
+            # Log _links if present (Southwest hypermedia pattern)
+            links = confirmation_page.get("_links", {})
+            if links:
+                link_keys = list(links.keys())
+                add_log(conn, f"Check-in _links available: {link_keys}", "info", self.flight_db_id)
+
+                # Look for seat-related links
+                seat_links = [k for k in link_keys if "seat" in k.lower()]
+                if seat_links:
+                    add_log(conn, f"Seat-related links found: {seat_links}", "info", self.flight_db_id)
+                    # Attempt seat selection if links exist
+                    self._attempt_seat_selection(conn, links, seat_links)
+
+            # Check for seat assignments in flights/passengers
+            flights = confirmation_page.get("flights", [])
+            for flight_data in flights:
+                passengers = flight_data.get("passengers", [])
+                for pax in passengers:
+                    # Log all passenger keys to discover seat fields
+                    pax_keys = list(pax.keys())
+                    add_log(conn, f"Passenger data keys: {pax_keys}", "info", self.flight_db_id)
+
+                    # Try common seat field names
+                    seat = (
+                        pax.get("seatAssignment")
+                        or pax.get("seat")
+                        or pax.get("seatNumber")
+                        or pax.get("assignedSeat")
+                    )
+                    if seat:
+                        add_log(conn, f"Seat assignment found: {seat}", "info", self.flight_db_id)
+                        update_flight_seat(conn, self.flight_db_id, str(seat))
+                    else:
+                        # Log boarding info if no seat found
+                        boarding = f"Group {pax.get('boardingGroup', '?')}, Position {pax.get('boardingPosition', '?')}"
+                        add_log(conn, f"No seat assignment in response. Boarding: {boarding}", "info", self.flight_db_id)
+        except Exception as e:
+            logger.error("Error during seat discovery: %s", e)
+            add_log(conn, f"Seat discovery error: {e}", "error", self.flight_db_id)
+        finally:
+            conn.close()
+
+    def _attempt_seat_selection(self, conn, links: JSON, seat_links: list[str]) -> None:
+        """Attempt to select a preferred seat using discovered API links."""
+        from db import get_seat_preferences, update_flight_seat, add_log
+
+        prefs = get_seat_preferences(conn)
+        if not prefs:
+            add_log(conn, "No seat preferences configured, skipping seat selection", "info", self.flight_db_id)
+            return
+
+        preferred_letters = prefs.get("preferred_letters", "A,F").split(",")
+        preferred_rows = [int(r.strip()) for r in prefs.get("preferred_rows", "1,2,3,4,5,6").split(",") if r.strip().isdigit()]
+        fallback_letters = prefs.get("fallback_letters", "A,C,D,F").split(",")
+
+        for link_name in seat_links:
+            link_data = links[link_name]
+            add_log(conn, f"Attempting seat selection via '{link_name}': {json.dumps(link_data)[:200]}", "info", self.flight_db_id)
+
+            try:
+                href = link_data.get("href", "")
+                if not href:
+                    continue
+
+                # Try to fetch seat map
+                site = f"mobile-air-operations{href}" if not href.startswith("http") else href
+                method = link_data.get("method", "GET").upper()
+                body = link_data.get("body")
+
+                if method == "GET":
+                    response = make_request("GET", site, self.headers, link_data.get("query"), max_attempts=3)
+                else:
+                    response = make_request("POST", site, self.headers, body, max_attempts=3)
+
+                add_log(conn, f"Seat endpoint response keys: {list(response.keys())[:10]}", "info", self.flight_db_id)
+
+                # TODO: Parse seat map response and select best available seat
+                # This will be refined once we see actual API response structure
+            except Exception as e:
+                add_log(conn, f"Seat selection attempt failed: {e}", "warning", self.flight_db_id)
 
     def _attempt_check_in(self) -> JSON:
         expected_flights = 2 if self.is_same_day else 1

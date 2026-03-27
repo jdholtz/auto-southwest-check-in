@@ -92,8 +92,10 @@ export default function SettingsPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-gray-500">
-            Configure your preferred seat selections. These preferences are used to guide seat
-            selection after check-in based on your boarding position.
+            Configure your preferred seat selections. Southwest now assigns seats at booking or
+            check-in. For Basic fares, a seat is assigned at check-in. For A-List members, the app
+            will attempt to upgrade to a preferred seat 48 hours before departure. These preferences
+            determine which seats the system will target.
           </p>
 
           <div>

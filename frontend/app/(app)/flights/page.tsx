@@ -54,6 +54,7 @@ export default function FlightsPage() {
                     <th className="pb-3 font-medium">Route</th>
                     <th className="pb-3 font-medium">Departure</th>
                     <th className="pb-3 font-medium">Check-in In</th>
+                    <th className="pb-3 font-medium">Seat</th>
                     <th className="pb-3 font-medium">Status</th>
                   </tr>
                 </thead>
@@ -82,13 +83,16 @@ export default function FlightsPage() {
                             status={flight.checkin_status}
                           />
                         </td>
+                        <td className="py-3 font-mono text-sm">
+                          {(flight as Flight & { assigned_seat?: string }).assigned_seat || "—"}
+                        </td>
                         <td className="py-3">
                           <StatusBadge status={flight.checkin_status} />
                         </td>
                       </tr>
                       {selectedFlight === flight.id && (
                         <tr key={`${flight.id}-logs`}>
-                          <td colSpan={7} className="bg-gray-50 p-4">
+                          <td colSpan={8} className="bg-gray-50 p-4">
                             <div className="space-y-2">
                               <h4 className="font-medium text-sm">
                                 Worker Logs
