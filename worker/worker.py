@@ -105,8 +105,10 @@ def process_reservation(
     flights_data = []
 
     for bound in bounds:
-        departure_airport = bound.get("departureAirport", {}).get("code", "")
-        destination_airport = bound.get("destinationAirport", {}).get("code", "")
+        dep = bound.get("departureAirport", {})
+        arr = bound.get("arrivalAirport", {})
+        departure_airport = dep.get("code", dep.get("name", ""))
+        destination_airport = arr.get("code", arr.get("name", ""))
         flight_number = bound.get("flights", [{}])[0].get("number", "") if bound.get("flights") else ""
         departure_date = bound.get("departureDate", "")
         departure_time_str = bound.get("departureTime", "")

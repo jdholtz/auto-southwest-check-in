@@ -153,6 +153,13 @@ def upsert_flight(
         (reservation_id, flight_number, departure_time),
     ).fetchone()
     if existing:
+        # Update destination_airport if it was previously empty
+        conn.execute(
+            "UPDATE flights SET departure_airport = COALESCE(NULLIF(departure_airport, ''), ?), "
+            "destination_airport = COALESCE(NULLIF(destination_airport, ''), ?) WHERE id = ?",
+            (departure_airport, destination_airport, existing["id"]),
+        )
+        conn.commit()
         return existing["id"]
 
     import uuid

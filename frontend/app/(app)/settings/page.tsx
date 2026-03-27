@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Trash2, Plus, Save } from "lucide-react";
+import { Trash2, Plus, Save, MessageSquare } from "lucide-react";
 import type { NotificationConfig } from "@/lib/types";
 
 const ALL_SEAT_LETTERS = ["A", "B", "C", "D", "E", "F"];
@@ -14,6 +14,14 @@ export default function SettingsPage() {
   const [serviceUrl, setServiceUrl] = useState("");
   const [notificationLevel, setNotificationLevel] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [testResult, setTestResult] = useState<string | null>(null);
+
+  // Twilio SMS quick setup
+  const [twilioSid, setTwilioSid] = useState("");
+  const [twilioToken, setTwilioToken] = useState("");
+  const [twilioFrom, setTwilioFrom] = useState("");
+  const [twilioTo, setTwilioTo] = useState("");
+  const [smsLoading, setSmsLoading] = useState(false);
 
   // Seat preferences
   const [preferredLetters, setPreferredLetters] = useState<string[]>(["A", "F"]);
@@ -58,6 +66,18 @@ export default function SettingsPage() {
     fetchNotifications();
   }
 
+  async function testNotifications() {
+    setTestResult(null);
+    const res = await fetch("/api/notifications/test", { method: "POST" });
+    const data = await res.json();
+    if (res.ok) {
+      setTestResult(data.message);
+    } else {
+      setTestResult(data.error || "Test failed");
+    }
+    setTimeout(() => setTestResult(null), 5000);
+  }
+
   async function savePreferences() {
     setSeatSaved(false);
     await fetch("/api/preferences", {
@@ -71,6 +91,26 @@ export default function SettingsPage() {
     });
     setSeatSaved(true);
     setTimeout(() => setSeatSaved(false), 2000);
+  }
+
+  async function addTwilioSms(e: React.FormEvent) {
+    e.preventDefault();
+    if (!twilioSid || !twilioToken || !twilioFrom || !twilioTo) return;
+    setSmsLoading(true);
+    const fromClean = twilioFrom.replace(/\D/g, "");
+    const toClean = twilioTo.replace(/\D/g, "");
+    const url = `twilio://${twilioSid}:${twilioToken}@+${fromClean}/+${toClean}`;
+    await fetch("/api/notifications", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ service_url: url, notification_level: 1 }),
+    });
+    setTwilioSid("");
+    setTwilioToken("");
+    setTwilioFrom("");
+    setTwilioTo("");
+    setSmsLoading(false);
+    fetchNotifications();
   }
 
   function toggleLetter(letter: string, list: string[], setList: (v: string[]) => void) {
@@ -164,6 +204,79 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
+      {/* SMS Text Notifications */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <MessageSquare className="h-5 w-5" /> SMS Text Notifications
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-gray-500">
+            Get text message alerts for check-ins, fare drops, and status updates.
+            Requires a Twilio account (free trial available).
+          </p>
+          <form onSubmit={addTwilioSms} className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">
+                  Twilio Account SID
+                </label>
+                <Input
+                  value={twilioSid}
+                  onChange={(e) => setTwilioSid(e.target.value)}
+                  placeholder="ACxxxxxxxxxx"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">
+                  Twilio Auth Token
+                </label>
+                <Input
+                  type="password"
+                  value={twilioToken}
+                  onChange={(e) => setTwilioToken(e.target.value)}
+                  placeholder="Auth token"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">
+                  From Phone Number
+                </label>
+                <Input
+                  value={twilioFrom}
+                  onChange={(e) => setTwilioFrom(e.target.value)}
+                  placeholder="+1234567890"
+                  required
+                />
+                <p className="text-xs text-gray-400 mt-0.5">Your Twilio phone number</p>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">
+                  To Phone Number
+                </label>
+                <Input
+                  value={twilioTo}
+                  onChange={(e) => setTwilioTo(e.target.value)}
+                  placeholder="+1234567890"
+                  required
+                />
+                <p className="text-xs text-gray-400 mt-0.5">Your mobile number</p>
+              </div>
+            </div>
+            <Button type="submit" disabled={smsLoading}>
+              <MessageSquare className="mr-2 h-4 w-4" />
+              {smsLoading ? "Adding..." : "Add SMS Notification"}
+            </Button>
+          </form>
+          <p className="text-xs text-gray-400">
+            You can also use other SMS providers via Apprise URLs in the section below.
+          </p>
+        </CardContent>
+      </Card>
+
       {/* Notifications */}
       <Card>
         <CardHeader>
@@ -209,22 +322,32 @@ export default function SettingsPage() {
           </form>
 
           {notifications.length > 0 && (
-            <div className="space-y-2">
-              {notifications.map((n) => (
-                <div
-                  key={n.id}
-                  className="flex items-center justify-between rounded-lg border border-gray-200 p-3"
-                >
-                  <div>
-                    <code className="text-sm bg-gray-50 px-2 py-0.5 rounded">{n.service_url}</code>
-                    <span className="ml-2 text-xs text-gray-400">Level {n.notification_level}</span>
+            <>
+              <div className="space-y-2">
+                {notifications.map((n) => (
+                  <div
+                    key={n.id}
+                    className="flex items-center justify-between rounded-lg border border-gray-200 p-3"
+                  >
+                    <div>
+                      <code className="text-sm bg-gray-50 px-2 py-0.5 rounded">{n.service_url}</code>
+                      <span className="ml-2 text-xs text-gray-400">Level {n.notification_level}</span>
+                    </div>
+                    <Button variant="ghost" size="icon" onClick={() => deleteNotification(n.id)}>
+                      <Trash2 className="h-4 w-4 text-red-500" />
+                    </Button>
                   </div>
-                  <Button variant="ghost" size="icon" onClick={() => deleteNotification(n.id)}>
-                    <Trash2 className="h-4 w-4 text-red-500" />
-                  </Button>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+              <div className="flex items-center gap-3">
+                <Button variant="outline" onClick={testNotifications}>
+                  Send Test Notification
+                </Button>
+                {testResult && (
+                  <span className="text-sm text-green-600">{testResult}</span>
+                )}
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
