@@ -30,6 +30,7 @@ from db import (
     get_flights_for_seat_upgrade,
     get_seat_preferences,
     update_flight_seat,
+    log_diagnostic,
     get_notification_configs,
 )
 from lib.log import get_logger
@@ -113,6 +114,7 @@ def process_reservation(
     current_headers: dict,
 ) -> list[dict]:
     """Retrieve flights for a reservation from Southwest API and sync to database."""
+    global headers
     confirmation_number = reservation["confirmation_number"]
     first_name = reservation["first_name"]
     last_name = reservation["last_name"]
@@ -126,11 +128,39 @@ def process_reservation(
     site = VIEW_RESERVATION_URL + confirmation_number
 
     try:
-        response = make_request("POST", site, current_headers, info)
+        response = make_request("POST", site, current_headers, info, max_attempts=3)
     except RequestError as err:
-        logger.error("Failed to retrieve reservation %s: %s", confirmation_number, err)
-        add_log(conn, f"Failed to retrieve reservation {confirmation_number}: {err}", "error")
-        return []
+        err_str = str(err)
+        logger.error("Failed to retrieve reservation %s: %s", confirmation_number, err_str)
+
+        # Log diagnostic with header and response info
+        header_keys = list(current_headers.keys()) if current_headers else []
+        log_diagnostic(
+            conn,
+            category="auth_failure" if "403" in err_str or "Forbidden" in err_str else "api_error",
+            endpoint=f"POST {VIEW_RESERVATION_URL}{confirmation_number}",
+            expected_behavior="200 OK with viewReservationViewPage",
+            actual_behavior=err_str,
+            headers_snapshot=json.dumps(header_keys),
+            response_snapshot=getattr(err, "response_body", "")[:500] if hasattr(err, "response_body") else "",
+        )
+
+        # If 403/Forbidden, try refreshing headers and retry once
+        if "403" in err_str or "Forbidden" in err_str:
+            add_log(conn, f"Got 403 for {confirmation_number}, refreshing headers and retrying...", "warning")
+            try:
+                with headers_lock:
+                    refresh_headers_via_webdriver()
+                current_headers = headers
+                response = make_request("POST", site, current_headers, info, max_attempts=3)
+                add_log(conn, f"Retry succeeded for {confirmation_number} after header refresh", "info")
+            except Exception as retry_err:
+                logger.error("Retry also failed for %s: %s", confirmation_number, retry_err)
+                add_log(conn, f"Retry also failed for {confirmation_number}: {retry_err}", "error")
+                return []
+        else:
+            add_log(conn, f"Failed to retrieve reservation {confirmation_number}: {err}", "error")
+            return []
 
     reservation_info = response.get("viewReservationViewPage", {})
     bounds = reservation_info.get("bounds", [])
@@ -314,6 +344,15 @@ def process_accounts(conn: sqlite3.Connection) -> None:
 
         # Deactivate reservations no longer in the account
         deactivate_stale_reservations(conn, account_id, active_conf_numbers)
+
+        # Refresh headers for mobile API calls (login headers may not work for view-reservation)
+        add_log(conn, "Refreshing headers for API calls after login", "info")
+        try:
+            with headers_lock:
+                refresh_headers_via_webdriver()
+            add_log(conn, f"Headers refreshed successfully. Keys: {list(headers.keys())}", "info")
+        except Exception as e:
+            add_log(conn, f"Header refresh failed after login: {e}. Using login headers.", "warning")
 
         # Now fetch flight details for each active reservation
         reservations = conn.execute(

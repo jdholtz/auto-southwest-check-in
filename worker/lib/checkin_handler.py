@@ -76,6 +76,24 @@ class CheckInHandler:
         if self._thread and self._thread.is_alive():
             self._thread.join(timeout=5)
 
+    def _log_diagnostic(self, category: str, endpoint: str, expected: str, actual: str) -> None:
+        """Log a diagnostic entry for API behavior tracking."""
+        from db import log_diagnostic
+        try:
+            conn = self.db_conn_factory()
+            header_keys = list(self.headers.keys()) if self.headers else []
+            log_diagnostic(
+                conn,
+                category=category,
+                endpoint=endpoint,
+                expected_behavior=expected,
+                actual_behavior=actual,
+                headers_snapshot=json.dumps(header_keys),
+            )
+            conn.close()
+        except Exception:
+            pass
+
     def _update_status(self, status: str, result: str | None = None) -> None:
         from db import update_flight_status, add_log
 
@@ -150,10 +168,16 @@ class CheckInHandler:
         except AirportCheckInError:
             logger.debug("Failed to check in. Airport check-in required")
             self._update_status("failed", "Airport check-in required")
+            self._log_diagnostic("checkin_failure", "check-in endpoint",
+                                 "Successful check-in", "Airport check-in required")
             return
         except RequestError as err:
             logger.debug("Failed to check in. Error: %s", err)
             self._update_status("failed", str(err))
+            self._log_diagnostic("checkin_failure",
+                                 f"check-in for {self.confirmation_number}",
+                                 "200 OK with checkInConfirmationPage",
+                                 str(err))
             return
 
         confirmation_page = reservation.get("checkInConfirmationPage", {})

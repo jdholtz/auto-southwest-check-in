@@ -82,6 +82,16 @@ def _init_tables(conn: sqlite3.Connection) -> None:
             message TEXT NOT NULL,
             created_at TEXT DEFAULT (datetime('now'))
         );
+        CREATE TABLE IF NOT EXISTS diagnostics (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            category TEXT NOT NULL,
+            endpoint TEXT,
+            expected_behavior TEXT,
+            actual_behavior TEXT,
+            headers_snapshot TEXT,
+            response_snapshot TEXT,
+            created_at TEXT DEFAULT (datetime('now'))
+        );
         """
     )
 
@@ -244,6 +254,31 @@ def deactivate_stale_reservations(
         [account_id] + active_confirmation_numbers,
     )
     conn.commit()
+
+
+def log_diagnostic(
+    conn: sqlite3.Connection,
+    category: str,
+    endpoint: str = "",
+    expected_behavior: str = "",
+    actual_behavior: str = "",
+    headers_snapshot: str = "",
+    response_snapshot: str = "",
+) -> None:
+    """Log a structured diagnostic entry for API/behavior changes."""
+    conn.execute(
+        "INSERT INTO diagnostics (category, endpoint, expected_behavior, actual_behavior, "
+        "headers_snapshot, response_snapshot) VALUES (?, ?, ?, ?, ?, ?)",
+        (category, endpoint, expected_behavior, actual_behavior,
+         headers_snapshot, response_snapshot[:1000]),
+    )
+    conn.commit()
+    # Also write to worker_logs for visibility in the activity feed
+    add_log(
+        conn,
+        f"[DIAGNOSTIC:{category}] {endpoint} - Expected: {expected_behavior}, Got: {actual_behavior}",
+        "warning",
+    )
 
 
 def add_fare_check(
