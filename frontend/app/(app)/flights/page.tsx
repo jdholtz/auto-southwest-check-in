@@ -5,7 +5,25 @@ import { Card, CardContent } from "@/components/ui/card";
 import { StatusBadge } from "@/components/flights/status-badge";
 import { CountdownTimer } from "@/components/flights/countdown-timer";
 import { Badge } from "@/components/ui/badge";
+import { Camera } from "lucide-react";
 import type { WorkerLog } from "@/lib/types";
+
+interface CaptureEntry {
+  id: number;
+  flight_id: string;
+  capture_dir: string;
+  manifest_json: string;
+  file_count: number;
+  total_size_bytes: number;
+  created_at: string;
+}
+
+interface ManifestFile {
+  name: string;
+  type: string;
+  size_bytes?: number;
+  captured_at?: string;
+}
 
 interface FareInfo {
   price_change: number;
@@ -52,6 +70,7 @@ export default function FlightsPage() {
   const [selectedFlight, setSelectedFlight] = useState<string | null>(null);
   const [logs, setLogs] = useState<WorkerLog[]>([]);
   const [fareHistory, setFareHistory] = useState<FareInfo[]>([]);
+  const [captures, setCaptures] = useState<CaptureEntry[]>([]);
 
   useEffect(() => {
     fetchFlights();
@@ -70,12 +89,14 @@ export default function FlightsPage() {
       return;
     }
     setSelectedFlight(flightId);
-    const [logsRes, faresRes] = await Promise.all([
+    const [logsRes, faresRes, capturesRes] = await Promise.all([
       fetch(`/api/flights/${flightId}/logs`),
       fetch(`/api/flights/${flightId}/fares`),
+      fetch(`/api/flights/${flightId}/captures`),
     ]);
     setLogs(await logsRes.json());
     setFareHistory(await faresRes.json());
+    setCaptures(await capturesRes.json());
   }
 
   return (
@@ -235,6 +256,100 @@ export default function FlightsPage() {
                       )}
                     </div>
                   </div>
+
+                  {/* Check-In Captures */}
+                  {captures.length > 0 && (
+                    <div className="mt-4 border-t border-gray-200 pt-4">
+                      <h4 className="font-medium text-sm mb-3 flex items-center gap-2">
+                        <Camera className="h-4 w-4" /> Check-In Captures
+                      </h4>
+                      {captures.map((cap) => {
+                        let manifest: { files?: ManifestFile[]; errors?: string[]; network_requests_captured?: number } = {};
+                        try {
+                          manifest = JSON.parse(cap.manifest_json || "{}");
+                        } catch { /* ignore */ }
+                        const screenshots = (manifest.files || []).filter((f) => f.type === "screenshot");
+                        const jsonFiles = (manifest.files || []).filter((f) => f.type === "json");
+                        const domFiles = (manifest.files || []).filter((f) => f.type === "dom");
+
+                        return (
+                          <div key={cap.id} className="rounded border border-gray-200 bg-white p-3 space-y-3">
+                            <div className="flex items-center justify-between text-xs text-gray-500">
+                              <span>
+                                Captured {new Date(cap.created_at + "Z").toLocaleString()} &middot;{" "}
+                                {cap.file_count} files &middot;{" "}
+                                {(cap.total_size_bytes / 1024).toFixed(0)} KB
+                              </span>
+                              <span>
+                                {manifest.network_requests_captured ?? 0} network events
+                              </span>
+                            </div>
+
+                            {/* Screenshots */}
+                            {screenshots.length > 0 && (
+                              <div>
+                                <div className="text-xs font-medium text-gray-600 mb-1">Screenshots</div>
+                                <div className="flex gap-2 overflow-x-auto">
+                                  {screenshots.map((f) => (
+                                    <a
+                                      key={f.name}
+                                      href={`/api/captures/${cap.id}/files?name=${f.name}`}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="flex-shrink-0"
+                                    >
+                                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                                      <img
+                                        src={`/api/captures/${cap.id}/files?name=${f.name}`}
+                                        alt={f.name}
+                                        className="h-24 rounded border border-gray-200 hover:border-blue-400 transition-colors"
+                                      />
+                                      <div className="text-xs text-gray-400 mt-0.5 text-center">
+                                        {f.name.replace(".png", "")}
+                                      </div>
+                                    </a>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* API Responses & DOM */}
+                            <div className="flex gap-2 flex-wrap">
+                              {jsonFiles.map((f) => (
+                                <a
+                                  key={f.name}
+                                  href={`/api/captures/${cap.id}/files?name=${f.name}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-xs px-2 py-1 rounded bg-blue-50 text-blue-700 hover:bg-blue-100"
+                                >
+                                  {f.name}
+                                </a>
+                              ))}
+                              {domFiles.map((f) => (
+                                <a
+                                  key={f.name}
+                                  href={`/api/captures/${cap.id}/files?name=${f.name}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-xs px-2 py-1 rounded bg-purple-50 text-purple-700 hover:bg-purple-100"
+                                >
+                                  {f.name}
+                                </a>
+                              ))}
+                            </div>
+
+                            {/* Errors */}
+                            {manifest.errors && manifest.errors.length > 0 && (
+                              <div className="text-xs text-red-500">
+                                {manifest.errors.length} capture error(s): {manifest.errors[0]}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               )}
             </Card>

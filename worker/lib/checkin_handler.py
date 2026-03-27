@@ -170,14 +170,20 @@ class CheckInHandler:
             self.last_name,
         )
 
+        # Start capture engine for learning
+        from .capture import CheckInCapture
+        capture = CheckInCapture(self.flight_db_id, self.browser_session, self.db_conn_factory)
+        capture.start_capture()
+
         try:
-            reservation = self._attempt_check_in()
+            reservation = self._attempt_check_in(capture)
         except AirportCheckInError:
             logger.debug("Failed to check in. Airport check-in required")
             self._update_status("failed", "Airport check-in required")
             self._log_diagnostic("checkin_failure", "check-in endpoint",
                                  "Successful check-in", "Airport check-in required")
             self._send_notification(False, "Airport check-in required")
+            capture.finish_capture(success=False)
             return
         except RequestError as err:
             logger.debug("Failed to check in. Error: %s", err)
@@ -187,6 +193,7 @@ class CheckInHandler:
                                  "200 OK with checkInConfirmationPage",
                                  str(err))
             self._send_notification(False, str(err))
+            capture.finish_capture(success=False)
             return
 
         confirmation_page = reservation.get("checkInConfirmationPage", {})
@@ -194,6 +201,9 @@ class CheckInHandler:
         self._update_status("success", result_json)
         logger.info("Successfully checked in for flight %s", self.flight_db_id)
         self._send_notification(True)
+
+        # Finish capture (takes post-screenshots, harvests network traffic)
+        capture.finish_capture(success=True)
 
         # Discovery: log response structure for seat assignment analysis
         self._discover_seat_info(reservation)
@@ -292,13 +302,13 @@ class CheckInHandler:
             except Exception as e:
                 add_log(conn, f"Seat selection attempt failed: {e}", "warning", self.flight_db_id)
 
-    def _attempt_check_in(self) -> JSON:
+    def _attempt_check_in(self, capture=None) -> JSON:
         expected_flights = 2 if self.is_same_day else 1
         attempts = 0
 
         while attempts < MAX_CHECK_IN_ATTEMPTS:
             attempts += 1
-            reservation = self._check_in_to_flight()
+            reservation = self._check_in_to_flight(capture)
             flights = reservation["checkInConfirmationPage"]["flights"]
             if len(flights) >= expected_flights:
                 return reservation
@@ -306,7 +316,7 @@ class CheckInHandler:
 
         raise RequestError("Too many attempts during check-in")
 
-    def _check_in_to_flight(self) -> JSON:
+    def _check_in_to_flight(self, capture=None) -> JSON:
         info = {
             "firstName": self.first_name,
             "lastName": self.last_name,
@@ -315,15 +325,25 @@ class CheckInHandler:
         }
         site = CHECKIN_URL + self.confirmation_number
 
-        # Use browser session if available, otherwise fall back to raw HTTP
+        # Step 1: POST to initiate check-in
         if self.browser_session:
             response = self.browser_session.make_request("POST", site, {}, info, random_sleep=False)
-            info = response["checkInViewReservationPage"]["_links"]["checkIn"]
-            site = f"mobile-air-operations{info['href']}"
-            reservation = self.browser_session.make_request("POST", site, {}, info["body"], random_sleep=False)
         else:
             response = make_request("POST", site, self.headers, info, random_sleep=False)
-            info = response["checkInViewReservationPage"]["_links"]["checkIn"]
-            site = f"mobile-air-operations{info['href']}"
-            reservation = make_request("POST", site, self.headers, info["body"], random_sleep=False)
+
+        if capture:
+            capture.record_api_call("02_checkin_step1", "POST", site, info, 200, response)
+
+        checkin_link = response["checkInViewReservationPage"]["_links"]["checkIn"]
+        site2 = f"mobile-air-operations{checkin_link['href']}"
+
+        # Step 2: POST to confirm check-in
+        if self.browser_session:
+            reservation = self.browser_session.make_request("POST", site2, {}, checkin_link["body"], random_sleep=False)
+        else:
+            reservation = make_request("POST", site2, self.headers, checkin_link["body"], random_sleep=False)
+
+        if capture:
+            capture.record_api_call("03_checkin_step2", "POST", site2, checkin_link["body"], 200, reservation)
+
         return reservation
