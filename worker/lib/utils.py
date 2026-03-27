@@ -151,6 +151,7 @@ class RequestError(Exception):
 
     def __init__(self, message: str, response_body: str = "") -> None:
         super().__init__(message)
+        self.response_body = response_body
 
         try:
             response_json = json.loads(response_body)

@@ -135,14 +135,15 @@ def process_reservation(
 
         # Log diagnostic with header and response info
         header_keys = list(current_headers.keys()) if current_headers else []
+        resp_body = getattr(err, "response_body", "") or ""
         log_diagnostic(
             conn,
             category="auth_failure" if "403" in err_str or "Forbidden" in err_str else "api_error",
             endpoint=f"POST {VIEW_RESERVATION_URL}{confirmation_number}",
             expected_behavior="200 OK with viewReservationViewPage",
-            actual_behavior=err_str,
+            actual_behavior=f"{err_str} | Headers count: {len(header_keys)} | Keys: {header_keys}",
             headers_snapshot=json.dumps(header_keys),
-            response_snapshot=getattr(err, "response_body", "")[:500] if hasattr(err, "response_body") else "",
+            response_snapshot=resp_body[:500],
         )
 
         # If 403/Forbidden, try refreshing headers and retry once

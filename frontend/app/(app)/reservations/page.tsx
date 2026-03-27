@@ -154,6 +154,18 @@ export default function ReservationsPage() {
                             ? `Account: ${(res as Reservation & { account_username?: string }).account_username}`
                             : "Manual reservation"}
                           {" "}&middot; {res.flights?.length ?? 0} flight(s)
+                          {res.flights && res.flights.length > 0 && (
+                            <>
+                              {" "}&middot;{" "}
+                              {res.flights.map((f, i) => (
+                                <span key={f.id}>
+                                  {i > 0 && ", "}
+                                  {f.departure_airport}
+                                  {f.destination_airport ? ` → ${f.destination_airport}` : ""}
+                                </span>
+                              ))}
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>
