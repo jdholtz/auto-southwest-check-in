@@ -353,13 +353,18 @@ def check_fares(conn: sqlite3.Connection) -> None:
                         )
                         price_str = f"{price['amount']:+,} {price['currencyCode']}"
                         if price["amount"] < -1:
+                            route = f"{flight_row['departure_airport']} -> {flight_row.get('destination_airport', '?')}"
                             add_log(
                                 conn,
-                                f"Lower fare found for {flight_row['confirmation_number']} "
-                                f"({flight_row['departure_airport']}->{flight_row['destination_airport']}): {price_str}",
+                                f"Lower fare found for {flight_row['confirmation_number']} ({route}): {price_str}",
                                 "info",
                                 flight_row["id"],
                             )
+                            try:
+                                from notifications import notify_fare_drop
+                                notify_fare_drop(flight_row["confirmation_number"], route, price_str)
+                            except Exception:
+                                pass
                         else:
                             add_log(
                                 conn,
@@ -447,6 +452,25 @@ def attempt_seat_upgrades(conn: sqlite3.Connection) -> None:
             add_log(conn, f"Seat upgrade error: {e}", "error", flight_id)
 
 
+def process_test_notifications(conn: sqlite3.Connection) -> None:
+    """Check for test notification requests and send them."""
+    rows = conn.execute(
+        "SELECT id FROM worker_logs WHERE message = '__TEST_NOTIFICATION__' ORDER BY created_at DESC LIMIT 5"
+    ).fetchall()
+    if rows:
+        # Delete the test markers
+        for row in rows:
+            conn.execute("DELETE FROM worker_logs WHERE id = ?", (row["id"],))
+        conn.commit()
+        # Send the test notification
+        try:
+            from notifications import notify_test
+            notify_test()
+            add_log(conn, "Test notification sent successfully", "info")
+        except Exception as e:
+            add_log(conn, f"Test notification failed: {e}", "error")
+
+
 def cleanup_handlers() -> None:
     """Remove handlers for flights that are no longer pending."""
     conn = get_db()
@@ -499,6 +523,9 @@ def main_loop() -> None:
 
             # Attempt seat upgrades for A-List accounts (48h before departure)
             attempt_seat_upgrades(conn)
+
+            # Process test notification requests
+            process_test_notifications(conn)
 
             # Clean up completed handlers
             cleanup_handlers()

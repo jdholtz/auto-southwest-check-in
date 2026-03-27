@@ -71,6 +71,19 @@ class CheckInHandler:
         if self._thread and self._thread.is_alive():
             self._thread.join(timeout=5)
 
+    def _send_notification(self, success: bool, error: str = "") -> None:
+        """Send push/SMS notification for check-in result."""
+        try:
+            from notifications import notify_checkin_success, notify_checkin_failed
+            route = f"{self.departure_airport} -> {self.destination_airport}"
+            passenger = f"{self.first_name} {self.last_name}"
+            if success:
+                notify_checkin_success(self.confirmation_number, route, passenger)
+            else:
+                notify_checkin_failed(self.confirmation_number, route, passenger, error)
+        except Exception as e:
+            logger.error("Failed to send notification: %s", e)
+
     def _log_diagnostic(self, category: str, endpoint: str, expected: str, actual: str) -> None:
         """Log a diagnostic entry for API behavior tracking."""
         from db import log_diagnostic
@@ -164,6 +177,7 @@ class CheckInHandler:
             self._update_status("failed", "Airport check-in required")
             self._log_diagnostic("checkin_failure", "check-in endpoint",
                                  "Successful check-in", "Airport check-in required")
+            self._send_notification(False, "Airport check-in required")
             return
         except RequestError as err:
             logger.debug("Failed to check in. Error: %s", err)
@@ -172,12 +186,14 @@ class CheckInHandler:
                                  f"check-in for {self.confirmation_number}",
                                  "200 OK with checkInConfirmationPage",
                                  str(err))
+            self._send_notification(False, str(err))
             return
 
         confirmation_page = reservation.get("checkInConfirmationPage", {})
         result_json = json.dumps(confirmation_page)
         self._update_status("success", result_json)
         logger.info("Successfully checked in for flight %s", self.flight_db_id)
+        self._send_notification(True)
 
         # Discovery: log response structure for seat assignment analysis
         self._discover_seat_info(reservation)

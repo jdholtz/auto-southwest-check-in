@@ -11,16 +11,15 @@ export async function POST() {
     return NextResponse.json({ error: "No notification services configured" }, { status: 400 });
   }
 
-  // Write a test log entry so the worker can pick it up
+  // Write a command to the worker_logs that the worker will pick up to send test notification
   db.prepare(
-    "INSERT INTO worker_logs (level, message) VALUES ('info', 'Test notification triggered from Settings page')"
+    "INSERT INTO worker_logs (level, message) VALUES ('info', '__TEST_NOTIFICATION__')"
   ).run();
 
-  // Return the URLs so the frontend knows what was tested
-  const urls = (configs as { service_url: string }[]).map((c) => c.service_url);
+  const count = (configs as unknown[]).length;
   return NextResponse.json({
     ok: true,
-    message: `Test notification queued for ${urls.length} service(s)`,
-    count: urls.length,
+    message: `Test notification queued for ${count} service(s). Check your device shortly.`,
+    count,
   });
 }
