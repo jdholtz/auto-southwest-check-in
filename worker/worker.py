@@ -615,6 +615,13 @@ def attempt_seat_upgrades(conn: sqlite3.Connection) -> None:
     logger.info("Attempting seat upgrades for %d flights", len(flights))
     add_log(conn, f"Attempting seat upgrades for {len(flights)} A-List flights", "info")
 
+    # Ensure browser is alive and session is fresh for API calls
+    try:
+        browser_session.ensure_alive()
+    except Exception as e:
+        add_log(conn, f"Browser session not available for seat upgrades: {e}", "error")
+        return
+
     prefs = get_seat_preferences(conn)
     if not prefs:
         add_log(conn, "No seat preferences set, skipping seat upgrades", "info")
@@ -652,19 +659,62 @@ def attempt_seat_upgrades(conn: sqlite3.Connection) -> None:
             add_log(conn, f"Found modifySeats link for {conf_num}, calling seat management API", "info", flight_id)
 
             # Step 2: Call modifySeats API to get seat map
+            # First try the responsive URL approach (navigate browser to establish WAF session)
+            modify_seats_responsive = links.get("modifySeatsResponsive", {})
+            responsive_url = modify_seats_responsive.get("href", "")
+
+            seat_response = None
             seat_href = modify_seats["href"]
             seat_body = modify_seats.get("body", {})
             seat_method = modify_seats.get("method", "POST")
-
-            # The href is /v1/mobile-seat-management/reservations - need to route through API
             seat_site = seat_href.lstrip("/")
+
+            # Try approach 1: Navigate to responsive URL first to establish WAF, then API call
+            if responsive_url:
+                try:
+                    add_log(conn, f"Navigating to seat selection page to establish WAF session", "info", flight_id)
+                    with browser_session._lock:
+                        browser_session._driver.get(responsive_url)
+                        import time as _time
+                        _time.sleep(3)  # Wait for page to load and WAF to establish
+
+                        # Take screenshot of the seat selection page
+                        try:
+                            import os
+                            cap_dir = f"/app/data/captures/{flight_id}"
+                            os.makedirs(cap_dir, exist_ok=True)
+                            browser_session._driver.save_screenshot(f"{cap_dir}/seat_selection_page.png")
+                            # Capture DOM
+                            dom = browser_session._driver.execute_script("return document.documentElement.outerHTML")
+                            with open(f"{cap_dir}/seat_selection_dom.html", "w") as f:
+                                f.write(dom)
+                            add_log(conn, f"Seat page screenshot and DOM saved to {cap_dir}/", "info", flight_id)
+                        except Exception as cap_err:
+                            add_log(conn, f"Seat page capture error: {cap_err}", "warning", flight_id)
+
+                        # Navigate back to mobile site for API calls
+                        browser_session._driver.get("https://mobile.southwest.com/login?webView=true")
+                        _time.sleep(2)
+                except Exception as nav_err:
+                    add_log(conn, f"Responsive seat navigation failed: {nav_err}", "warning", flight_id)
+
+            # Now try the API call
             try:
                 seat_response = browser_session.make_request(seat_method, seat_site, {}, seat_body, max_attempts=3)
             except RequestError as e:
-                add_log(conn, f"Seat map request failed for {conf_num}: {e}", "error", flight_id)
+                add_log(conn, f"Seat map API request failed for {conf_num}: {e}", "error", flight_id)
                 log_diagnostic(conn, "seat_upgrade_failure", f"{seat_method} {seat_site}",
                                "200 OK with seat map", str(e),
+                               headers_snapshot=json.dumps(list(browser_session.headers.keys())),
                                response_snapshot=getattr(e, "response_body", "")[:500])
+
+                # Log the modifySeats link details for debugging
+                add_log(conn, f"modifySeats link: {json.dumps(modify_seats)[:500]}", "info", flight_id)
+                if modify_seats_responsive:
+                    add_log(conn, f"modifySeatsResponsive: {json.dumps(modify_seats_responsive)[:500]}", "info", flight_id)
+                continue
+
+            if not seat_response:
                 continue
 
             # Step 3: Log full response for discovery/diagnostics
