@@ -29,6 +29,8 @@ interface ManifestFile {
 
 interface FareInfo {
   price_change: number;
+  best_flight_number?: string;
+  best_flight_nonstop?: number;
   currency_code: string;
   checked_at: string;
 }
@@ -273,16 +275,21 @@ export default function FlightsPage() {
                       ) : (
                         <div className="space-y-1 max-h-48 overflow-y-auto">
                           {fareHistory.map((fare, i) => (
-                            <div
-                              key={i}
-                              className="flex justify-between text-xs"
-                            >
-                              <span className="text-gray-400">
-                                {new Date(fare.checked_at + "Z").toLocaleString()}
-                              </span>
-                              <span className={fareColor(fare)}>
-                                {formatFare(fare)}
-                              </span>
+                            <div key={i} className="text-xs">
+                              <div className="flex justify-between">
+                                <span className="text-gray-400">
+                                  {new Date(fare.checked_at + "Z").toLocaleString()}
+                                </span>
+                                <span className={fareColor(fare)}>
+                                  {formatFare(fare)}
+                                </span>
+                              </div>
+                              {fare.best_flight_number && (
+                                <div className="text-green-600 ml-4">
+                                  Better: WN {fare.best_flight_number}
+                                  {fare.best_flight_nonstop ? " (Nonstop)" : ""}
+                                </div>
+                              )}
                             </div>
                           ))}
                         </div>

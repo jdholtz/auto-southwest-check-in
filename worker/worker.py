@@ -488,45 +488,94 @@ def check_fares(conn: sqlite3.Connection) -> None:
 
             cards = shopping_response.get("changeShoppingPage", {}).get("flights", {}).get(target_bound_page, {}).get("cards", [])
 
-            # Find lowest fare matching our fare type
+            # Read fare check mode preference
+            prefs = get_seat_preferences(conn)
+            fare_mode = (prefs or {}).get("fare_check_mode", "same_day_nonstop")
+
+            # Find lowest fare based on mode
             lowest_fare = None
+            best_alt_flight = None
+            best_alt_nonstop = False
+            my_flight_fare = None
+
             for card in cards:
-                if card.get("flightNumbers") == flight_row["flight_number"]:
-                    for fare in (card.get("fares") or []):
-                        if fare.get("_meta", {}).get("fareProductId") == fare_type:
-                            if "priceDifference" in fare:
-                                price_diff = fare["priceDifference"]
-                                sign = price_diff.get("sign", "")
-                                amount = int(sign + price_diff["amount"].replace(",", ""))
-                                currency = price_diff.get("currencyCode", "USD")
-                                if not lowest_fare or amount < lowest_fare["amount"]:
-                                    lowest_fare = {"amount": amount, "currencyCode": currency}
+                card_flight_num = card.get("flightNumbers", "")
+                card_nonstop = card.get("stopDescription", "") == "Nonstop"
+                is_my_flight = card_flight_num == flight_row["flight_number"]
+
+                # Apply filter based on mode
+                if fare_mode == "same_flight" and not is_my_flight:
+                    continue
+                elif fare_mode == "same_day_nonstop" and not card_nonstop:
+                    continue
+                # "same_day" mode: check all cards
+
+                for fare in (card.get("fares") or []):
+                    if fare.get("_meta", {}).get("fareProductId") == fare_type:
+                        if "priceDifference" in fare:
+                            price_diff = fare["priceDifference"]
+                            sign = price_diff.get("sign", "")
+                            amount = int(sign + price_diff["amount"].replace(",", ""))
+                            currency = price_diff.get("currencyCode", "USD")
+
+                            # Track my flight's fare separately
+                            if is_my_flight:
+                                my_flight_fare = {"amount": amount, "currencyCode": currency}
+
+                            # Track overall lowest
+                            if not lowest_fare or amount < lowest_fare["amount"]:
+                                lowest_fare = {"amount": amount, "currencyCode": currency}
+                                if not is_my_flight:
+                                    best_alt_flight = card_flight_num
+                                    best_alt_nonstop = card_nonstop
+                                else:
+                                    best_alt_flight = None
+                                    best_alt_nonstop = False
 
             if not lowest_fare:
                 lowest_fare = {"amount": 0, "currencyCode": "USD"}
 
-            add_fare_check(conn, flight_row["id"], lowest_fare["amount"], lowest_fare.get("currencyCode", "USD"))
+            add_fare_check(
+                conn, flight_row["id"], lowest_fare["amount"],
+                lowest_fare.get("currencyCode", "USD"),
+                best_flight_number=best_alt_flight,
+                best_flight_nonstop=best_alt_nonstop,
+            )
             price_str = f"{lowest_fare['amount']:+,} {lowest_fare['currencyCode']}"
 
-            # Only notify if this is a NEW fare drop (not already notified)
-            previous = get_last_fare_check(conn, flight_row["id"])
-            # Skip the one we just inserted - get the one before that
+            # Get previous fare check for deduplication
             prev_rows = conn.execute(
                 "SELECT price_change FROM fare_history WHERE flight_id = ? ORDER BY checked_at DESC LIMIT 2",
                 (flight_row["id"],),
             ).fetchall()
             prev_amount = prev_rows[1]["price_change"] if len(prev_rows) > 1 else None
 
+            route = f"{flight_row['departure_airport']} -> {flight_row.get('destination_airport', '?')}"
+
+            if best_alt_flight:
+                nonstop_label = " (Nonstop)" if best_alt_nonstop else ""
+                add_log(
+                    conn,
+                    f"Better flight found for {flight_row['confirmation_number']} ({route}): "
+                    f"WN {best_alt_flight}{nonstop_label} at {price_str} "
+                    f"(your flight: {my_flight_fare['amount']:+,} {my_flight_fare['currencyCode']} )" if my_flight_fare else f"WN {best_alt_flight}{nonstop_label} at {price_str}",
+                    "info",
+                    flight_row["id"],
+                )
+
             if lowest_fare["amount"] < -1:
-                route = f"{flight_row['departure_airport']} -> {flight_row.get('destination_airport', '?')}"
-                add_log(conn, f"Fare check for {flight_row['confirmation_number']} ({route}): {price_str}", "info", flight_row["id"])
 
                 # Only send notification if fare dropped FURTHER than last check
                 if prev_amount is None or lowest_fare["amount"] < prev_amount:
-                    add_log(conn, f"NEW fare drop for {flight_row['confirmation_number']}: {price_str} (was {prev_amount})", "info", flight_row["id"])
+                    alt_info = ""
+                    if best_alt_flight:
+                        nonstop_tag = " (Nonstop)" if best_alt_nonstop else ""
+                        alt_info = f" - Better option: WN {best_alt_flight}{nonstop_tag}"
+                    add_log(conn, f"NEW fare drop for {flight_row['confirmation_number']}: {price_str}{alt_info} (was {prev_amount})", "info", flight_row["id"])
                     try:
                         from notifications import notify_fare_drop
-                        notify_fare_drop(flight_row["confirmation_number"], route, price_str)
+                        notify_msg = f"{price_str}{alt_info}"
+                        notify_fare_drop(flight_row["confirmation_number"], route, notify_msg)
                     except Exception:
                         pass
                 else:

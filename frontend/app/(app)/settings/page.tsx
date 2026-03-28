@@ -27,6 +27,7 @@ export default function SettingsPage() {
   const [preferredLetters, setPreferredLetters] = useState<string[]>(["A", "F"]);
   const [preferredRows, setPreferredRows] = useState("1,2,3,4,5,6");
   const [fallbackLetters, setFallbackLetters] = useState<string[]>(["A", "C", "D", "F"]);
+  const [fareCheckMode, setFareCheckMode] = useState("same_day_nonstop");
   const [seatSaved, setSeatSaved] = useState(false);
 
   useEffect(() => {
@@ -45,6 +46,7 @@ export default function SettingsPage() {
     if (data.preferred_letters) setPreferredLetters(data.preferred_letters.split(","));
     if (data.preferred_rows) setPreferredRows(data.preferred_rows);
     if (data.fallback_letters) setFallbackLetters(data.fallback_letters.split(","));
+    if (data.fare_check_mode) setFareCheckMode(data.fare_check_mode);
   }
 
   async function addNotification(e: React.FormEvent) {
@@ -87,6 +89,7 @@ export default function SettingsPage() {
         preferred_letters: preferredLetters.join(","),
         preferred_rows: preferredRows,
         fallback_letters: fallbackLetters.join(","),
+        fare_check_mode: fareCheckMode,
       }),
     });
     setSeatSaved(true);
@@ -195,6 +198,41 @@ export default function SettingsPage() {
             <p className="text-xs text-gray-400 mt-1">
               Used when preferred seats in your target rows are not available
             </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Fare Check Mode
+            </label>
+            <div className="space-y-2">
+              {[
+                { value: "same_flight", label: "Same Flight Only", desc: "Only check your exact booked flight for price changes" },
+                { value: "same_day_nonstop", label: "Same Day - Nonstop", desc: "Check all nonstop flights on your route that day (recommended)" },
+                { value: "same_day", label: "Same Day - All Flights", desc: "Check all flights including connections on your route that day" },
+              ].map((opt) => (
+                <label
+                  key={opt.value}
+                  className={`flex items-start gap-3 rounded-lg border p-3 cursor-pointer transition-colors ${
+                    fareCheckMode === opt.value
+                      ? "border-blue-500 bg-blue-50"
+                      : "border-gray-200 hover:bg-gray-50"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="fareCheckMode"
+                    value={opt.value}
+                    checked={fareCheckMode === opt.value}
+                    onChange={(e) => setFareCheckMode(e.target.value)}
+                    className="mt-0.5"
+                  />
+                  <div>
+                    <div className="text-sm font-medium">{opt.label}</div>
+                    <div className="text-xs text-gray-400">{opt.desc}</div>
+                  </div>
+                </label>
+              ))}
+            </div>
           </div>
 
           <Button onClick={savePreferences}>
