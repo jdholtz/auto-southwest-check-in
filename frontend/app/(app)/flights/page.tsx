@@ -4,10 +4,9 @@ import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { StatusBadge } from "@/components/flights/status-badge";
 import { CountdownTimer } from "@/components/flights/countdown-timer";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Camera, DollarSign } from "lucide-react";
+import { Camera } from "lucide-react";
 import type { WorkerLog } from "@/lib/types";
 
 interface CaptureEntry {
@@ -31,6 +30,9 @@ interface FareInfo {
   price_change: number;
   best_flight_number?: string;
   best_flight_nonstop?: number;
+  best_flight_stops?: string;
+  best_flight_depart_time?: string;
+  my_flight_fare?: number;
   currency_code: string;
   checked_at: string;
 }
@@ -138,12 +140,20 @@ export default function FlightsPage() {
         </Card>
       ) : (
         <div className="space-y-3">
-          {flights.map((flight) => (
+          {flights.map((flight) => {
+            const lf = flight.latest_fare;
+            const hasAlt = lf?.best_flight_number;
+            const savings = hasAlt && lf?.my_flight_fare != null
+              ? lf.my_flight_fare - lf.price_change
+              : 0;
+
+            return (
             <Card key={flight.id} className="overflow-hidden">
               <div
                 className="p-4 cursor-pointer hover:bg-gray-50 transition-colors"
                 onClick={() => expandFlight(flight.id)}
               >
+                {/* Row 1: Flight info */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
                     <div>
@@ -152,13 +162,16 @@ export default function FlightsPage() {
                           {flight.confirmation_number}
                         </span>
                         {flight.flight_number && (
-                          <span className="text-xs text-gray-400">
-                            WN {flight.flight_number}
-                          </span>
+                          <span className="text-xs text-gray-400">WN {flight.flight_number}</span>
                         )}
                       </div>
                       <div className="text-sm text-gray-600 mt-0.5">
                         {flight.first_name} {flight.last_name}
+                        {flight.assigned_seat && (
+                          <span className="ml-2 text-xs font-medium text-blue-600">
+                            Seat {flight.assigned_seat}
+                          </span>
+                        )}
                       </div>
                     </div>
                     <div className="text-sm">
@@ -169,24 +182,21 @@ export default function FlightsPage() {
                     <div className="text-sm text-gray-500">
                       <div>
                         {new Date(flight.departure_time).toLocaleDateString(undefined, {
-                          weekday: "short",
-                          month: "short",
-                          day: "numeric",
+                          weekday: "short", month: "short", day: "numeric",
                         })}
                       </div>
                       <div className="text-xs text-gray-400">
                         {new Date(flight.departure_time).toLocaleTimeString(undefined, {
-                          hour: "2-digit",
-                          minute: "2-digit",
+                          hour: "2-digit", minute: "2-digit",
                         })}
                       </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-4">
-                    {/* Fare info */}
+                    {/* Fare + original price */}
                     <div className="text-right">
                       {editingFare === flight.id ? (
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                           <span className="text-xs text-gray-400">$</span>
                           <Input
                             value={fareInput}
@@ -206,59 +216,60 @@ export default function FlightsPage() {
                         </div>
                       ) : (
                         <>
-                          {flight.original_price ? (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setEditingFare(flight.id);
-                                setFareInput(String(flight.original_price));
-                              }}
-                              className="text-xs text-gray-500 hover:text-blue-600"
-                            >
-                              Paid ${flight.original_price.toLocaleString()}
-                            </button>
-                          ) : (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setEditingFare(flight.id);
-                                setFareInput("");
-                              }}
-                              className="text-xs text-gray-400 hover:text-blue-600 flex items-center gap-0.5"
-                            >
-                              <DollarSign className="h-3 w-3" /> Set fare
-                            </button>
-                          )}
-                          <div className={`text-sm ${fareColor(flight.latest_fare)}`}>
-                            {flight.latest_fare ? formatFare(flight.latest_fare) : "No fare data"}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingFare(flight.id);
+                              setFareInput(flight.original_price ? String(flight.original_price) : "");
+                            }}
+                            className="text-xs text-gray-400 hover:text-blue-600"
+                          >
+                            {flight.original_price ? `Paid $${flight.original_price.toLocaleString()}` : "$ Set fare"}
+                          </button>
+                          <div className={`text-sm ${fareColor(lf)}`}>
+                            {lf ? formatFare(lf) : "No fare data"}
                           </div>
-                          {flight.latest_fare && (
-                            <div className="text-xs text-gray-400">
-                              {flight.latest_fare.price_change < -1
-                                ? "Lower fare available!"
-                                : flight.latest_fare.price_change > 1
-                                ? "Price increased"
-                                : "Same price"}
-                            </div>
-                          )}
                         </>
                       )}
                     </div>
-                    {/* Seat */}
-                    {flight.assigned_seat && (
-                      <Badge variant="scheduled">Seat {flight.assigned_seat}</Badge>
-                    )}
-                    {/* Countdown */}
                     <div className="w-24 text-right">
-                      <CountdownTimer
-                        departureTime={flight.departure_time}
-                        status={flight.checkin_status}
-                      />
+                      <CountdownTimer departureTime={flight.departure_time} status={flight.checkin_status} />
                     </div>
-                    {/* Status */}
                     <StatusBadge status={flight.checkin_status} />
                   </div>
                 </div>
+
+                {/* Row 2: Better flight alternative (if exists) */}
+                {hasAlt && (
+                  <div className="mt-3 rounded-lg border border-green-200 bg-green-50 p-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs font-semibold text-green-700 uppercase">Better Flight</span>
+                        <span className="text-sm font-medium text-green-800">
+                          WN {lf.best_flight_number}
+                        </span>
+                        {lf.best_flight_stops && (
+                          <span className="text-xs text-green-600">{lf.best_flight_stops}</span>
+                        )}
+                        {lf.best_flight_depart_time && (
+                          <span className="text-xs text-green-600">
+                            Departs {lf.best_flight_depart_time}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <span className="text-sm font-medium text-green-700">
+                          {formatFare(lf)}
+                        </span>
+                        {savings > 0 && (
+                          <span className="ml-2 text-xs text-green-600">
+                            Save ${savings.toLocaleString()}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Expanded detail */}
@@ -423,7 +434,8 @@ export default function FlightsPage() {
                 </div>
               )}
             </Card>
-          ))}
+          );
+          })}
         </div>
       )}
     </div>

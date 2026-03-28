@@ -136,6 +136,12 @@ def _migrate(conn: sqlite3.Connection) -> None:
             conn.execute("ALTER TABLE fare_history ADD COLUMN best_flight_number TEXT")
         if "best_flight_nonstop" not in fh_cols:
             conn.execute("ALTER TABLE fare_history ADD COLUMN best_flight_nonstop INTEGER DEFAULT 0")
+        if "best_flight_stops" not in fh_cols:
+            conn.execute("ALTER TABLE fare_history ADD COLUMN best_flight_stops TEXT")
+        if "best_flight_depart_time" not in fh_cols:
+            conn.execute("ALTER TABLE fare_history ADD COLUMN best_flight_depart_time TEXT")
+        if "my_flight_fare" not in fh_cols:
+            conn.execute("ALTER TABLE fare_history ADD COLUMN my_flight_fare INTEGER")
 
     # seat_preferences migration for fare_check_mode
     sp_cols = [row[1] for row in conn.execute("PRAGMA table_info(seat_preferences)").fetchall()]
@@ -331,11 +337,16 @@ def add_fare_check(
     currency_code: str = "USD",
     best_flight_number: str | None = None,
     best_flight_nonstop: bool = False,
+    best_flight_stops: str | None = None,
+    best_flight_depart_time: str | None = None,
+    my_flight_fare: int | None = None,
 ) -> None:
     conn.execute(
-        "INSERT INTO fare_history (flight_id, price_change, currency_code, best_flight_number, best_flight_nonstop) "
-        "VALUES (?, ?, ?, ?, ?)",
-        (flight_id, price_change, currency_code, best_flight_number, 1 if best_flight_nonstop else 0),
+        "INSERT INTO fare_history (flight_id, price_change, currency_code, best_flight_number, "
+        "best_flight_nonstop, best_flight_stops, best_flight_depart_time, my_flight_fare) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        (flight_id, price_change, currency_code, best_flight_number,
+         1 if best_flight_nonstop else 0, best_flight_stops, best_flight_depart_time, my_flight_fare),
     )
     conn.commit()
 

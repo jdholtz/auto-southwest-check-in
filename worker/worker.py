@@ -496,11 +496,15 @@ def check_fares(conn: sqlite3.Connection) -> None:
             lowest_fare = None
             best_alt_flight = None
             best_alt_nonstop = False
-            my_flight_fare = None
+            best_alt_stops = None
+            best_alt_depart_time = None
+            my_flight_fare_val = None
 
             for card in cards:
                 card_flight_num = card.get("flightNumbers", "")
                 card_nonstop = card.get("stopDescription", "") == "Nonstop"
+                card_stops = card.get("stopDescription", "")
+                card_depart_time = card.get("departureTime", "")
                 is_my_flight = card_flight_num == flight_row["flight_number"]
 
                 # Apply filter based on mode
@@ -520,7 +524,7 @@ def check_fares(conn: sqlite3.Connection) -> None:
 
                             # Track my flight's fare separately
                             if is_my_flight:
-                                my_flight_fare = {"amount": amount, "currencyCode": currency}
+                                my_flight_fare_val = amount
 
                             # Track overall lowest
                             if not lowest_fare or amount < lowest_fare["amount"]:
@@ -528,9 +532,13 @@ def check_fares(conn: sqlite3.Connection) -> None:
                                 if not is_my_flight:
                                     best_alt_flight = card_flight_num
                                     best_alt_nonstop = card_nonstop
+                                    best_alt_stops = card_stops
+                                    best_alt_depart_time = card_depart_time
                                 else:
                                     best_alt_flight = None
                                     best_alt_nonstop = False
+                                    best_alt_stops = None
+                                    best_alt_depart_time = None
 
             if not lowest_fare:
                 lowest_fare = {"amount": 0, "currencyCode": "USD"}
@@ -540,6 +548,9 @@ def check_fares(conn: sqlite3.Connection) -> None:
                 lowest_fare.get("currencyCode", "USD"),
                 best_flight_number=best_alt_flight,
                 best_flight_nonstop=best_alt_nonstop,
+                best_flight_stops=best_alt_stops,
+                best_flight_depart_time=best_alt_depart_time,
+                my_flight_fare=my_flight_fare_val,
             )
             price_str = f"{lowest_fare['amount']:+,} {lowest_fare['currencyCode']}"
 
@@ -553,12 +564,13 @@ def check_fares(conn: sqlite3.Connection) -> None:
             route = f"{flight_row['departure_airport']} -> {flight_row.get('destination_airport', '?')}"
 
             if best_alt_flight:
-                nonstop_label = " (Nonstop)" if best_alt_nonstop else ""
+                stops_label = f" ({best_alt_stops})" if best_alt_stops else ""
+                time_label = f" departs {best_alt_depart_time}" if best_alt_depart_time else ""
+                my_fare_label = f" (your flight: {my_flight_fare_val:+,})" if my_flight_fare_val is not None else ""
                 add_log(
                     conn,
-                    f"Better flight found for {flight_row['confirmation_number']} ({route}): "
-                    f"WN {best_alt_flight}{nonstop_label} at {price_str} "
-                    f"(your flight: {my_flight_fare['amount']:+,} {my_flight_fare['currencyCode']} )" if my_flight_fare else f"WN {best_alt_flight}{nonstop_label} at {price_str}",
+                    f"Better flight for {flight_row['confirmation_number']} ({route}): "
+                    f"WN {best_alt_flight}{stops_label}{time_label} at {price_str}{my_fare_label}",
                     "info",
                     flight_row["id"],
                 )
@@ -569,8 +581,9 @@ def check_fares(conn: sqlite3.Connection) -> None:
                 if prev_amount is None or lowest_fare["amount"] < prev_amount:
                     alt_info = ""
                     if best_alt_flight:
-                        nonstop_tag = " (Nonstop)" if best_alt_nonstop else ""
-                        alt_info = f" - Better option: WN {best_alt_flight}{nonstop_tag}"
+                        stops_tag = f" ({best_alt_stops})" if best_alt_stops else ""
+                        time_tag = f" departs {best_alt_depart_time}" if best_alt_depart_time else ""
+                        alt_info = f" - Better option: WN {best_alt_flight}{stops_tag}{time_tag}"
                     add_log(conn, f"NEW fare drop for {flight_row['confirmation_number']}: {price_str}{alt_info} (was {prev_amount})", "info", flight_row["id"])
                     try:
                         from notifications import notify_fare_drop
