@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import time
 import threading
@@ -294,7 +295,20 @@ class BrowserSession:
             logger.info("Loading Southwest login page for account login")
             self._driver.get(ACCOUNT_URL)
 
-            # Enter credentials
+            # Wait for login form to fully render before typing
+            try:
+                self._driver.wait_for_element_visible('input[id="username"]', timeout=30)
+            except Exception as e:
+                # Take screenshot for diagnostics if login form doesn't appear
+                logger.error("Login form did not load: %s", e)
+                try:
+                    os.makedirs("/app/data/captures", exist_ok=True)
+                    self._driver.save_screenshot("/app/data/captures/login_form_failed.png")
+                except Exception:
+                    pass
+                raise DriverTimeoutError(f"Login form did not load after 30 seconds: {e}")
+
+            # Enter credentials with human-like delay
             time.sleep(random_sleep_duration(1, 3))
             self._driver.type('input[id="username"]', username)
             self._driver.type('input[id="password"]', f"{password}\n")
