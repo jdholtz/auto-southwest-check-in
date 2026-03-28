@@ -5,7 +5,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { StatusBadge } from "@/components/flights/status-badge";
 import { CountdownTimer } from "@/components/flights/countdown-timer";
 import { Badge } from "@/components/ui/badge";
-import { Camera } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Camera, DollarSign } from "lucide-react";
 import type { WorkerLog } from "@/lib/types";
 
 interface CaptureEntry {
@@ -45,6 +47,8 @@ interface FlightWithFare {
   confirmation_number: string;
   first_name: string;
   last_name: string;
+  original_price?: number | null;
+  original_currency?: string;
   latest_fare: FareInfo | null;
   baseline_fare: FareInfo | null;
 }
@@ -71,6 +75,19 @@ export default function FlightsPage() {
   const [logs, setLogs] = useState<WorkerLog[]>([]);
   const [fareHistory, setFareHistory] = useState<FareInfo[]>([]);
   const [captures, setCaptures] = useState<CaptureEntry[]>([]);
+  const [editingFare, setEditingFare] = useState<string | null>(null);
+  const [fareInput, setFareInput] = useState("");
+
+  async function saveOriginalFare(flightId: string) {
+    await fetch(`/api/flights/${flightId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ original_price: fareInput ? Number(fareInput) : null }),
+    });
+    setEditingFare(null);
+    setFareInput("");
+    fetchFlights();
+  }
 
   useEffect(() => {
     fetchFlights();
@@ -166,17 +183,63 @@ export default function FlightsPage() {
                   <div className="flex items-center gap-4">
                     {/* Fare info */}
                     <div className="text-right">
-                      <div className={`text-sm ${fareColor(flight.latest_fare)}`}>
-                        {flight.latest_fare ? formatFare(flight.latest_fare) : "No fare data"}
-                      </div>
-                      {flight.latest_fare && (
-                        <div className="text-xs text-gray-400">
-                          {flight.latest_fare.price_change < -1
-                            ? "Lower fare available!"
-                            : flight.latest_fare.price_change > 1
-                            ? "Price increased"
-                            : "Same price"}
+                      {editingFare === flight.id ? (
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs text-gray-400">$</span>
+                          <Input
+                            value={fareInput}
+                            onChange={(e) => setFareInput(e.target.value)}
+                            className="h-7 w-20 text-xs"
+                            placeholder="0"
+                            type="number"
+                            autoFocus
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") saveOriginalFare(flight.id);
+                              if (e.key === "Escape") setEditingFare(null);
+                            }}
+                          />
+                          <Button size="sm" className="h-7 text-xs" onClick={() => saveOriginalFare(flight.id)}>
+                            Save
+                          </Button>
                         </div>
+                      ) : (
+                        <>
+                          {flight.original_price ? (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingFare(flight.id);
+                                setFareInput(String(flight.original_price));
+                              }}
+                              className="text-xs text-gray-500 hover:text-blue-600"
+                            >
+                              Paid ${flight.original_price.toLocaleString()}
+                            </button>
+                          ) : (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingFare(flight.id);
+                                setFareInput("");
+                              }}
+                              className="text-xs text-gray-400 hover:text-blue-600 flex items-center gap-0.5"
+                            >
+                              <DollarSign className="h-3 w-3" /> Set fare
+                            </button>
+                          )}
+                          <div className={`text-sm ${fareColor(flight.latest_fare)}`}>
+                            {flight.latest_fare ? formatFare(flight.latest_fare) : "No fare data"}
+                          </div>
+                          {flight.latest_fare && (
+                            <div className="text-xs text-gray-400">
+                              {flight.latest_fare.price_change < -1
+                                ? "Lower fare available!"
+                                : flight.latest_fare.price_change > 1
+                                ? "Price increased"
+                                : "Same price"}
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
                     {/* Seat */}

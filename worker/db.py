@@ -172,13 +172,10 @@ def upsert_flight(
         (reservation_id, flight_number, departure_time),
     ).fetchone()
     if existing:
-        # Always update airports if the new value is non-empty (fixes stale/wrong data)
+        # Always update airports unconditionally - new extraction is authoritative
         conn.execute(
-            "UPDATE flights SET "
-            "departure_airport = CASE WHEN ? != '' THEN ? ELSE departure_airport END, "
-            "destination_airport = CASE WHEN ? != '' THEN ? ELSE destination_airport END "
-            "WHERE id = ?",
-            (departure_airport, departure_airport, destination_airport, destination_airport, existing["id"]),
+            "UPDATE flights SET departure_airport = ?, destination_airport = ? WHERE id = ?",
+            (departure_airport, destination_airport, existing["id"]),
         )
         conn.commit()
         return existing["id"]
