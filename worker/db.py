@@ -126,6 +126,8 @@ def _migrate(conn: sqlite3.Connection) -> None:
         conn.execute("ALTER TABLE accounts ADD COLUMN auto_upgrade_seats INTEGER DEFAULT 0")
     if "display_name" not in account_cols:
         conn.execute("ALTER TABLE accounts ADD COLUMN display_name TEXT DEFAULT ''")
+    if "login_failure_count" not in account_cols:
+        conn.execute("ALTER TABLE accounts ADD COLUMN login_failure_count INTEGER DEFAULT 0")
 
     conn.commit()
 

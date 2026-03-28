@@ -105,19 +105,6 @@ def process_reservation(
     bounds = reservation_info.get("bounds", [])
     flights_data = []
 
-    # Log the first bound's airport structure for diagnostic purposes
-    if bounds:
-        first_bound = bounds[0]
-        dep_raw = first_bound.get("departureAirport", {})
-        arr_raw = first_bound.get("arrivalAirport", {})
-        # Also check for alternative field names
-        dest_raw = first_bound.get("destinationAirport", {})
-        add_log(
-            conn,
-            f"Airport data for {confirmation_number}: dep={json.dumps(dep_raw)}, arr={json.dumps(arr_raw)}, dest={json.dumps(dest_raw)}, bound_keys={list(first_bound.keys())}",
-            "info",
-        )
-
     from lib.flight import Flight
 
     for bound in bounds:
@@ -127,39 +114,48 @@ def process_reservation(
         is_international = bound.get("isInternational", False)
 
         if departure_date and departure_time_str:
-            # Use Flight class for proper airport/time extraction (it knows the correct field names)
-            departure_airport = ""
-            destination_airport = ""
+            # Extract airports - try multiple approaches
+            dep_raw = bound.get("departureAirport", {})
+            arr_raw = bound.get("arrivalAirport", {})
+
+            # Primary: get "code" field (3-letter airport code)
+            departure_airport = dep_raw.get("code", "")
+            destination_airport = arr_raw.get("code", "")
+
+            # Fallback: get "name" field only if it looks like a code (3-4 chars)
+            if not departure_airport:
+                name = dep_raw.get("name", "")
+                departure_airport = name if len(name) <= 4 else ""
+            if not destination_airport:
+                name = arr_raw.get("name", "")
+                destination_airport = name if len(name) <= 4 else ""
+
+            # Last resort: try Flight class (which uses "name" fields)
+            if not departure_airport or not destination_airport:
+                try:
+                    flight_obj = Flight(bound, reservation_info, confirmation_number)
+                    if not departure_airport:
+                        val = flight_obj.departure_airport
+                        departure_airport = val if len(val) <= 4 else ""
+                    if not destination_airport:
+                        val = flight_obj.destination_airport
+                        destination_airport = val if len(val) <= 4 else ""
+                except Exception:
+                    pass
+
+            # Log what we extracted for diagnostic purposes
+            add_log(
+                conn,
+                f"Flight {flight_number} airports: {departure_airport} -> {destination_airport} "
+                f"(raw dep={json.dumps(dep_raw)}, raw arr={json.dumps(arr_raw)})",
+                "info",
+            )
+
+            # Convert departure time to UTC
             departure_utc = f"{departure_date}T{departure_time_str}:00"
             try:
                 flight_obj = Flight(bound, reservation_info, confirmation_number)
-                departure_airport = flight_obj.departure_airport
-                destination_airport = flight_obj.destination_airport
                 departure_utc = flight_obj.departure_time.isoformat()
-            except Exception as e:
-                # Fallback to manual extraction
-                dep = bound.get("departureAirport", {})
-                arr = bound.get("arrivalAirport", bound.get("destinationAirport", {}))
-                departure_airport = dep.get("code", dep.get("name", ""))
-                destination_airport = arr.get("code", arr.get("name", ""))
-
-            # Extract original booking price from fare details
-            original_price = None
-            original_currency = "USD"
-            try:
-                fare_details = bound.get("fareProductDetails", {})
-                if fare_details:
-                    fare_label = fare_details.get("label", "")
-                    # Look for total price in various locations
-                    for price_key in ["totalPrice", "amount", "fare"]:
-                        if price_key in fare_details:
-                            price_data = fare_details[price_key]
-                            if isinstance(price_data, dict):
-                                original_price = int(price_data.get("amount", "0").replace(",", ""))
-                                original_currency = price_data.get("currencyCode", "USD")
-                            elif isinstance(price_data, (int, float)):
-                                original_price = int(price_data)
-                            break
             except Exception:
                 pass
 
@@ -171,8 +167,6 @@ def process_reservation(
                 destination_airport,
                 departure_utc,
                 is_international,
-                original_price=original_price,
-                original_currency=original_currency,
             )
             # Store reservation_info for fare checking
             try:
@@ -279,17 +273,37 @@ def process_accounts(conn: sqlite3.Connection) -> None:
             add_log(conn, f"Timeout logging into account {account['username']}", "warning")
             continue
         except LoginError as e:
-            logger.error("Login failed for account %s: %s", account["username"], e)
-            add_log(conn, f"Login failed for {account['username']}: {e}", "error")
-            if e.status_code not in (429, 500):
-                conn.execute("UPDATE accounts SET is_active = 0 WHERE id = ?", (account_id,))
+            logger.error("Login failed for account %s: %s (status: %s)", account["username"], e, e.status_code)
+            add_log(conn, f"Login failed for {account['username']}: {e} (status: {e.status_code})", "error")
+
+            # Only deactivate for confirmed invalid credentials (Southwest code 400518024)
+            # All other errors (429, 500, 502, 503, 401, 403, etc.) are treated as transient
+            is_bad_credentials = "Invalid credentials" in str(e)
+            if is_bad_credentials:
+                # Increment failure counter, deactivate after 3 consecutive failures
+                failure_count = (account.get("login_failure_count") or 0) + 1
+                conn.execute(
+                    "UPDATE accounts SET login_failure_count = ? WHERE id = ?",
+                    (failure_count, account_id),
+                )
                 conn.commit()
-                add_log(conn, f"Deactivated account {account['username']} due to login failure", "warning")
+                if failure_count >= 3:
+                    conn.execute("UPDATE accounts SET is_active = 0 WHERE id = ?", (account_id,))
+                    conn.commit()
+                    add_log(conn, f"Deactivated account {account['username']} after {failure_count} consecutive credential failures", "warning")
+                else:
+                    add_log(conn, f"Login failure #{failure_count} for {account['username']} (will deactivate after 3)", "warning")
+            else:
+                add_log(conn, f"Transient login error for {account['username']} (status {e.status_code}), will retry next cycle", "warning")
             continue
         except Exception as e:
             logger.error("Failed to process account %s: %s", account["username"], e)
-            add_log(conn, f"Failed to process account {account['username']}: {e}", "error")
+            add_log(conn, f"Failed to process account {account['username']}: {e} (transient, will retry)", "error")
             continue
+
+        # Reset failure counter on successful login
+        conn.execute("UPDATE accounts SET login_failure_count = 0 WHERE id = ?", (account_id,))
+        conn.commit()
 
         logger.info("Retrieved %d reservations for account %s", len(sw_reservations), account["username"])
         add_log(conn, f"Retrieved {len(sw_reservations)} reservations for {account['username']}", "info")
