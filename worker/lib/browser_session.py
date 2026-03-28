@@ -281,8 +281,10 @@ class BrowserSession:
         After login, navigates back to mobile site to maintain API session.
         """
         with self._lock:
-            if not self._driver:
-                self._start_internal()
+            # Restart browser fresh for each login - WAF tokens are domain-specific
+            # (mobile.southwest.com tokens don't work for www.southwest.com login)
+            logger.info("Restarting browser for fresh WAF state before login")
+            self._start_internal()
 
             # Reset login state
             self._login_request_id = None
