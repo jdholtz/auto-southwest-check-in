@@ -649,146 +649,250 @@ def attempt_seat_upgrades(conn: sqlite3.Connection) -> None:
             reservation_info = response.get("viewReservationViewPage", {})
 
             links = reservation_info.get("_links", {})
-            modify_seats = links.get("modifySeats")
-
-            if not modify_seats:
-                seat_link_keys = [k for k in links if "seat" in k.lower()]
-                add_log(conn, f"No modifySeats link for {conf_num}. Seat links: {seat_link_keys}", "info", flight_id)
-                continue
-
-            add_log(conn, f"Found modifySeats link for {conf_num}, calling seat management API", "info", flight_id)
-
-            # Step 2: Call modifySeats API to get seat map
-            # First try the responsive URL approach (navigate browser to establish WAF session)
             modify_seats_responsive = links.get("modifySeatsResponsive", {})
             responsive_url = modify_seats_responsive.get("href", "")
+            token = modify_seats_responsive.get("token", {})
 
-            seat_response = None
-            seat_href = modify_seats["href"]
-            seat_body = modify_seats.get("body", {})
-            seat_method = modify_seats.get("method", "POST")
-            seat_site = seat_href.lstrip("/")
-
-            # Try approach 1: Navigate to responsive URL first to establish WAF, then API call
-            if responsive_url:
-                try:
-                    add_log(conn, f"Navigating to seat selection page to establish WAF session", "info", flight_id)
-                    with browser_session._lock:
-                        browser_session._driver.get(responsive_url)
-                        import time as _time
-                        _time.sleep(3)  # Wait for page to load and WAF to establish
-
-                        # Take screenshot of the seat selection page
-                        try:
-                            import os
-                            cap_dir = f"/app/data/captures/{flight_id}"
-                            os.makedirs(cap_dir, exist_ok=True)
-                            browser_session._driver.save_screenshot(f"{cap_dir}/seat_selection_page.png")
-                            # Capture DOM
-                            dom = browser_session._driver.execute_script("return document.documentElement.outerHTML")
-                            with open(f"{cap_dir}/seat_selection_dom.html", "w") as f:
-                                f.write(dom)
-                            add_log(conn, f"Seat page screenshot and DOM saved to {cap_dir}/", "info", flight_id)
-                        except Exception as cap_err:
-                            add_log(conn, f"Seat page capture error: {cap_err}", "warning", flight_id)
-
-                        # Navigate back to mobile site for API calls
-                        browser_session._driver.get("https://mobile.southwest.com/login?webView=true")
-                        _time.sleep(2)
-                except Exception as nav_err:
-                    add_log(conn, f"Responsive seat navigation failed: {nav_err}", "warning", flight_id)
-
-            # Now try the API call
-            try:
-                seat_response = browser_session.make_request(seat_method, seat_site, {}, seat_body, max_attempts=3)
-            except RequestError as e:
-                add_log(conn, f"Seat map API request failed for {conf_num}: {e}", "error", flight_id)
-                log_diagnostic(conn, "seat_upgrade_failure", f"{seat_method} {seat_site}",
-                               "200 OK with seat map", str(e),
-                               headers_snapshot=json.dumps(list(browser_session.headers.keys())),
-                               response_snapshot=getattr(e, "response_body", "")[:500])
-
-                # Log the modifySeats link details for debugging
-                add_log(conn, f"modifySeats link: {json.dumps(modify_seats)[:500]}", "info", flight_id)
-                if modify_seats_responsive:
-                    add_log(conn, f"modifySeatsResponsive: {json.dumps(modify_seats_responsive)[:500]}", "info", flight_id)
+            if not responsive_url:
+                seat_link_keys = [k for k in links if "seat" in k.lower()]
+                add_log(conn, f"No modifySeatsResponsive link for {conf_num}. Available: {seat_link_keys}", "info", flight_id)
                 continue
 
-            if not seat_response:
-                continue
-
-            # Step 3: Log full response for discovery/diagnostics
-            response_keys = list(seat_response.keys())
-            add_log(conn, f"Seat map response keys: {response_keys}", "info", flight_id)
-
-            # Save full response to diagnostics
-            log_diagnostic(conn, "seat_map_discovery", f"{seat_method} {seat_site}",
-                           "Seat map with available seats", f"Response keys: {response_keys}",
-                           response_snapshot=json.dumps(seat_response)[:2000])
-
-            # Save full response to file for detailed analysis
-            try:
-                import os
-                capture_dir = f"/app/data/captures/{flight_id}"
-                os.makedirs(capture_dir, exist_ok=True)
-                with open(f"{capture_dir}/seat_map_response.json", "w") as f:
-                    json.dump(seat_response, f, indent=2, default=str)
-                add_log(conn, f"Full seat map saved to {capture_dir}/seat_map_response.json", "info", flight_id)
-            except Exception:
-                pass
-
-            # Step 4: Try to parse seat map and find best seat
-            best_seat = _find_best_seat(seat_response, preferred_letters, preferred_rows, fallback_letters, conn, flight_id)
-
-            if not best_seat:
-                add_log(conn, f"Could not find a suitable seat for {conf_num}. Response needs manual analysis.", "warning", flight_id)
-                continue
-
-            add_log(conn, f"Best seat found for {conf_num}: {best_seat['seat']} (score: {best_seat['score']})", "info", flight_id)
-
-            # Step 5: Try to select the seat
-            seat_links = seat_response.get("_links", {})
-            select_link_names = [k for k in seat_links if "select" in k.lower() or "save" in k.lower() or "confirm" in k.lower()]
-            add_log(conn, f"Seat selection links available: {list(seat_links.keys())}", "info", flight_id)
-
-            if select_link_names:
-                select_link = seat_links[select_link_names[0]]
-                add_log(conn, f"Attempting to select seat {best_seat['seat']} via '{select_link_names[0]}'", "info", flight_id)
-
-                select_href = select_link.get("href", "").lstrip("/")
-                select_method = select_link.get("method", "POST")
-                select_body = select_link.get("body", {})
-
-                # Add the selected seat to the body
-                if isinstance(select_body, dict):
-                    select_body["seatNumber"] = best_seat["seat"]
-                    select_body["seatRow"] = best_seat.get("row")
-                    select_body["seatLetter"] = best_seat.get("letter")
-
-                try:
-                    select_response = browser_session.make_request(select_method, select_href, {}, select_body, max_attempts=3)
-                    add_log(conn, f"Seat selection response keys: {list(select_response.keys())}", "info", flight_id)
-
-                    # Update the flight's assigned seat
-                    update_flight_seat(conn, flight_id, best_seat["seat"])
-                    add_log(conn, f"Seat {best_seat['seat']} selected for {conf_num}!", "info", flight_id)
-
-                    try:
-                        from notifications import send_notification
-                        send_notification(
-                            f"Seat Selected: {conf_num}",
-                            f"Seat {best_seat['seat']} selected for flight {route}"
-                        )
-                    except Exception:
-                        pass
-
-                except RequestError as e:
-                    add_log(conn, f"Seat selection request failed: {e}", "error", flight_id)
-                    log_diagnostic(conn, "seat_select_failure", f"{select_method} {select_href}",
-                                   f"Select seat {best_seat['seat']}", str(e),
-                                   response_snapshot=getattr(e, "response_body", "")[:500])
+            # Step 2: Navigate browser to seat selection page
+            from urllib.parse import urlencode
+            if token:
+                url_with_params = f"{responsive_url}?{urlencode(token)}"
             else:
-                add_log(conn, f"No seat selection link found in response. Manual analysis needed.", "warning", flight_id)
+                url_with_params = responsive_url
+
+            add_log(conn, f"Navigating to seat selection page for {conf_num}", "info", flight_id)
+
+            import os
+            cap_dir = f"/app/data/captures/{flight_id}"
+            os.makedirs(cap_dir, exist_ok=True)
+
+            with browser_session._lock:
+                browser_session._driver.get(url_with_params)
+
+                # Wait for seat map to render
+                seat_loaded = False
+                seat_selectors = [
+                    "[data-seat-number]",
+                    "[class*='seat'][class*='available']",
+                    "button[class*='seat']",
+                    "[class*='SeatMap']",
+                    "[class*='seatMap']",
+                    "[class*='seat-map']",
+                ]
+                for sel in seat_selectors:
+                    try:
+                        browser_session._driver.wait_for_element_visible(sel, timeout=5)
+                        seat_loaded = True
+                        add_log(conn, f"Seat map loaded (selector: {sel})", "info", flight_id)
+                        break
+                    except Exception:
+                        continue
+
+                if not seat_loaded:
+                    # Just wait for the page to settle
+                    time.sleep(8)
+                    add_log(conn, "Seat map selectors not found, waited 8s for page to load", "warning", flight_id)
+
+                # Step 3: Capture screenshot and DOM
+                try:
+                    browser_session._driver.save_screenshot(f"{cap_dir}/seat_map_page.png")
+                    dom = browser_session._driver.execute_script("return document.documentElement.outerHTML")
+                    with open(f"{cap_dir}/seat_map_dom.html", "w") as f:
+                        f.write(dom)
+                    add_log(conn, f"Seat map captured to {cap_dir}/", "info", flight_id)
+                except Exception as cap_err:
+                    add_log(conn, f"Seat map capture error: {cap_err}", "warning", flight_id)
+
+                # Step 4: Extract available seats from DOM via JavaScript
+                seats_js = browser_session._driver.execute_script("""
+                    var seats = [];
+
+                    // Strategy 1: data-seat-number attributes
+                    document.querySelectorAll('[data-seat-number]').forEach(function(el) {
+                        seats.push({
+                            seat: el.getAttribute('data-seat-number'),
+                            className: el.className,
+                            disabled: el.disabled || el.getAttribute('aria-disabled') === 'true',
+                            text: el.textContent.trim().substring(0, 20),
+                            tag: el.tagName
+                        });
+                    });
+
+                    // Strategy 2: buttons/divs with seat-like classes
+                    if (seats.length === 0) {
+                        document.querySelectorAll('button[class*="seat"], div[class*="seat"]').forEach(function(el) {
+                            var text = el.textContent.trim();
+                            if (text.match(/^\\d{1,2}[A-F]$/)) {
+                                seats.push({
+                                    seat: text,
+                                    className: el.className,
+                                    disabled: el.disabled || el.getAttribute('aria-disabled') === 'true',
+                                    text: text,
+                                    tag: el.tagName
+                                });
+                            }
+                        });
+                    }
+
+                    // Strategy 3: aria-label containing seat info
+                    if (seats.length === 0) {
+                        document.querySelectorAll('[aria-label*="Seat"], [aria-label*="seat"]').forEach(function(el) {
+                            var label = el.getAttribute('aria-label') || '';
+                            var match = label.match(/(\\d{1,2}[A-F])/);
+                            if (match) {
+                                seats.push({
+                                    seat: match[1],
+                                    className: el.className,
+                                    disabled: el.disabled || el.getAttribute('aria-disabled') === 'true',
+                                    text: label.substring(0, 50),
+                                    tag: el.tagName
+                                });
+                            }
+                        });
+                    }
+
+                    // Collect page metadata for diagnostics
+                    var meta = {
+                        url: window.location.href,
+                        title: document.title,
+                        seatCount: seats.length,
+                        allButtons: document.querySelectorAll('button').length,
+                        allDivs: document.querySelectorAll('div').length,
+                        bodyText: document.body ? document.body.textContent.substring(0, 500) : ''
+                    };
+
+                    return JSON.stringify({seats: seats, meta: meta});
+                """)
+
+                try:
+                    seats_data = json.loads(seats_js)
+                except (json.JSONDecodeError, TypeError):
+                    seats_data = {"seats": [], "meta": {}}
+
+                all_seats = seats_data.get("seats", [])
+                page_meta = seats_data.get("meta", {})
+
+                add_log(conn, f"Page: {page_meta.get('title', '?')} | Found {len(all_seats)} seat elements", "info", flight_id)
+
+                # Save raw seat data for analysis
+                with open(f"{cap_dir}/seat_data.json", "w") as f:
+                    json.dump(seats_data, f, indent=2)
+
+                if not all_seats:
+                    add_log(conn, f"No seat elements found. Page body preview: {page_meta.get('bodyText', '')[:200]}", "warning", flight_id)
+                    log_diagnostic(conn, "seat_map_empty", url_with_params,
+                                   "Seat elements on page", f"0 seats found. Buttons: {page_meta.get('allButtons')}, title: {page_meta.get('title')}",
+                                   response_snapshot=page_meta.get("bodyText", "")[:500])
+                else:
+                    # Step 5: Filter available seats and score them
+                    available_seats = []
+                    for s in all_seats:
+                        seat_id = s.get("seat", "")
+                        if not seat_id or s.get("disabled"):
+                            continue
+                        cls = (s.get("className") or "").lower()
+                        if "unavailable" in cls or "occupied" in cls or "blocked" in cls:
+                            continue
+
+                        # Parse row and letter
+                        row_str = ""
+                        letter = ""
+                        for ch in str(seat_id):
+                            if ch.isdigit():
+                                row_str += ch
+                            elif ch.isalpha():
+                                letter = ch.upper()
+                                break
+                        if row_str and letter:
+                            row = int(row_str)
+                            score = 20
+                            if letter in preferred_letters and row in preferred_rows:
+                                score = 100
+                            elif letter in preferred_letters:
+                                score = 80
+                            elif letter in fallback_letters and row in preferred_rows:
+                                score = 60
+                            elif letter in fallback_letters:
+                                score = 40
+                            available_seats.append({
+                                "seat": seat_id, "row": row, "letter": letter,
+                                "score": score, "className": s.get("className", "")
+                            })
+
+                    available_seats.sort(key=lambda x: (-x["score"], x["row"]))
+                    add_log(conn, f"Available seats: {len(available_seats)} (top 5: {[s['seat'] for s in available_seats[:5]]})", "info", flight_id)
+
+                    if available_seats:
+                        best = available_seats[0]
+                        add_log(conn, f"Best seat: {best['seat']} (score {best['score']}), attempting click", "info", flight_id)
+
+                        # Step 6: Click the seat
+                        clicked = False
+                        click_selectors = [
+                            f"[data-seat-number='{best['seat']}']",
+                            f"button:contains('{best['seat']}')",
+                            f"[aria-label*='{best['seat']}']",
+                        ]
+                        for click_sel in click_selectors:
+                            try:
+                                browser_session._driver.click(click_sel)
+                                clicked = True
+                                add_log(conn, f"Clicked seat {best['seat']} (selector: {click_sel})", "info", flight_id)
+                                break
+                            except Exception:
+                                continue
+
+                        if clicked:
+                            time.sleep(2)
+                            browser_session._driver.save_screenshot(f"{cap_dir}/after_seat_click.png")
+
+                            # Step 7: Look for confirm/save button
+                            confirm_selectors = [
+                                "button[class*='confirm']",
+                                "button[class*='save']",
+                                "button[class*='continue']",
+                                "button[class*='submit']",
+                                "button:contains('Confirm')",
+                                "button:contains('Save')",
+                                "button:contains('Continue')",
+                                "button:contains('Done')",
+                            ]
+                            for confirm_sel in confirm_selectors:
+                                try:
+                                    if browser_session._driver.is_element_visible(confirm_sel):
+                                        browser_session._driver.click(confirm_sel)
+                                        add_log(conn, f"Clicked confirm button: {confirm_sel}", "info", flight_id)
+                                        time.sleep(3)
+                                        browser_session._driver.save_screenshot(f"{cap_dir}/after_confirm.png")
+                                        break
+                                except Exception:
+                                    continue
+
+                            # Update assigned seat
+                            update_flight_seat(conn, flight_id, best["seat"])
+                            add_log(conn, f"Seat {best['seat']} selected for {conf_num}!", "info", flight_id)
+
+                            try:
+                                from notifications import send_notification
+                                send_notification(f"Seat Selected: {conf_num}", f"Seat {best['seat']} selected for flight {route}")
+                            except Exception:
+                                pass
+                        else:
+                            add_log(conn, f"Could not click seat {best['seat']}", "warning", flight_id)
+
+                # Step 8: Navigate back to mobile site to restore API session
+                browser_session._driver.get("https://mobile.southwest.com/login?webView=true")
+                time.sleep(2)
+                browser_session._headers_set = False
+                try:
+                    browser_session._wait_for_headers()
+                except Exception:
+                    pass
 
         except RequestError as e:
             add_log(conn, f"Failed to retrieve reservation for seat upgrade: {e}", "error", flight_id)
@@ -796,104 +900,6 @@ def attempt_seat_upgrades(conn: sqlite3.Connection) -> None:
             logger.error("Seat upgrade error for %s: %s", conf_num, e)
             add_log(conn, f"Seat upgrade error: {e}", "error", flight_id)
 
-
-def _find_best_seat(
-    seat_response: dict,
-    preferred_letters: list[str],
-    preferred_rows: list[int],
-    fallback_letters: list[str],
-    conn,
-    flight_id: str,
-) -> dict | None:
-    """Parse a seat map response and find the best available seat based on preferences.
-    Returns {"seat": "12A", "row": 12, "letter": "A", "score": 100} or None."""
-
-    # Try common response structures for seat maps
-    seat_map = None
-    for key in ["seatMapPage", "modifySeatViewPage", "seatMap", "seats", "seatSelectionPage"]:
-        if key in seat_response:
-            seat_map = seat_response[key]
-            add_log(conn, f"Found seat map under key '{key}'", "info", flight_id)
-            break
-
-    if not seat_map:
-        # Try to find any array of seats in the response
-        for key, value in seat_response.items():
-            if isinstance(value, dict):
-                for subkey, subvalue in value.items():
-                    if isinstance(subvalue, list) and len(subvalue) > 0 and isinstance(subvalue[0], dict):
-                        if any(k in str(subvalue[0].keys()) for k in ["seat", "row", "available", "letter"]):
-                            seat_map = {subkey: subvalue}
-                            add_log(conn, f"Found seat data under '{key}.{subkey}'", "info", flight_id)
-                            break
-
-    if not seat_map:
-        add_log(conn, f"Could not locate seat map in response. Keys: {list(seat_response.keys())}", "warning", flight_id)
-        return None
-
-    # Parse seats - try multiple common structures
-    available_seats = []
-
-    def extract_seats(data, path=""):
-        """Recursively search for seat data in the response."""
-        if isinstance(data, list):
-            for item in data:
-                extract_seats(item, path)
-        elif isinstance(data, dict):
-            # Check if this dict represents a seat
-            has_seat_info = any(k in data for k in ["seatNumber", "seat", "seatLabel", "number"])
-            is_available = data.get("available", data.get("isAvailable", data.get("occupied") == False if "occupied" in data else None))
-
-            if has_seat_info and is_available is not False:
-                seat_id = data.get("seatNumber", data.get("seat", data.get("seatLabel", data.get("number", ""))))
-                if seat_id and isinstance(seat_id, str) and len(seat_id) >= 2:
-                    # Parse row number and letter from seat ID (e.g., "12A")
-                    row_str = ""
-                    letter = ""
-                    for ch in seat_id:
-                        if ch.isdigit():
-                            row_str += ch
-                        elif ch.isalpha():
-                            letter = ch.upper()
-                            break
-                    if row_str and letter:
-                        available_seats.append({
-                            "seat": seat_id,
-                            "row": int(row_str),
-                            "letter": letter,
-                            "data": {k: v for k, v in data.items() if k not in ("_links",)},
-                        })
-
-            # Recurse into sub-structures
-            for key, value in data.items():
-                if isinstance(value, (list, dict)):
-                    extract_seats(value, f"{path}.{key}")
-
-    extract_seats(seat_map)
-    add_log(conn, f"Found {len(available_seats)} available seats", "info", flight_id)
-
-    if not available_seats:
-        return None
-
-    # Score seats based on preferences
-    for seat in available_seats:
-        score = 0
-        if seat["letter"] in preferred_letters and seat["row"] in preferred_rows:
-            score = 100
-        elif seat["letter"] in preferred_letters:
-            score = 80
-        elif seat["letter"] in fallback_letters and seat["row"] in preferred_rows:
-            score = 60
-        elif seat["letter"] in fallback_letters:
-            score = 40
-        else:
-            score = 20
-        seat["score"] = score
-
-    # Sort by score (descending), then by row (ascending for front seats)
-    available_seats.sort(key=lambda s: (-s["score"], s["row"]))
-
-    return available_seats[0] if available_seats else None
 
 
 def process_test_notifications(conn: sqlite3.Connection) -> None:
