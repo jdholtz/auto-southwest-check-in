@@ -1,6 +1,6 @@
 ## Auto-Southwest Check-In
 
-A web application that automatically checks you in to your Southwest Airlines flights. Features a full web dashboard for managing accounts, monitoring flights, tracking fare changes, and configuring seat preferences. Built on top of [jdholtz/auto-southwest-check-in](https://github.com/jdholtz/auto-southwest-check-in) with a complete web frontend and enhanced worker process.
+A web application that automatically checks you in to your Southwest Airlines flights. Features a full web dashboard for managing accounts, monitoring flights, tracking fare changes, recording original booking prices, and configuring seat preferences. Includes a comprehensive check-in data capture system for learning Southwest's assigned seating API. Built on top of [jdholtz/auto-southwest-check-in](https://github.com/jdholtz/auto-southwest-check-in) with a complete web frontend and enhanced worker process.
 
 **Repository**: [github.com/ctkubik/auto-southwest-check-in](https://github.com/ctkubik/auto-southwest-check-in/tree/claude/flight-monitoring-app-Bm8hC)
 
@@ -19,6 +19,7 @@ A web application that automatically checks you in to your Southwest Airlines fl
     * [Environment Variables](#environment-variables)
     * [Seat Preferences](#seat-preferences)
     * [Notifications](#notifications)
+- [Check-In Data Capture](#check-in-data-capture)
 - [Self-Healing Diagnostics](#self-healing-diagnostics)
 - [Troubleshooting](#troubleshooting)
 - [Contributing](#contributing)
@@ -26,21 +27,52 @@ A web application that automatically checks you in to your Southwest Airlines fl
 
 ## Features
 
+### Core
 - **Automatic Check-In**: Checks in to flights exactly 24 hours before departure
 - **Web Dashboard**: Monitor all flights, accounts, and check-in status from a browser
-- **Account Monitoring**: Log in with your Southwest account to automatically track all reservations
-- **Account Display Names**: Assign friendly names to accounts for easy identification (e.g., "Mom", "Dad")
-- **Manual Reservations**: Add individual reservations by confirmation number
-- **Fare Monitoring**: Checks for fare drops every 4 hours, logs price changes, and shows fare history per flight
-- **Seat Preferences**: Configure preferred seats (letter, row, fallback) for Southwest's assigned seating system
-- **A-List Support**: Flag accounts as A-List for automatic seat upgrades 48 hours before departure
-- **Activity Log**: Full activity log with level filtering (info/warning/error) and pagination
-- **API Diagnostics**: Structured diagnostic entries logged when Southwest API calls fail, helping track API changes over time
-- **Push Notifications**: Send alerts for check-ins, fare drops, and status updates via Telegram, Discord, Slack, email, and 100+ other services using [Apprise](https://github.com/caronc/apprise)
-- **SMS Text Notifications**: Built-in Twilio SMS setup for text message alerts
-- **Test Notifications**: One-click test button to verify notification delivery
-- **Browser-Routed API Calls**: All Southwest API requests are routed through a persistent headless Chrome session to bypass WAF/anti-bot protections on cloud hosting
 - **Login Authentication**: Password-protected web interface with HMAC-signed auth cookies
+
+### Account Management
+- **Account Monitoring**: Log in with your Southwest account to automatically track all reservations
+- **Display Names**: Assign friendly names to accounts for easy identification (e.g., "Mom", "Dad")
+- **A-List Support**: Flag accounts as A-List or A-List Preferred status
+- **Auto Seat Upgrade**: Enable automatic seat upgrade attempts 48 hours before departure for A-List accounts
+- **Smart Deactivation**: Accounts only deactivate after 3 consecutive confirmed credential failures; transient errors are retried automatically
+
+### Flight Tracking
+- **Manual Reservations**: Add individual reservations by confirmation number
+- **Route Display**: Full departure and destination airport codes (e.g., MKE -> PHX)
+- **Live Countdown Timers**: Real-time countdown to check-in time on every flight
+- **Status Tracking**: Pending, scheduled, checking_in, success, and failed states
+- **Assigned Seat Display**: Shows seat assignment after check-in (Southwest's new assigned seating model)
+
+### Fare Monitoring
+- **Automatic Fare Checks**: Checks for fare drops every 4 hours using fresh session tokens
+- **Fare History**: Complete timeline of price checks per flight with color-coded changes (green = drop, red = increase)
+- **Original Fare Tracking**: Manually enter what you paid when booking; displayed alongside fare changes
+- **Smart Notifications**: Only notifies on NEW fare drops (deduplicates; won't spam for the same price)
+- **Fare Drop Alerts**: Push/SMS notification when a lower fare (> $1 savings) is detected
+
+### Notifications
+- **Push Notifications**: Send alerts via Telegram, Discord, Slack, email, and 100+ other services using [Apprise](https://github.com/caronc/apprise)
+- **SMS Text Notifications**: Built-in Twilio quick setup form for text message alerts
+- **Test Notifications**: One-click test button to verify notification delivery
+- **Check-in Notifications**: Alerts on successful or failed check-in attempts
+- **Fare Drop Notifications**: Alerts when a lower fare becomes available
+
+### Check-In Learning System
+- **Screenshots**: Captures browser screenshots before and after every check-in
+- **Full API Recording**: Stores complete request/response bodies for both check-in POST requests (untruncated)
+- **Network Traffic Capture**: Records ALL network requests/responses during the check-in window via Chrome DevTools Protocol
+- **DOM Snapshots**: Captures the full page HTML at key moments
+- **Capture Viewer**: View screenshots, API responses, and network logs in the web UI
+- **Zero Latency Impact**: All heavy capture work happens AFTER the time-critical check-in completes
+
+### System
+- **Browser-Routed API Calls**: All Southwest API requests are routed through a persistent headless Chrome session to bypass WAF/anti-bot protections on cloud hosting
+- **Self-Healing Diagnostics**: Structured diagnostic entries logged when API calls fail, tracking Southwest API changes over time
+- **Activity Log**: Full worker activity log with level filtering (info/warning/error) and pagination
+- **API Diagnostics Tab**: Expandable entries showing expected vs actual behavior, headers sent, response bodies
 
 ## Architecture
 
@@ -75,6 +107,7 @@ The web app runs as a single Docker container with two processes managed by supe
 | Browser Session | Persistent Chrome instance routing API calls via `fetch()` to bypass WAF |
 | Process Manager | supervisord (runs Next.js + Python worker) |
 | Notifications | Apprise (Telegram, Twilio SMS, Discord, Slack, email, etc.) |
+| Data Capture | Chrome DevTools Protocol for screenshots, network traffic, and DOM snapshots |
 
 ## Installation
 
@@ -216,27 +249,33 @@ Overview of your check-in system:
 
 ### Accounts (`/accounts`)
 Manage your Southwest accounts:
-- **Display names**: Assign friendly names (click the pencil icon to rename)
+- **Display names**: Assign friendly names (click the pencil icon to rename inline)
 - **A-List toggle**: Click the tier badge to mark accounts as A-List/A-List Preferred
 - **Auto Seat Upgrade**: Enable to attempt seat upgrades 48 hours before departure
 - **Enable/disable** account monitoring
 - **Delete** accounts and their linked reservations
+- Accounts survive transient login errors; only deactivate after 3 consecutive confirmed credential failures
 
 ### Reservations (`/reservations`)
 Track all reservations:
 - Reservations are **auto-discovered** when accounts are monitored
 - **Add manual reservations** by confirmation number + passenger name
+- **Route summaries** in collapsed view (e.g., "MKE -> PHX, PHX -> DEN")
 - **Expand** to see flights with routes, departure times, check-in countdowns, and status
 
 ### Flights (`/flights`)
-Monitor all tracked flights with fare data:
-- **Card layout** showing confirmation, passenger, route, departure, fare change, seat, countdown, status
-- **Fare tracking**: Latest fare check result color-coded (green = drop, red = increase)
-- **Click to expand**: View fare history timeline and flight-specific activity logs side-by-side
+Monitor all tracked flights with fare and capture data:
+- **Card layout**: Confirmation, passenger, route, departure date/time, fare change, seat, countdown, status
+- **Original fare**: Click "$ Set fare" to record what you paid when booking
+- **Fare tracking**: Latest fare check result color-coded (green = lower fare, red = increase, gray = same)
+- **Click to expand**: Three sections:
+  - **Fare History**: Timeline of all fare checks with price changes
+  - **Activity Log**: Worker logs specific to this flight
+  - **Check-In Captures**: Screenshots, API responses, network logs, and DOM snapshots from check-in
 - Flights auto-refresh every 30 seconds
 
 ### Activity (`/activity`)
-Two tabs for monitoring system behavior:
+Three tabs for monitoring system behavior:
 
 **Activity Log tab:**
 - Filter by level: All, Info, Warning, Error
@@ -245,7 +284,7 @@ Two tabs for monitoring system behavior:
 
 **Diagnostics tab:**
 - Structured API diagnostic entries
-- Filter by category (auth_failure, api_error, checkin_failure, etc.)
+- Filter by category (auth_failure, api_error, checkin_failure, fare_check_failure, etc.)
 - Click to expand: expected vs actual behavior, headers sent, response body
 - Helps track Southwest API changes over time
 
@@ -253,18 +292,18 @@ Two tabs for monitoring system behavior:
 Configure preferences and notifications:
 
 **Seat Preferences:**
-- Select preferred seat letters (A-F toggle buttons)
+- Select preferred seat letters (A-F toggle buttons, blue = selected)
 - Set preferred rows (comma-separated, e.g., `1,2,3,4,5,6`)
-- Set fallback seat letters for when preferred seats are unavailable
+- Set fallback seat letters (orange = selected) for when preferred seats are unavailable
 
 **SMS Text Notifications:**
 - Built-in Twilio quick setup form
 - Enter Account SID, Auth Token, From Number, To Number
-- Auto-generates the Apprise URL
+- Auto-generates the Apprise URL and adds it as a notification service
 
 **Notification Services:**
 - Add any notification service using Apprise URL format
-- **Test Notification** button to verify delivery
+- **Send Test Notification** button to verify delivery (processed within 60 seconds)
 - Supports 100+ services including Telegram, Discord, Slack, email, SMS
 
 ## CLI Usage
@@ -302,7 +341,7 @@ For **A-List members**: Enable "Auto Seat Upgrade" on your account to attempt up
 
 Notifications are sent for:
 - **Check-in success/failure**: Includes confirmation number, route, and passenger name
-- **Fare drops**: When a lower fare (> $1 savings) is detected
+- **Fare drops**: Only on NEW drops (won't repeat for same price); includes amount and route
 - **Test messages**: Via the "Send Test Notification" button in Settings
 
 #### Notification Service Examples
@@ -319,14 +358,45 @@ Notifications are sent for:
 
 See the full list of [Apprise supported notifications](https://github.com/caronc/apprise#supported-notifications).
 
+## Check-In Data Capture
+
+Every check-in triggers a comprehensive data capture to learn how Southwest's assigned seating system works. This data is stored on the persistent volume and viewable in the web UI.
+
+### What Gets Captured
+
+| Data | When | File |
+|------|------|------|
+| Pre-check-in screenshot | Before check-in | `01_pre_checkin.png` |
+| Check-in step 1 request/response | During check-in | `02_checkin_step1_*.json` |
+| Check-in step 2 request/response | During check-in | `03_checkin_step2_*.json` |
+| Post-check-in screenshot | After check-in | `04_post_checkin.png` |
+| Post-check-in DOM | After check-in | `05_post_checkin_dom.html` |
+| All network traffic | Full window | `network_log.json` |
+| Manifest | After capture | `manifest.json` |
+
+### Design Principles
+- **Zero latency impact**: Screenshots and network harvesting happen AFTER the time-critical check-in POST requests complete
+- **Store raw data**: Full untruncated API responses; no interpretation or filtering
+- **Progressive discovery**: Logs response structures and `_links` entries to discover seat selection endpoints as Southwest evolves their API
+
+### Viewing Captures
+On the Flights page, expand a flight that has checked in. The **Check-In Captures** section shows:
+- Screenshot thumbnails (click for full size)
+- Clickable links for JSON API response files
+- DOM snapshot links
+- Network event count and total capture size
+
+Storage: `/app/data/captures/{flight_id}/` (typically 1-5 MB per capture)
+
 ## Self-Healing Diagnostics
 
 The system includes a structured diagnostics framework to track Southwest API changes:
 
 - **Every API failure** is logged with: category, endpoint, expected vs actual behavior, headers sent, and response body
-- **Categories**: `auth_failure`, `api_error`, `api_change`, `checkin_failure`, `unexpected_response`
+- **Categories**: `auth_failure`, `api_error`, `api_change`, `checkin_failure`, `fare_check_failure`, `unexpected_response`
 - **View diagnostics** in the Activity page > Diagnostics tab
 - **Expandable entries** show full detail for debugging
+- **Fare check diagnostics**: Captures the full `change_link` object and error response when fare checks fail
 
 This enables progressive adaptation to Southwest's API changes without requiring code updates for every change. Check the Diagnostics tab when things aren't working to see exactly what Southwest is returning.
 
@@ -335,11 +405,13 @@ This enables progressive adaptation to Southwest's API changes without requiring
 ### Web App
 - **Dashboard shows all 0s**: Ensure the worker process is running. Check the Activity page for logs. The worker polls every 60 seconds.
 - **Flights not appearing**: Check Activity > Diagnostics for API errors. The worker needs to successfully log in and retrieve reservations before flights appear.
-- **403 errors in diagnostics**: The browser session may need to restart. The worker auto-restarts the browser every 25 minutes or when a 403 is detected.
+- **403 errors in diagnostics**: The browser session handles this automatically - it restarts the browser every 25 minutes or when a 403 is detected.
 - **Login fails**: Verify `AUTH_USERNAME` and `AUTH_PASSWORD` environment variables are set correctly.
 - **Data lost after redeploy**: Ensure a persistent volume is mounted at `/app/data`. On Railway, use the Command Palette (`Cmd+K`) to create a volume.
 - **Notifications not sending**: Check that notification URLs are correctly formatted. Use the "Send Test Notification" button. The test is processed on the next worker poll cycle (up to 60 seconds).
-- **Missing destination airports**: This was a known bug (fixed). The worker will auto-update existing flights on the next processing cycle.
+- **Repeated fare notifications**: The system deduplicates notifications. If you received spam from an earlier version, this is fixed - only new fare drops trigger alerts now.
+- **Account deactivated unexpectedly**: Accounts now only deactivate after 3 consecutive confirmed "Invalid credentials" errors. Transient errors (timeouts, 502/503, browser crashes) are retried automatically. Re-enable the account from the Accounts page.
+- **Fare checks showing 400 errors**: The worker re-fetches fresh session tokens before each fare check. If 400 errors persist, check the Diagnostics tab for the full error response from Southwest.
 
 ### CLI
 To troubleshoot the CLI, run with the `--verbose` flag for debug messages, or `--debug-screenshots` for browser screenshots (stored in `logs/`).
@@ -372,11 +444,28 @@ Unfortunately, this is not possible due to how Southwest's companion system work
 
 Southwest switched from open seating to assigned seats on January 27, 2026. The app adapts to this:
 
-- **At check-in (24h before)**: The app checks in and logs the seat assignment from the API response
+- **At check-in (24h before)**: The app checks in and captures the full API response including any seat assignment data
 - **For A-List members (48h before)**: If "Auto Seat Upgrade" is enabled, the app attempts to select/upgrade your seat based on your preferences in Settings
 - **Seat preferences**: Configure preferred seat letters, rows, and fallback letters in Settings
+- **Check-in captures**: Every check-in records screenshots, full API responses, network traffic, and DOM snapshots so we can progressively learn how Southwest's seat selection API works
 
-The seat selection feature uses a progressive discovery approach - it logs Southwest's API response structures in the Activity page, allowing the logic to be refined as the API evolves.
+The seat selection feature uses a progressive discovery approach - it logs Southwest's API response structures in the Activity page and stores them as check-in captures, allowing the logic to be refined as the API evolves.
+</details>
+
+<details>
+<summary>How Does Fare Monitoring Work?</summary>
+
+The worker checks fares every 4 hours for all upcoming flights:
+
+1. Re-fetches the reservation from Southwest to get a fresh session token
+2. Navigates the change-flight API to find current prices
+3. Compares with the same fare class you booked
+4. Records the price difference in the fare history
+5. Sends a notification ONLY if the fare has dropped further than the last check
+
+You can also manually record what you paid for each flight by clicking "$ Set fare" on the Flights page. This shows alongside the fare change data so you can see the full picture.
+
+Note: Fare checks use fresh session tokens each time (Southwest tokens expire after inactivity), and all API calls go through the browser session to bypass WAF protections.
 </details>
 
 <details>
@@ -386,12 +475,14 @@ The seat selection feature uses a progressive discovery approach - it logs South
 |---------|---------|-----|
 | Interface | Browser dashboard | Command line |
 | Account monitoring | Automatic, continuous | Manual, one-time |
-| Fare checking | Every 4 hours | With config file |
+| Fare checking | Every 4 hours, with history | With config file |
+| Original fare tracking | Manual input per flight | Not available |
 | Seat management | UI with preferences | Not available |
 | Notifications | Telegram, SMS, Discord, etc. | With config file |
 | Data persistence | SQLite database | None (in-memory) |
+| Check-in captures | Screenshots, API data, network logs | Debug screenshots only |
 | Hosting | Railway, Docker, VPS | Local machine |
-| Activity logs | Web-based viewer | Log files |
+| Activity logs | Web-based viewer with filtering | Log files |
 | Diagnostics | Structured API tracking | Verbose flag |
 
 Use the **Web App** for always-on monitoring. Use the **CLI** for quick one-time check-ins.
@@ -400,9 +491,19 @@ Use the **Web App** for always-on monitoring. Use the **CLI** for quick one-time
 <details>
 <summary>How Do API Calls Work on Cloud Hosting?</summary>
 
-Southwest's website uses a WAF (Web Application Firewall) that blocks raw HTTP requests from cloud/datacenter IPs. The web app solves this by routing all API calls through a persistent headless Chrome browser session. The browser passes the WAF anti-bot challenge, and subsequent API calls are made via JavaScript `fetch()` inside the browser context, inheriting all cookies and WAF tokens.
+Southwest's website uses a WAF (Web Application Firewall) that blocks raw HTTP requests from cloud/datacenter IPs. The web app solves this by routing all API calls through a persistent headless Chrome browser session (`BrowserSession` class). The browser passes the WAF anti-bot challenge, and subsequent API calls are made via JavaScript `fetch()` inside the browser context, inheriting all cookies and WAF tokens.
 
-The browser session auto-restarts every 25 minutes to keep WAF tokens fresh, and restarts immediately if a 403 error is detected.
+The browser session auto-restarts every 25 minutes to keep WAF tokens fresh, and restarts immediately if a 403 error is detected. This applies to all Southwest API interactions: reservation retrieval, fare checking, check-in, and seat upgrades.
+</details>
+
+<details>
+<summary>Why Was My Account Deactivated?</summary>
+
+Accounts are only deactivated after **3 consecutive confirmed "Invalid credentials" errors** from Southwest. This prevents a single transient error from permanently disabling monitoring.
+
+Transient errors (timeouts, 502/503 gateway errors, browser crashes, CAPTCHAs) are treated as temporary and retried on the next cycle. The failure counter resets to 0 on any successful login.
+
+If your account was deactivated, you can re-enable it from the Accounts page by clicking the "Enable" button. If it keeps deactivating, double-check your Southwest username and password.
 </details>
 
 <details>
