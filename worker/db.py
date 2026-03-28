@@ -113,6 +113,10 @@ def _migrate(conn: sqlite3.Connection) -> None:
         conn.execute("ALTER TABLE flights ADD COLUMN reservation_info_json TEXT")
     if "assigned_seat" not in flight_cols:
         conn.execute("ALTER TABLE flights ADD COLUMN assigned_seat TEXT")
+    if "original_price" not in flight_cols:
+        conn.execute("ALTER TABLE flights ADD COLUMN original_price INTEGER")
+    if "original_currency" not in flight_cols:
+        conn.execute("ALTER TABLE flights ADD COLUMN original_currency TEXT DEFAULT 'USD'")
 
     # Accounts table migrations
     account_cols = [row[1] for row in conn.execute("PRAGMA table_info(accounts)").fetchall()]
@@ -157,6 +161,8 @@ def upsert_flight(
     destination_airport: str,
     departure_time: str,
     is_international: bool,
+    original_price: int | None = None,
+    original_currency: str = "USD",
 ) -> str:
     """Insert a flight or return existing flight id if it already exists."""
     existing = conn.execute(
@@ -180,7 +186,8 @@ def upsert_flight(
     flight_id = str(uuid.uuid4())
     conn.execute(
         "INSERT INTO flights (id, reservation_id, flight_number, departure_airport, "
-        "destination_airport, departure_time, is_international) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        "destination_airport, departure_time, is_international, original_price, original_currency) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
         (
             flight_id,
             reservation_id,
@@ -189,6 +196,8 @@ def upsert_flight(
             destination_airport,
             departure_time,
             1 if is_international else 0,
+            original_price,
+            original_currency,
         ),
     )
     conn.commit()
@@ -314,6 +323,16 @@ def add_fare_check(
         (flight_id, price_change, currency_code),
     )
     conn.commit()
+
+
+def get_last_fare_check(conn: sqlite3.Connection, flight_id: str) -> dict | None:
+    """Get the most recent fare check result for a flight."""
+    row = conn.execute(
+        "SELECT price_change, currency_code, checked_at FROM fare_history "
+        "WHERE flight_id = ? ORDER BY checked_at DESC LIMIT 1",
+        (flight_id,),
+    ).fetchone()
+    return dict(row) if row else None
 
 
 def update_flight_reservation_info(

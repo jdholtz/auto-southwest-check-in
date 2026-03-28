@@ -26,6 +26,7 @@ from db import (
     update_flight_reservation_info,
     add_log,
     add_fare_check,
+    get_last_fare_check,
     get_flights_for_fare_check,
     get_flights_for_seat_upgrade,
     get_seat_preferences,
@@ -117,25 +118,50 @@ def process_reservation(
             "info",
         )
 
+    from lib.flight import Flight
+
     for bound in bounds:
-        dep = bound.get("departureAirport", {})
-        arr = bound.get("arrivalAirport", bound.get("destinationAirport", {}))
-        departure_airport = dep.get("code", dep.get("name", ""))
-        destination_airport = arr.get("code", arr.get("name", ""))
         flight_number = bound.get("flights", [{}])[0].get("number", "") if bound.get("flights") else ""
         departure_date = bound.get("departureDate", "")
         departure_time_str = bound.get("departureTime", "")
         is_international = bound.get("isInternational", False)
 
         if departure_date and departure_time_str:
-            # Convert to UTC using airport timezone mapping
-            from lib.flight import Flight
-
+            # Use Flight class for proper airport/time extraction (it knows the correct field names)
+            departure_airport = ""
+            destination_airport = ""
+            departure_utc = f"{departure_date}T{departure_time_str}:00"
             try:
-                flight = Flight(bound, reservation_info, confirmation_number)
-                departure_utc = flight.departure_time.isoformat()
+                flight_obj = Flight(bound, reservation_info, confirmation_number)
+                departure_airport = flight_obj.departure_airport
+                destination_airport = flight_obj.destination_airport
+                departure_utc = flight_obj.departure_time.isoformat()
+            except Exception as e:
+                # Fallback to manual extraction
+                dep = bound.get("departureAirport", {})
+                arr = bound.get("arrivalAirport", bound.get("destinationAirport", {}))
+                departure_airport = dep.get("code", dep.get("name", ""))
+                destination_airport = arr.get("code", arr.get("name", ""))
+
+            # Extract original booking price from fare details
+            original_price = None
+            original_currency = "USD"
+            try:
+                fare_details = bound.get("fareProductDetails", {})
+                if fare_details:
+                    fare_label = fare_details.get("label", "")
+                    # Look for total price in various locations
+                    for price_key in ["totalPrice", "amount", "fare"]:
+                        if price_key in fare_details:
+                            price_data = fare_details[price_key]
+                            if isinstance(price_data, dict):
+                                original_price = int(price_data.get("amount", "0").replace(",", ""))
+                                original_currency = price_data.get("currencyCode", "USD")
+                            elif isinstance(price_data, (int, float)):
+                                original_price = int(price_data)
+                            break
             except Exception:
-                departure_utc = f"{departure_date}T{departure_time_str}:00"
+                pass
 
             flight_id = upsert_flight(
                 conn,
@@ -145,6 +171,8 @@ def process_reservation(
                 destination_airport,
                 departure_utc,
                 is_international,
+                original_price=original_price,
+                original_currency=original_currency,
             )
             # Store reservation_info for fare checking
             try:
@@ -308,7 +336,7 @@ def process_manual_reservations(conn: sqlite3.Connection) -> None:
 
 
 last_fare_check: float = 0
-FARE_CHECK_INTERVAL = 10 * 60  # Check fares every 10 minutes (for debugging, change to 4 * 3600 later)
+FARE_CHECK_INTERVAL = 4 * 3600  # Check fares every 4 hours
 
 
 def check_fares(conn: sqlite3.Connection) -> None:
@@ -466,14 +494,29 @@ def check_fares(conn: sqlite3.Connection) -> None:
             add_fare_check(conn, flight_row["id"], lowest_fare["amount"], lowest_fare.get("currencyCode", "USD"))
             price_str = f"{lowest_fare['amount']:+,} {lowest_fare['currencyCode']}"
 
+            # Only notify if this is a NEW fare drop (not already notified)
+            previous = get_last_fare_check(conn, flight_row["id"])
+            # Skip the one we just inserted - get the one before that
+            prev_rows = conn.execute(
+                "SELECT price_change FROM fare_history WHERE flight_id = ? ORDER BY checked_at DESC LIMIT 2",
+                (flight_row["id"],),
+            ).fetchall()
+            prev_amount = prev_rows[1]["price_change"] if len(prev_rows) > 1 else None
+
             if lowest_fare["amount"] < -1:
                 route = f"{flight_row['departure_airport']} -> {flight_row.get('destination_airport', '?')}"
-                add_log(conn, f"Lower fare found for {flight_row['confirmation_number']} ({route}): {price_str}", "info", flight_row["id"])
-                try:
-                    from notifications import notify_fare_drop
-                    notify_fare_drop(flight_row["confirmation_number"], route, price_str)
-                except Exception:
-                    pass
+                add_log(conn, f"Fare check for {flight_row['confirmation_number']} ({route}): {price_str}", "info", flight_row["id"])
+
+                # Only send notification if fare dropped FURTHER than last check
+                if prev_amount is None or lowest_fare["amount"] < prev_amount:
+                    add_log(conn, f"NEW fare drop for {flight_row['confirmation_number']}: {price_str} (was {prev_amount})", "info", flight_row["id"])
+                    try:
+                        from notifications import notify_fare_drop
+                        notify_fare_drop(flight_row["confirmation_number"], route, price_str)
+                    except Exception:
+                        pass
+                else:
+                    add_log(conn, f"Fare unchanged since last check ({price_str}), skipping notification", "info", flight_row["id"])
             else:
                 add_log(conn, f"Fare check for {flight_row['confirmation_number']}: {price_str}", "info", flight_row["id"])
 

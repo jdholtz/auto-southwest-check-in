@@ -45,6 +45,8 @@ interface FlightWithFare {
   confirmation_number: string;
   first_name: string;
   last_name: string;
+  original_price?: number | null;
+  original_currency?: string;
   latest_fare: FareInfo | null;
   baseline_fare: FareInfo | null;
 }
@@ -166,6 +168,11 @@ export default function FlightsPage() {
                   <div className="flex items-center gap-4">
                     {/* Fare info */}
                     <div className="text-right">
+                      {flight.original_price ? (
+                        <div className="text-xs text-gray-400">
+                          Paid ${flight.original_price.toLocaleString()} {flight.original_currency || "USD"}
+                        </div>
+                      ) : null}
                       <div className={`text-sm ${fareColor(flight.latest_fare)}`}>
                         {flight.latest_fare ? formatFare(flight.latest_fare) : "No fare data"}
                       </div>
