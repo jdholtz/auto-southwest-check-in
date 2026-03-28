@@ -620,55 +620,230 @@ def attempt_seat_upgrades(conn: sqlite3.Connection) -> None:
         add_log(conn, "No seat preferences set, skipping seat upgrades", "info")
         return
 
+    # Parse preferences
+    preferred_letters = [l.strip() for l in prefs.get("preferred_letters", "A,F").split(",")]
+    preferred_rows = [int(r.strip()) for r in prefs.get("preferred_rows", "1,2,3,4,5,6").split(",") if r.strip().isdigit()]
+    fallback_letters = [l.strip() for l in prefs.get("fallback_letters", "A,C,D,F").split(",")]
+
     for flight_row in flights:
         flight_id = flight_row["id"]
         conf_num = flight_row["confirmation_number"]
         first_name = flight_row["first_name"]
         last_name = flight_row["last_name"]
+        route = f"{flight_row['departure_airport']}->{flight_row.get('destination_airport', '?')}"
 
-        add_log(
-            conn,
-            f"Attempting seat upgrade for {conf_num} ({flight_row['departure_airport']}->{flight_row['destination_airport']})",
-            "info",
-            flight_id,
-        )
-
-        # Try to view the reservation to find seat-related links
-        info = {
-            "firstName": first_name,
-            "lastName": last_name,
-            "recordLocator": conf_num,
-        }
-        site = VIEW_RESERVATION_URL + conf_num
+        add_log(conn, f"Attempting seat upgrade for {conf_num} ({route})", "info", flight_id)
 
         try:
-            response = browser_session.make_request("POST", site, {}, info)
+            # Step 1: Get reservation to find seat links
+            res_info = {"firstName": first_name, "lastName": last_name, "recordLocator": conf_num}
+            res_site = VIEW_RESERVATION_URL + conf_num
+            response = browser_session.make_request("POST", res_site, {}, res_info)
             reservation_info = response.get("viewReservationViewPage", {})
 
-            # Look for seat-related _links
             links = reservation_info.get("_links", {})
-            seat_links = {k: v for k, v in links.items() if "seat" in k.lower()}
+            modify_seats = links.get("modifySeats")
 
-            if seat_links:
-                add_log(conn, f"Seat links found for upgrade: {list(seat_links.keys())}", "info", flight_id)
-                # TODO: Follow seat selection links once API structure is discovered
-                # For now, log what we find for refinement
-                for link_name, link_data in seat_links.items():
-                    add_log(
-                        conn,
-                        f"Seat link '{link_name}': {json.dumps(link_data)[:300]}",
-                        "info",
-                        flight_id,
-                    )
+            if not modify_seats:
+                seat_link_keys = [k for k in links if "seat" in k.lower()]
+                add_log(conn, f"No modifySeats link for {conf_num}. Seat links: {seat_link_keys}", "info", flight_id)
+                continue
+
+            add_log(conn, f"Found modifySeats link for {conf_num}, calling seat management API", "info", flight_id)
+
+            # Step 2: Call modifySeats API to get seat map
+            seat_href = modify_seats["href"]
+            seat_body = modify_seats.get("body", {})
+            seat_method = modify_seats.get("method", "POST")
+
+            # The href is /v1/mobile-seat-management/reservations - need to route through API
+            seat_site = seat_href.lstrip("/")
+            try:
+                seat_response = browser_session.make_request(seat_method, seat_site, {}, seat_body, max_attempts=3)
+            except RequestError as e:
+                add_log(conn, f"Seat map request failed for {conf_num}: {e}", "error", flight_id)
+                log_diagnostic(conn, "seat_upgrade_failure", f"{seat_method} {seat_site}",
+                               "200 OK with seat map", str(e),
+                               response_snapshot=getattr(e, "response_body", "")[:500])
+                continue
+
+            # Step 3: Log full response for discovery/diagnostics
+            response_keys = list(seat_response.keys())
+            add_log(conn, f"Seat map response keys: {response_keys}", "info", flight_id)
+
+            # Save full response to diagnostics
+            log_diagnostic(conn, "seat_map_discovery", f"{seat_method} {seat_site}",
+                           "Seat map with available seats", f"Response keys: {response_keys}",
+                           response_snapshot=json.dumps(seat_response)[:2000])
+
+            # Save full response to file for detailed analysis
+            try:
+                import os
+                capture_dir = f"/app/data/captures/{flight_id}"
+                os.makedirs(capture_dir, exist_ok=True)
+                with open(f"{capture_dir}/seat_map_response.json", "w") as f:
+                    json.dump(seat_response, f, indent=2, default=str)
+                add_log(conn, f"Full seat map saved to {capture_dir}/seat_map_response.json", "info", flight_id)
+            except Exception:
+                pass
+
+            # Step 4: Try to parse seat map and find best seat
+            best_seat = _find_best_seat(seat_response, preferred_letters, preferred_rows, fallback_letters, conn, flight_id)
+
+            if not best_seat:
+                add_log(conn, f"Could not find a suitable seat for {conf_num}. Response needs manual analysis.", "warning", flight_id)
+                continue
+
+            add_log(conn, f"Best seat found for {conf_num}: {best_seat['seat']} (score: {best_seat['score']})", "info", flight_id)
+
+            # Step 5: Try to select the seat
+            seat_links = seat_response.get("_links", {})
+            select_link_names = [k for k in seat_links if "select" in k.lower() or "save" in k.lower() or "confirm" in k.lower()]
+            add_log(conn, f"Seat selection links available: {list(seat_links.keys())}", "info", flight_id)
+
+            if select_link_names:
+                select_link = seat_links[select_link_names[0]]
+                add_log(conn, f"Attempting to select seat {best_seat['seat']} via '{select_link_names[0]}'", "info", flight_id)
+
+                select_href = select_link.get("href", "").lstrip("/")
+                select_method = select_link.get("method", "POST")
+                select_body = select_link.get("body", {})
+
+                # Add the selected seat to the body
+                if isinstance(select_body, dict):
+                    select_body["seatNumber"] = best_seat["seat"]
+                    select_body["seatRow"] = best_seat.get("row")
+                    select_body["seatLetter"] = best_seat.get("letter")
+
+                try:
+                    select_response = browser_session.make_request(select_method, select_href, {}, select_body, max_attempts=3)
+                    add_log(conn, f"Seat selection response keys: {list(select_response.keys())}", "info", flight_id)
+
+                    # Update the flight's assigned seat
+                    update_flight_seat(conn, flight_id, best_seat["seat"])
+                    add_log(conn, f"Seat {best_seat['seat']} selected for {conf_num}!", "info", flight_id)
+
+                    try:
+                        from notifications import send_notification
+                        send_notification(
+                            f"Seat Selected: {conf_num}",
+                            f"Seat {best_seat['seat']} selected for flight {route}"
+                        )
+                    except Exception:
+                        pass
+
+                except RequestError as e:
+                    add_log(conn, f"Seat selection request failed: {e}", "error", flight_id)
+                    log_diagnostic(conn, "seat_select_failure", f"{select_method} {select_href}",
+                                   f"Select seat {best_seat['seat']}", str(e),
+                                   response_snapshot=getattr(e, "response_body", "")[:500])
             else:
-                available_links = list(links.keys()) if links else []
-                add_log(conn, f"No seat links found. Available links: {available_links}", "info", flight_id)
+                add_log(conn, f"No seat selection link found in response. Manual analysis needed.", "warning", flight_id)
 
         except RequestError as e:
             add_log(conn, f"Failed to retrieve reservation for seat upgrade: {e}", "error", flight_id)
         except Exception as e:
             logger.error("Seat upgrade error for %s: %s", conf_num, e)
             add_log(conn, f"Seat upgrade error: {e}", "error", flight_id)
+
+
+def _find_best_seat(
+    seat_response: dict,
+    preferred_letters: list[str],
+    preferred_rows: list[int],
+    fallback_letters: list[str],
+    conn,
+    flight_id: str,
+) -> dict | None:
+    """Parse a seat map response and find the best available seat based on preferences.
+    Returns {"seat": "12A", "row": 12, "letter": "A", "score": 100} or None."""
+
+    # Try common response structures for seat maps
+    seat_map = None
+    for key in ["seatMapPage", "modifySeatViewPage", "seatMap", "seats", "seatSelectionPage"]:
+        if key in seat_response:
+            seat_map = seat_response[key]
+            add_log(conn, f"Found seat map under key '{key}'", "info", flight_id)
+            break
+
+    if not seat_map:
+        # Try to find any array of seats in the response
+        for key, value in seat_response.items():
+            if isinstance(value, dict):
+                for subkey, subvalue in value.items():
+                    if isinstance(subvalue, list) and len(subvalue) > 0 and isinstance(subvalue[0], dict):
+                        if any(k in str(subvalue[0].keys()) for k in ["seat", "row", "available", "letter"]):
+                            seat_map = {subkey: subvalue}
+                            add_log(conn, f"Found seat data under '{key}.{subkey}'", "info", flight_id)
+                            break
+
+    if not seat_map:
+        add_log(conn, f"Could not locate seat map in response. Keys: {list(seat_response.keys())}", "warning", flight_id)
+        return None
+
+    # Parse seats - try multiple common structures
+    available_seats = []
+
+    def extract_seats(data, path=""):
+        """Recursively search for seat data in the response."""
+        if isinstance(data, list):
+            for item in data:
+                extract_seats(item, path)
+        elif isinstance(data, dict):
+            # Check if this dict represents a seat
+            has_seat_info = any(k in data for k in ["seatNumber", "seat", "seatLabel", "number"])
+            is_available = data.get("available", data.get("isAvailable", data.get("occupied") == False if "occupied" in data else None))
+
+            if has_seat_info and is_available is not False:
+                seat_id = data.get("seatNumber", data.get("seat", data.get("seatLabel", data.get("number", ""))))
+                if seat_id and isinstance(seat_id, str) and len(seat_id) >= 2:
+                    # Parse row number and letter from seat ID (e.g., "12A")
+                    row_str = ""
+                    letter = ""
+                    for ch in seat_id:
+                        if ch.isdigit():
+                            row_str += ch
+                        elif ch.isalpha():
+                            letter = ch.upper()
+                            break
+                    if row_str and letter:
+                        available_seats.append({
+                            "seat": seat_id,
+                            "row": int(row_str),
+                            "letter": letter,
+                            "data": {k: v for k, v in data.items() if k not in ("_links",)},
+                        })
+
+            # Recurse into sub-structures
+            for key, value in data.items():
+                if isinstance(value, (list, dict)):
+                    extract_seats(value, f"{path}.{key}")
+
+    extract_seats(seat_map)
+    add_log(conn, f"Found {len(available_seats)} available seats", "info", flight_id)
+
+    if not available_seats:
+        return None
+
+    # Score seats based on preferences
+    for seat in available_seats:
+        score = 0
+        if seat["letter"] in preferred_letters and seat["row"] in preferred_rows:
+            score = 100
+        elif seat["letter"] in preferred_letters:
+            score = 80
+        elif seat["letter"] in fallback_letters and seat["row"] in preferred_rows:
+            score = 60
+        elif seat["letter"] in fallback_letters:
+            score = 40
+        else:
+            score = 20
+        seat["score"] = score
+
+    # Sort by score (descending), then by row (ascending for front seats)
+    available_seats.sort(key=lambda s: (-s["score"], s["row"]))
+
+    return available_seats[0] if available_seats else None
 
 
 def process_test_notifications(conn: sqlite3.Connection) -> None:
