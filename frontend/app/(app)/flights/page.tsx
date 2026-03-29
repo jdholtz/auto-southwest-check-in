@@ -83,10 +83,10 @@ export default function FlightsPage() {
   const [fareInput, setFareInput] = useState("");
 
   async function saveOriginalFare(flightId: string) {
-    await fetch(`/api/flights/${flightId}`, {
-      method: "PATCH",
+    await fetch("/api/flights/update", {
+      method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ original_price: fareInput ? Number(fareInput) : null }),
+      body: JSON.stringify({ flight_id: flightId, original_price: fareInput ? Number(fareInput) : null }),
     });
     setEditingFare(null);
     setFareInput("");
@@ -142,10 +142,11 @@ export default function FlightsPage() {
         <div className="space-y-3">
           {flights.map((flight) => {
             const lf = flight.latest_fare;
-            const hasAlt = lf?.best_flight_number;
-            const savings = hasAlt && lf?.my_flight_fare != null
-              ? lf.my_flight_fare - lf.price_change
-              : 0;
+            // Only show alternative when it's actually cheaper than your flight
+            const altIsCheaper = lf?.best_flight_number &&
+              lf?.my_flight_fare != null &&
+              lf.price_change < lf.my_flight_fare;
+            const savings = altIsCheaper ? lf!.my_flight_fare! - lf!.price_change : 0;
 
             return (
             <Card key={flight.id} className="overflow-hidden">
@@ -239,8 +240,8 @@ export default function FlightsPage() {
                   </div>
                 </div>
 
-                {/* Row 2: Better flight alternative (if exists) */}
-                {hasAlt && (
+                {/* Row 2: Better flight alternative (only when actually cheaper) */}
+                {altIsCheaper && (
                   <div className="mt-3 rounded-lg border border-green-200 bg-green-50 p-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">

@@ -543,6 +543,14 @@ def check_fares(conn: sqlite3.Connection) -> None:
             if not lowest_fare:
                 lowest_fare = {"amount": 0, "currencyCode": "USD"}
 
+            # Only keep alternative if it's actually cheaper than booked flight
+            if best_alt_flight and my_flight_fare_val is not None:
+                if lowest_fare["amount"] >= my_flight_fare_val:
+                    best_alt_flight = None
+                    best_alt_nonstop = False
+                    best_alt_stops = None
+                    best_alt_depart_time = None
+
             add_fare_check(
                 conn, flight_row["id"], lowest_fare["amount"],
                 lowest_fare.get("currencyCode", "USD"),
@@ -705,6 +713,20 @@ def attempt_seat_upgrades(conn: sqlite3.Connection) -> None:
                     with open(f"{cap_dir}/seat_map_dom.html", "w") as f:
                         f.write(dom)
                     add_log(conn, f"Seat map captured to {cap_dir}/", "info", flight_id)
+                    # Record in checkin_captures so it appears in the UI
+                    manifest = json.dumps({
+                        "flight_id": flight_id, "type": "seat_upgrade",
+                        "files": [
+                            {"name": "seat_map_page.png", "type": "screenshot"},
+                            {"name": "seat_map_dom.html", "type": "dom"},
+                        ],
+                    })
+                    total_size = os.path.getsize(f"{cap_dir}/seat_map_page.png") + os.path.getsize(f"{cap_dir}/seat_map_dom.html")
+                    conn.execute(
+                        "INSERT INTO checkin_captures (flight_id, capture_dir, manifest_json, file_count, total_size_bytes) VALUES (?, ?, ?, ?, ?)",
+                        (flight_id, cap_dir, manifest, 2, total_size),
+                    )
+                    conn.commit()
                 except Exception as cap_err:
                     add_log(conn, f"Seat map capture error: {cap_err}", "warning", flight_id)
 
