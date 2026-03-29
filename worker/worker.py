@@ -673,6 +673,12 @@ def attempt_seat_upgrades(conn: sqlite3.Connection) -> None:
         conn.commit()
 
         try:
+            # Restart browser fresh for each seat upgrade attempt
+            # (ensures clean WAF state and same-origin for fetch calls)
+            add_log(conn, f"Restarting browser for seat upgrade of {conf_num}", "info", flight_id)
+            browser_session.start()
+            add_log(conn, f"Browser restarted. Headers: {len(browser_session.headers)}. Fetching reservation...", "info", flight_id)
+
             # Step 1: Get reservation to find seat links
             res_info = {"firstName": first_name, "lastName": last_name, "recordLocator": conf_num}
             res_site = VIEW_RESERVATION_URL + conf_num
@@ -940,7 +946,16 @@ def attempt_seat_upgrades(conn: sqlite3.Connection) -> None:
                     pass
 
         except RequestError as e:
-            add_log(conn, f"Failed to retrieve reservation for seat upgrade: {e}", "error", flight_id)
+            # Capture browser URL for diagnostics on error "0"
+            browser_url = "unknown"
+            try:
+                browser_url = browser_session._driver.current_url if browser_session._driver else "no driver"
+            except Exception:
+                pass
+            add_log(conn, f"Failed to retrieve reservation for seat upgrade: {e} (browser at: {browser_url})", "error", flight_id)
+            log_diagnostic(conn, "seat_upgrade_error", f"POST {VIEW_RESERVATION_URL}{conf_num}",
+                           "200 OK with reservation", f"{e} (browser: {browser_url})",
+                           response_snapshot=getattr(e, "response_body", "")[:500])
         except Exception as e:
             logger.error("Seat upgrade error for %s: %s", conf_num, e)
             add_log(conn, f"Seat upgrade error: {e}", "error", flight_id)
