@@ -763,72 +763,132 @@ def attempt_seat_upgrades(conn: sqlite3.Connection, force_flight_id: str | None 
                 driver.save_screenshot(f"{cap_dir}/01_account_page.png")
                 add_log(conn, f"Account page loaded. URL: {driver.current_url}", "info", flight_id)
 
-                # Step 3: Stay on account page (login landed us here)
-                # The account page shows all trips with "Modify seats" buttons
-                # No need to navigate to a lookup form
-                time.sleep(5)  # Wait for trips to load
-                driver.save_screenshot(f"{cap_dir}/01_account_page.png")
-                add_log(conn, f"Account page loaded. URL: {driver.current_url}", "info", flight_id)
+                # Step 3: Click "Trips" tab, then "Details" for our flight, then "Modify seats"
+                # From screenshots: Account page has Trips tab → trip cards → "Details" button → "Manage my trip" → "Modify seats"
+                time.sleep(3)
 
-                # Step 4: Find and click "Modify seats" for the target confirmation number
-                # Use JavaScript since CSS :contains() doesn't work in Selenium
-                modify_result = driver.execute_script(f"""
-                    // Strategy 1: Find the card/section with our confirmation number, then click its Modify seats link
-                    var allElements = document.querySelectorAll('*');
-                    var confFound = false;
-                    for (var i = 0; i < allElements.length; i++) {{
-                        var el = allElements[i];
-                        var text = el.textContent || '';
-                        // Find an element that contains our confirmation number
-                        if (text.includes('{conf_num}') && el.children.length > 0) {{
-                            // Look for a Modify seats link within this element's subtree
-                            var links = el.querySelectorAll('a, button');
-                            for (var j = 0; j < links.length; j++) {{
-                                var linkText = links[j].textContent.trim().toLowerCase();
-                                if (linkText.includes('modify seat') || linkText.includes('change seat')) {{
-                                    links[j].click();
-                                    return 'clicked: ' + links[j].textContent.trim() + ' for ' + '{conf_num}';
+                # Click "Trips" tab if not already active
+                driver.execute_script("""
+                    var links = document.querySelectorAll('a, button');
+                    for (var i = 0; i < links.length; i++) {
+                        if (links[i].textContent.trim() === 'Trips') {
+                            links[i].click();
+                            break;
+                        }
+                    }
+                """)
+                time.sleep(5)
+                driver.save_screenshot(f"{cap_dir}/01_trips_tab.png")
+                add_log(conn, f"Trips tab clicked. URL: {driver.current_url}", "info", flight_id)
+
+                # Click "Details" button on the trip card containing our confirmation number
+                details_result = driver.execute_script(f"""
+                    // Look for our confirmation number on the page, then find "Details" nearby
+                    var body = document.body.innerHTML;
+                    if (!body.includes('{conf_num}')) {{
+                        return 'conf_num {conf_num} not found on page';
+                    }}
+
+                    // Strategy: Find all elements, walk up to find a trip card, then find Details within it
+                    var allText = document.querySelectorAll('*');
+                    for (var el of allText) {{
+                        // Look for a small element that directly contains just the confirmation number
+                        if (el.children.length === 0 && el.textContent.trim().includes('{conf_num}')) {{
+                            // Walk up the DOM to find the trip card container
+                            var container = el;
+                            for (var p = 0; p < 15; p++) {{
+                                if (!container.parentElement) break;
+                                container = container.parentElement;
+                                // Look for "Details" button in this container
+                                var btns = container.querySelectorAll('a, button');
+                                for (var btn of btns) {{
+                                    if (btn.textContent.trim() === 'Details') {{
+                                        btn.click();
+                                        return 'clicked Details for {conf_num}';
+                                    }}
                                 }}
                             }}
                         }}
                     }}
 
-                    // Strategy 2: Just click the first "Modify seats" link on the page
-                    var allLinks = document.querySelectorAll('a, button');
-                    for (var k = 0; k < allLinks.length; k++) {{
-                        var lt = allLinks[k].textContent.trim().toLowerCase();
-                        if (lt === 'modify seats' || lt === 'modify seat') {{
-                            allLinks[k].click();
-                            return 'clicked first: ' + allLinks[k].textContent.trim();
+                    // Fallback: just click the first "Details" button on the page
+                    var allBtns = document.querySelectorAll('a, button');
+                    for (var b of allBtns) {{
+                        if (b.textContent.trim() === 'Details') {{
+                            b.click();
+                            return 'clicked first Details button';
                         }}
                     }}
 
-                    // Strategy 3: Collect all visible link texts for diagnostics
-                    var linkTexts = [];
-                    var allA = document.querySelectorAll('a, button');
-                    for (var m = 0; m < Math.min(allA.length, 50); m++) {{
-                        var t = allA[m].textContent.trim().substring(0, 40);
-                        if (t) linkTexts.push(t);
+                    // Diagnostics: list all button/link texts
+                    var texts = [];
+                    var items = document.querySelectorAll('a, button');
+                    for (var j = 0; j < Math.min(items.length, 30); j++) {{
+                        var t = items[j].textContent.trim().substring(0, 30);
+                        if (t) texts.push(t);
                     }}
-                    return 'not found. Page links: ' + linkTexts.join(' | ');
+                    return 'Details not found. Links: ' + texts.join(' | ');
                 """)
 
-                add_log(conn, f"Modify seats click result: {str(modify_result)[:300]}", "info", flight_id)
+                add_log(conn, f"Details click: {str(details_result)[:200]}", "info", flight_id)
 
-                if modify_result and modify_result.startswith("clicked"):
-                    # Wait for seat map page to load
-                    time.sleep(8)
-                    driver.save_screenshot(f"{cap_dir}/02_after_modify_click.png")
-                    add_log(conn, f"After Modify seats click. URL: {driver.current_url}", "info", flight_id)
-                else:
-                    # Modify seats not found on account page
-                    driver.save_screenshot(f"{cap_dir}/02_no_modify_seats.png")
-                    page_text = driver.execute_script("return document.body ? document.body.textContent.substring(0, 800) : ''")
-                    add_log(conn, f"Modify seats button not found on account page. Body: {page_text[:300]}", "warning", flight_id)
-                    log_diagnostic(conn, "seat_modify_not_found", driver.current_url,
-                                   "Modify seats button on account page", str(modify_result)[:300],
-                                   response_snapshot=page_text[:500])
+                if not details_result or not str(details_result).startswith("clicked"):
+                    driver.save_screenshot(f"{cap_dir}/02_no_details_btn.png")
+                    add_log(conn, f"Could not find Details button for {conf_num}", "warning", flight_id)
                     continue
+
+                # Wait for "Manage my trip" page to load
+                time.sleep(5)
+                driver.save_screenshot(f"{cap_dir}/02_manage_trip.png")
+                add_log(conn, f"Manage trip page loaded. URL: {driver.current_url}", "info", flight_id)
+
+                # Extract current seat assignment from this page
+                seat_info = driver.execute_script("""
+                    var text = document.body.textContent || '';
+                    var seatMatch = text.match(/Seat\\s+(\\d{1,2}[A-F]),?\\s*(\\w+)?/i);
+                    return seatMatch ? seatMatch[0] : 'not found';
+                """)
+                add_log(conn, f"Current seat on manage page: {seat_info}", "info", flight_id)
+
+                # Click "Modify seats" link
+                modify_result = driver.execute_script("""
+                    var links = document.querySelectorAll('a');
+                    for (var link of links) {
+                        var text = link.textContent.trim();
+                        if (text === 'Modify seats' || text === 'Modify Seats') {
+                            link.click();
+                            return 'clicked Modify seats';
+                        }
+                    }
+                    // Try buttons too
+                    var btns = document.querySelectorAll('button');
+                    for (var btn of btns) {
+                        var text = btn.textContent.trim();
+                        if (text === 'Modify seats' || text === 'Modify Seats') {
+                            btn.click();
+                            return 'clicked Modify seats (button)';
+                        }
+                    }
+                    // Diagnostics
+                    var allLinks = [];
+                    document.querySelectorAll('a').forEach(function(a) {
+                        var t = a.textContent.trim().substring(0, 30);
+                        if (t) allLinks.push(t);
+                    });
+                    return 'Modify seats not found. Links: ' + allLinks.join(' | ');
+                """)
+
+                add_log(conn, f"Modify seats click: {str(modify_result)[:200]}", "info", flight_id)
+
+                if not modify_result or not str(modify_result).startswith("clicked"):
+                    driver.save_screenshot(f"{cap_dir}/03_no_modify_seats.png")
+                    add_log(conn, f"Could not find Modify seats link on manage trip page", "warning", flight_id)
+                    continue
+
+                # Wait for seat map page to load
+                time.sleep(8)
+                driver.save_screenshot(f"{cap_dir}/03_seat_map.png")
+                add_log(conn, f"Seat map page loaded. URL: {driver.current_url}", "info", flight_id)
 
                 # Step 5: Look for seat map OR check if we're already on seat map
 

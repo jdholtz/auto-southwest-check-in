@@ -318,7 +318,9 @@ export default function FlightsPage() {
                         </p>
                       ) : (
                         <div className="space-y-1 max-h-48 overflow-y-auto">
-                          {fareHistory.map((fare, i) => (
+                          {fareHistory
+                            .filter((fare, i) => i === 0 || fare.price_change !== fareHistory[i - 1].price_change || fare.best_flight_number !== fareHistory[i - 1].best_flight_number)
+                            .map((fare, i) => (
                             <div key={i} className="text-xs">
                               <div className="flex justify-between">
                                 <span className="text-gray-400">

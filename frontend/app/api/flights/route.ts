@@ -22,14 +22,16 @@ export function GET() {
     )
   `);
 
+  const now = new Date().toISOString();
   const flights = db
     .prepare(
       `SELECT f.*, r.confirmation_number, r.first_name, r.last_name
        FROM flights f
        JOIN reservations r ON r.id = f.reservation_id
+       WHERE f.departure_time > ?
        ORDER BY f.departure_time ASC`
     )
-    .all();
+    .all(now);
 
   // Attach latest fare check for each flight (with alternative flight data)
   const result = (flights as { id: string }[]).map((f) => {
