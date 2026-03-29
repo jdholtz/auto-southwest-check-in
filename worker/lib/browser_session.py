@@ -240,8 +240,18 @@ class BrowserSession:
         while attempts < max_attempts:
             attempts += 1
             try:
-                with self._lock:
+                # Use timeout on lock to prevent indefinite blocking
+                # (seat upgrades can hold lock for minutes)
+                acquired = self._lock.acquire(timeout=60)
+                if not acquired:
+                    error_msg = "Browser session locked (another operation in progress)"
+                    logger.warning(error_msg)
+                    time.sleep(2)
+                    continue
+                try:
                     status, response_body = self.execute_fetch(method, url, merged_headers, body)
+                finally:
+                    self._lock.release()
 
                 if status == 200:
                     logger.debug("Browser fetch succeeded after %d attempts", attempts)

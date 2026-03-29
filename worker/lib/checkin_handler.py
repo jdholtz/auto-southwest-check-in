@@ -138,13 +138,19 @@ class CheckInHandler:
             if self._stop_event.is_set():
                 return
 
-            # Ensure browser session is alive before check-in
+            # CRITICAL: Ensure browser is alive AND on mobile.southwest.com before check-in
+            # Seat upgrades may have navigated the browser to www.southwest.com,
+            # which causes fetch() to fail with status 0 (same-origin policy)
             if self.browser_session:
                 try:
-                    self.browser_session.ensure_alive()
+                    logger.info("Preparing browser for check-in: restarting fresh session")
+                    self.browser_session.start()  # Fresh browser on mobile.southwest.com
                     self.headers = self.browser_session.headers
+                    logger.info("Browser ready for check-in with %d headers", len(self.headers))
                 except DriverTimeoutError:
-                    logger.debug("Timeout while refreshing browser session before check-in")
+                    logger.warning("Timeout while preparing browser for check-in")
+                except Exception as e:
+                    logger.warning("Error preparing browser for check-in: %s", e)
 
             current_time = get_current_time()
 

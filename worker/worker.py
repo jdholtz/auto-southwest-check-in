@@ -616,10 +616,23 @@ SEAT_UPGRADE_COOLDOWN = 3 * 3600  # 3 hours between successful attempts per flig
 
 def attempt_seat_upgrades(conn: sqlite3.Connection, force_flight_id: str | None = None) -> None:
     """For A-List accounts, attempt seat upgrade from 48h to 2h before departure.
-    If force_flight_id is provided, only check that specific flight (bypasses cooldown)."""
+    If force_flight_id is provided, only check that specific flight (bypasses cooldown).
+    CRITICAL: Will NOT run if any check-in is imminent (within 2 hours)."""
     if not browser_session:
-        add_log(conn, "Seat upgrade check: browser session not available", "warning")
         return
+
+    # CRITICAL SAFETY CHECK: Do not interfere with upcoming check-ins
+    # Seat upgrades hold the browser lock for minutes, which blocks check-in threads
+    now_utc = datetime.utcnow()
+    for handler_id, handler in active_handlers.items():
+        try:
+            checkin_time = handler.departure_time - timedelta(days=1)
+            seconds_until_checkin = (checkin_time - now_utc.replace(tzinfo=handler.departure_time.tzinfo) if handler.departure_time.tzinfo else checkin_time - now_utc).total_seconds()
+            if 0 < seconds_until_checkin < 7200:  # Within 2 hours
+                add_log(conn, f"Seat upgrades PAUSED: check-in for {handler.confirmation_number} in {int(seconds_until_checkin / 60)} minutes. Check-in takes priority.", "info")
+                return
+        except Exception:
+            pass
 
     if force_flight_id:
         # Manual check for a specific flight - bypass normal query
