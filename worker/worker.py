@@ -777,9 +777,30 @@ def attempt_seat_upgrades(conn: sqlite3.Connection, force_flight_id: str | None 
                         }
                     }
                 """)
-                time.sleep(5)
+
+                # Wait for trips content to render (SPA loads asynchronously)
+                trips_loaded = False
+                for wait_i in range(20):  # Up to 20 seconds
+                    time.sleep(1)
+                    page_html = driver.execute_script("return document.body ? document.body.innerHTML : ''")
+                    if conf_num in page_html:
+                        trips_loaded = True
+                        add_log(conn, f"Trips content loaded after {wait_i + 1}s (found {conf_num})", "info", flight_id)
+                        break
+
                 driver.save_screenshot(f"{cap_dir}/01_trips_tab.png")
                 add_log(conn, f"Trips tab clicked. URL: {driver.current_url}", "info", flight_id)
+
+                if not trips_loaded:
+                    page_text = driver.execute_script("return document.body ? document.body.textContent.substring(0, 500) : ''")
+                    add_log(conn, f"Trips content not loaded after 20s. Page text: {page_text[:300]}", "warning", flight_id)
+                    # Save DOM for analysis
+                    try:
+                        dom = driver.execute_script("return document.documentElement.outerHTML")
+                        with open(f"{cap_dir}/01_trips_dom.html", "w") as f:
+                            f.write(dom)
+                    except Exception:
+                        pass
 
                 # Click "Details" button on the trip card containing our confirmation number
                 details_result = driver.execute_script(f"""
