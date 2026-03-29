@@ -111,9 +111,9 @@ export default function FlightsPage() {
     }
     setSelectedFlight(flightId);
     const [logsRes, faresRes, capturesRes] = await Promise.all([
-      fetch(`/api/flights/${flightId}/logs`),
-      fetch(`/api/flights/${flightId}/fares`),
-      fetch(`/api/flights/${flightId}/captures`),
+      fetch(`/api/flights/logs?id=${flightId}`),
+      fetch(`/api/flights/fares?id=${flightId}`),
+      fetch(`/api/flights/captures?id=${flightId}`),
     ]);
     setLogs(await logsRes.json());
     setFareHistory(await faresRes.json());
@@ -375,14 +375,14 @@ export default function FlightsPage() {
                                   {screenshots.map((f) => (
                                     <a
                                       key={f.name}
-                                      href={`/api/captures/${cap.id}/files?name=${f.name}`}
+                                      href={`/api/captures/files?id=${cap.id}&name=${f.name}`}
                                       target="_blank"
                                       rel="noreferrer"
                                       className="flex-shrink-0"
                                     >
                                       {/* eslint-disable-next-line @next/next/no-img-element */}
                                       <img
-                                        src={`/api/captures/${cap.id}/files?name=${f.name}`}
+                                        src={`/api/captures/files?id=${cap.id}&name=${f.name}`}
                                         alt={f.name}
                                         className="h-24 rounded border border-gray-200 hover:border-blue-400 transition-colors"
                                       />
@@ -400,7 +400,7 @@ export default function FlightsPage() {
                               {jsonFiles.map((f) => (
                                 <a
                                   key={f.name}
-                                  href={`/api/captures/${cap.id}/files?name=${f.name}`}
+                                  href={`/api/captures/files?id=${cap.id}&name=${f.name}`}
                                   target="_blank"
                                   rel="noreferrer"
                                   className="text-xs px-2 py-1 rounded bg-blue-50 text-blue-700 hover:bg-blue-100"
@@ -411,7 +411,7 @@ export default function FlightsPage() {
                               {domFiles.map((f) => (
                                 <a
                                   key={f.name}
-                                  href={`/api/captures/${cap.id}/files?name=${f.name}`}
+                                  href={`/api/captures/files?id=${cap.id}&name=${f.name}`}
                                   target="_blank"
                                   rel="noreferrer"
                                   className="text-xs px-2 py-1 rounded bg-purple-50 text-purple-700 hover:bg-purple-100"

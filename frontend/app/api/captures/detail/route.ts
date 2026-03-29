@@ -3,7 +3,11 @@ import { getDb } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
-export function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+export function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+  const id = searchParams.get("id");
+  if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
+
   const db = getDb();
   db.exec(`
     CREATE TABLE IF NOT EXISTS checkin_captures (
@@ -16,8 +20,7 @@ export function GET(_req: NextRequest, { params }: { params: { id: string } }) {
       created_at TEXT DEFAULT (datetime('now'))
     )
   `);
-  const captures = db
-    .prepare("SELECT * FROM checkin_captures WHERE flight_id = ? ORDER BY created_at DESC")
-    .all(params.id);
-  return NextResponse.json(captures);
+  const capture = db.prepare("SELECT * FROM checkin_captures WHERE id = ?").get(id);
+  if (!capture) return NextResponse.json({ error: "Capture not found" }, { status: 404 });
+  return NextResponse.json(capture);
 }
