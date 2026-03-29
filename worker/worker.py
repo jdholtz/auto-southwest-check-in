@@ -837,10 +837,24 @@ def attempt_seat_upgrades(conn: sqlite3.Connection, force_flight_id: str | None 
                     add_log(conn, f"Could not find Details button for {conf_num}", "warning", flight_id)
                     continue
 
-                # Wait for "Manage my trip" page to load
-                time.sleep(5)
+                # Wait for "Manage my trip" page to fully render (SPA - content loads dynamically)
+                # Poll for actual content instead of blind sleep
+                manage_loaded = False
+                for wait_i in range(20):  # Up to 20 seconds
+                    time.sleep(1)
+                    page_text = driver.execute_script("return document.body ? document.body.textContent : ''")
+                    if "Modify seats" in page_text or "Manage my trip" in page_text or "Seat Assignments" in page_text:
+                        manage_loaded = True
+                        break
+
                 driver.save_screenshot(f"{cap_dir}/02_manage_trip.png")
-                add_log(conn, f"Manage trip page loaded. URL: {driver.current_url}", "info", flight_id)
+                current_url = driver.current_url
+                add_log(conn, f"Manage trip page {'loaded' if manage_loaded else 'timeout (20s)'}. URL: {current_url}", "info", flight_id)
+
+                if not manage_loaded:
+                    page_text = driver.execute_script("return document.body ? document.body.textContent.substring(0, 500) : ''")
+                    add_log(conn, f"Page content after 20s wait: {page_text[:300]}", "warning", flight_id)
+                    # Don't give up - still try to find the link
 
                 # Extract current seat assignment from this page
                 seat_info = driver.execute_script("""
