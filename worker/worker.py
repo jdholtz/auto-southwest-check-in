@@ -724,15 +724,93 @@ def attempt_seat_upgrades(conn: sqlite3.Connection, force_flight_id: str | None 
                 driver.save_screenshot(f"{cap_dir}/00_after_login.png")
                 add_log(conn, f"Login complete. URL: {driver.current_url}", "info", flight_id)
 
-                # Step 3: Navigate to manage reservation page (STILL on www.southwest.com)
-                manage_url = f"https://www.southwest.com/air/manage-reservation/index.html?confirmationNumber={conf_num}&passengerFirstName={first_name}&passengerLastName={last_name}"
-                driver.get(manage_url)
+                # Step 3: Navigate to manage reservation / seat change page
+                # Try the direct seat change URL first
+                seat_url = "https://www.southwest.com/air/change-seats/"
+                driver.get(seat_url)
                 time.sleep(5)
 
-                driver.save_screenshot(f"{cap_dir}/01_reservation_page.png")
-                add_log(conn, f"Reservation page loaded. URL: {driver.current_url}", "info", flight_id)
+                driver.save_screenshot(f"{cap_dir}/01_seat_lookup_page.png")
+                add_log(conn, f"Seat lookup page loaded. URL: {driver.current_url}", "info", flight_id)
 
-                # Step 3: Look for "Modify seats" button/link
+                # Step 4: Fill in the lookup form if present
+                form_filled = False
+                conf_selectors = [
+                    'input[id="confirmationNumber"]',
+                    'input[name="confirmationNumber"]',
+                    'input[id*="confirmation" i]',
+                    'input[name*="confirmation" i]',
+                    'input[id*="record" i]',
+                ]
+                for conf_sel in conf_selectors:
+                    try:
+                        if driver.is_element_visible(conf_sel):
+                            driver.type(conf_sel, conf_num)
+                            add_log(conn, f"Filled confirmation number (selector: {conf_sel})", "info", flight_id)
+                            form_filled = True
+                            break
+                    except Exception:
+                        continue
+
+                if form_filled:
+                    # Fill first name
+                    for fn_sel in ['input[id="passengerFirstName"]', 'input[name="passengerFirstName"]', 'input[id*="firstName" i]', 'input[name*="first" i]']:
+                        try:
+                            if driver.is_element_visible(fn_sel):
+                                driver.type(fn_sel, first_name)
+                                break
+                        except Exception:
+                            continue
+
+                    # Fill last name
+                    for ln_sel in ['input[id="passengerLastName"]', 'input[name="passengerLastName"]', 'input[id*="lastName" i]', 'input[name*="last" i]']:
+                        try:
+                            if driver.is_element_visible(ln_sel):
+                                driver.type(ln_sel, last_name)
+                                break
+                        except Exception:
+                            continue
+
+                    driver.save_screenshot(f"{cap_dir}/02_form_filled.png")
+
+                    # Click "Lookup reservation" or submit button
+                    submit_clicked = False
+                    for submit_sel in ["button:contains('Lookup')", "button:contains('Look up')", "button[type='submit']", "button:contains('Search')", "button:contains('Retrieve')"]:
+                        try:
+                            if driver.is_element_visible(submit_sel):
+                                driver.click(submit_sel)
+                                submit_clicked = True
+                                add_log(conn, f"Clicked lookup button (selector: {submit_sel})", "info", flight_id)
+                                break
+                        except Exception:
+                            continue
+
+                    if not submit_clicked:
+                        # Try JS click fallback
+                        try:
+                            js_result = driver.execute_script("""
+                                var btns = document.querySelectorAll('button');
+                                for (var i = 0; i < btns.length; i++) {
+                                    var text = btns[i].textContent.toLowerCase();
+                                    if (text.includes('look') || text.includes('submit') || text.includes('search') || text.includes('retrieve')) {
+                                        btns[i].click();
+                                        return 'clicked: ' + btns[i].textContent.trim();
+                                    }
+                                }
+                                return 'not found';
+                            """)
+                            add_log(conn, f"Lookup button JS: {js_result}", "info", flight_id)
+                        except Exception as js_err:
+                            add_log(conn, f"Lookup JS error: {js_err}", "warning", flight_id)
+
+                    # Wait for reservation details to load
+                    time.sleep(8)
+                    driver.save_screenshot(f"{cap_dir}/03_after_lookup.png")
+                    add_log(conn, f"After lookup. URL: {driver.current_url}", "info", flight_id)
+                else:
+                    add_log(conn, f"No confirmation form found - page may already show reservation or seat map", "info", flight_id)
+
+                # Step 5: Look for "Modify seats" button/link OR check if we're already on seat map
                 modify_clicked = False
                 modify_selectors = [
                     "a[href*='seat']",
