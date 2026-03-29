@@ -7,7 +7,7 @@
 # Program files
 config.json
 .coverage
-logs/
+/logs/
 Pipfile
 venv/
 

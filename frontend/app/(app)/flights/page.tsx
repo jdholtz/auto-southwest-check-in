@@ -79,6 +79,7 @@ export default function FlightsPage() {
   const [logs, setLogs] = useState<WorkerLog[]>([]);
   const [fareHistory, setFareHistory] = useState<FareInfo[]>([]);
   const [captures, setCaptures] = useState<CaptureEntry[]>([]);
+  const [expandError, setExpandError] = useState<string | null>(null);
   const [editingFare, setEditingFare] = useState<string | null>(null);
   const [fareInput, setFareInput] = useState("");
 
@@ -110,14 +111,24 @@ export default function FlightsPage() {
       return;
     }
     setSelectedFlight(flightId);
-    const [logsRes, faresRes, capturesRes] = await Promise.all([
-      fetch(`/api/flights/logs?id=${flightId}`),
-      fetch(`/api/flights/fares?id=${flightId}`),
-      fetch(`/api/flights/captures?id=${flightId}`),
-    ]);
-    setLogs(await logsRes.json());
-    setFareHistory(await faresRes.json());
-    setCaptures(await capturesRes.json());
+    setExpandError(null);
+    try {
+      const [logsRes, faresRes, capturesRes] = await Promise.all([
+        fetch(`/api/flights/logs?id=${flightId}`),
+        fetch(`/api/flights/fares?id=${flightId}`),
+        fetch(`/api/flights/captures?id=${flightId}`),
+      ]);
+      if (!logsRes.ok) setExpandError(`Logs: ${logsRes.status} ${logsRes.statusText}`);
+      if (!faresRes.ok) setExpandError((prev) => `${prev ? prev + " | " : ""}Fares: ${faresRes.status}`);
+      setLogs(logsRes.ok ? await logsRes.json() : []);
+      setFareHistory(faresRes.ok ? await faresRes.json() : []);
+      setCaptures(capturesRes.ok ? await capturesRes.json() : []);
+    } catch (err) {
+      setExpandError(`Network error: ${err}`);
+      setLogs([]);
+      setFareHistory([]);
+      setCaptures([]);
+    }
   }
 
   return (
@@ -276,6 +287,11 @@ export default function FlightsPage() {
               {/* Expanded detail */}
               {selectedFlight === flight.id && (
                 <div className="border-t border-gray-100 bg-gray-50 p-4">
+                  {expandError && (
+                    <div className="mb-3 rounded-md bg-red-50 border border-red-200 p-3 text-sm text-red-700">
+                      <strong>Error loading data:</strong> {expandError}
+                    </div>
+                  )}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                     {/* Fare History */}
                     <div>
