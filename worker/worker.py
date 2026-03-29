@@ -981,9 +981,9 @@ def attempt_seat_upgrades(conn: sqlite3.Connection, force_flight_id: str | None 
                 manifest = json.dumps({
                     "flight_id": flight_id, "type": "seat_upgrade",
                     "files": [
-                        {"name": "01_reservation_page.png", "type": "screenshot"},
-                        {"name": "03_seat_map_loading.png", "type": "screenshot"},
-                        {"name": "04_seat_map.png", "type": "screenshot"},
+                        {"name": "01_trips_tab.png", "type": "screenshot"},
+                        {"name": "02_manage_trip.png", "type": "screenshot"},
+                        {"name": "03_seat_map.png", "type": "screenshot"},
                         {"name": "seat_map_dom.html", "type": "dom"},
                     ],
                 })
