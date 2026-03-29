@@ -611,7 +611,7 @@ def check_fares(conn: sqlite3.Connection) -> None:
     last_fare_check = time.time()
 
 
-SEAT_UPGRADE_COOLDOWN = 4 * 3600  # 4 hours between attempts per flight
+SEAT_UPGRADE_COOLDOWN = 3 * 3600  # 3 hours between successful attempts per flight
 
 
 def attempt_seat_upgrades(conn: sqlite3.Connection) -> None:
@@ -666,11 +666,6 @@ def attempt_seat_upgrades(conn: sqlite3.Connection) -> None:
                 pass
 
         add_log(conn, f"Attempting seat upgrade for {conf_num} ({route}). Current seat: {current_seat or 'none'}", "info", flight_id)
-
-        # Record attempt time
-        conn.execute("UPDATE flights SET last_seat_upgrade_attempt = ? WHERE id = ?",
-                     (datetime.utcnow().isoformat(), flight_id))
-        conn.commit()
 
         try:
             # Restart browser fresh for each seat upgrade attempt
@@ -742,6 +737,10 @@ def attempt_seat_upgrades(conn: sqlite3.Connection) -> None:
                     with open(f"{cap_dir}/seat_map_dom.html", "w") as f:
                         f.write(dom)
                     add_log(conn, f"Seat map captured to {cap_dir}/", "info", flight_id)
+                    # Record successful attempt time (only after page loads)
+                    conn.execute("UPDATE flights SET last_seat_upgrade_attempt = ? WHERE id = ?",
+                                 (datetime.utcnow().isoformat(), flight_id))
+                    conn.commit()
                     # Record in checkin_captures so it appears in the UI
                     manifest = json.dumps({
                         "flight_id": flight_id, "type": "seat_upgrade",
