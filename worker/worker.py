@@ -724,148 +724,74 @@ def attempt_seat_upgrades(conn: sqlite3.Connection, force_flight_id: str | None 
                 driver.save_screenshot(f"{cap_dir}/00_after_login.png")
                 add_log(conn, f"Login complete. URL: {driver.current_url}", "info", flight_id)
 
-                # Step 3: Navigate to manage reservation / seat change page
-                # Try the direct seat change URL first
-                seat_url = "https://www.southwest.com/air/change-seats/"
-                driver.get(seat_url)
-                time.sleep(5)
+                # Step 3: Stay on account page (login landed us here)
+                # The account page shows all trips with "Modify seats" buttons
+                # No need to navigate to a lookup form
+                time.sleep(5)  # Wait for trips to load
+                driver.save_screenshot(f"{cap_dir}/01_account_page.png")
+                add_log(conn, f"Account page loaded. URL: {driver.current_url}", "info", flight_id)
 
-                driver.save_screenshot(f"{cap_dir}/01_seat_lookup_page.png")
-                add_log(conn, f"Seat lookup page loaded. URL: {driver.current_url}", "info", flight_id)
+                # Step 4: Find and click "Modify seats" for the target confirmation number
+                # Use JavaScript since CSS :contains() doesn't work in Selenium
+                modify_result = driver.execute_script(f"""
+                    // Strategy 1: Find the card/section with our confirmation number, then click its Modify seats link
+                    var allElements = document.querySelectorAll('*');
+                    var confFound = false;
+                    for (var i = 0; i < allElements.length; i++) {{
+                        var el = allElements[i];
+                        var text = el.textContent || '';
+                        // Find an element that contains our confirmation number
+                        if (text.includes('{conf_num}') && el.children.length > 0) {{
+                            // Look for a Modify seats link within this element's subtree
+                            var links = el.querySelectorAll('a, button');
+                            for (var j = 0; j < links.length; j++) {{
+                                var linkText = links[j].textContent.trim().toLowerCase();
+                                if (linkText.includes('modify seat') || linkText.includes('change seat')) {{
+                                    links[j].click();
+                                    return 'clicked: ' + links[j].textContent.trim() + ' for ' + '{conf_num}';
+                                }}
+                            }}
+                        }}
+                    }}
 
-                # Step 4: Fill in the lookup form if present
-                form_filled = False
-                conf_selectors = [
-                    'input[id="confirmationNumber"]',
-                    'input[name="confirmationNumber"]',
-                    'input[id*="confirmation" i]',
-                    'input[name*="confirmation" i]',
-                    'input[id*="record" i]',
-                ]
-                for conf_sel in conf_selectors:
-                    try:
-                        if driver.is_element_visible(conf_sel):
-                            driver.type(conf_sel, conf_num)
-                            add_log(conn, f"Filled confirmation number (selector: {conf_sel})", "info", flight_id)
-                            form_filled = True
-                            break
-                    except Exception:
-                        continue
+                    // Strategy 2: Just click the first "Modify seats" link on the page
+                    var allLinks = document.querySelectorAll('a, button');
+                    for (var k = 0; k < allLinks.length; k++) {{
+                        var lt = allLinks[k].textContent.trim().toLowerCase();
+                        if (lt === 'modify seats' || lt === 'modify seat') {{
+                            allLinks[k].click();
+                            return 'clicked first: ' + allLinks[k].textContent.trim();
+                        }}
+                    }}
 
-                if form_filled:
-                    # Fill first name
-                    for fn_sel in ['input[id="passengerFirstName"]', 'input[name="passengerFirstName"]', 'input[id*="firstName" i]', 'input[name*="first" i]']:
-                        try:
-                            if driver.is_element_visible(fn_sel):
-                                driver.type(fn_sel, first_name)
-                                break
-                        except Exception:
-                            continue
+                    // Strategy 3: Collect all visible link texts for diagnostics
+                    var linkTexts = [];
+                    var allA = document.querySelectorAll('a, button');
+                    for (var m = 0; m < Math.min(allA.length, 50); m++) {{
+                        var t = allA[m].textContent.trim().substring(0, 40);
+                        if (t) linkTexts.push(t);
+                    }}
+                    return 'not found. Page links: ' + linkTexts.join(' | ');
+                """)
 
-                    # Fill last name
-                    for ln_sel in ['input[id="passengerLastName"]', 'input[name="passengerLastName"]', 'input[id*="lastName" i]', 'input[name*="last" i]']:
-                        try:
-                            if driver.is_element_visible(ln_sel):
-                                driver.type(ln_sel, last_name)
-                                break
-                        except Exception:
-                            continue
+                add_log(conn, f"Modify seats click result: {str(modify_result)[:300]}", "info", flight_id)
 
-                    driver.save_screenshot(f"{cap_dir}/02_form_filled.png")
-
-                    # Click "Lookup reservation" or submit button
-                    submit_clicked = False
-                    for submit_sel in ["button:contains('Lookup')", "button:contains('Look up')", "button[type='submit']", "button:contains('Search')", "button:contains('Retrieve')"]:
-                        try:
-                            if driver.is_element_visible(submit_sel):
-                                driver.click(submit_sel)
-                                submit_clicked = True
-                                add_log(conn, f"Clicked lookup button (selector: {submit_sel})", "info", flight_id)
-                                break
-                        except Exception:
-                            continue
-
-                    if not submit_clicked:
-                        # Try JS click fallback
-                        try:
-                            js_result = driver.execute_script("""
-                                var btns = document.querySelectorAll('button');
-                                for (var i = 0; i < btns.length; i++) {
-                                    var text = btns[i].textContent.toLowerCase();
-                                    if (text.includes('look') || text.includes('submit') || text.includes('search') || text.includes('retrieve')) {
-                                        btns[i].click();
-                                        return 'clicked: ' + btns[i].textContent.trim();
-                                    }
-                                }
-                                return 'not found';
-                            """)
-                            add_log(conn, f"Lookup button JS: {js_result}", "info", flight_id)
-                        except Exception as js_err:
-                            add_log(conn, f"Lookup JS error: {js_err}", "warning", flight_id)
-
-                    # Wait for reservation details to load
+                if modify_result and modify_result.startswith("clicked"):
+                    # Wait for seat map page to load
                     time.sleep(8)
-                    driver.save_screenshot(f"{cap_dir}/03_after_lookup.png")
-                    add_log(conn, f"After lookup. URL: {driver.current_url}", "info", flight_id)
+                    driver.save_screenshot(f"{cap_dir}/02_after_modify_click.png")
+                    add_log(conn, f"After Modify seats click. URL: {driver.current_url}", "info", flight_id)
                 else:
-                    add_log(conn, f"No confirmation form found - page may already show reservation or seat map", "info", flight_id)
-
-                # Step 5: Look for "Modify seats" button/link OR check if we're already on seat map
-                modify_clicked = False
-                modify_selectors = [
-                    "a[href*='seat']",
-                    "button[class*='seat']",
-                    "a:contains('Modify seats')",
-                    "button:contains('Modify seats')",
-                    "a:contains('Modify Seats')",
-                    "a:contains('Change seats')",
-                    "[data-qa='modify-seats']",
-                ]
-                for sel in modify_selectors:
-                    try:
-                        if driver.is_element_visible(sel):
-                            driver.click(sel)
-                            modify_clicked = True
-                            add_log(conn, f"Clicked 'Modify seats' (selector: {sel})", "info", flight_id)
-                            break
-                    except Exception:
-                        continue
-
-                if not modify_clicked:
-                    # Try JavaScript click as fallback
-                    try:
-                        js_result = driver.execute_script("""
-                            var links = document.querySelectorAll('a, button');
-                            for (var i = 0; i < links.length; i++) {
-                                var text = links[i].textContent.toLowerCase().trim();
-                                if (text.includes('modify seat') || text.includes('change seat')) {
-                                    links[i].click();
-                                    return 'clicked: ' + text;
-                                }
-                            }
-                            return 'not found';
-                        """)
-                        if js_result and js_result.startswith("clicked"):
-                            modify_clicked = True
-                            add_log(conn, f"Clicked modify seats via JS: {js_result}", "info", flight_id)
-                        else:
-                            add_log(conn, f"Modify seats button not found. JS result: {js_result}", "warning", flight_id)
-                    except Exception as js_err:
-                        add_log(conn, f"JS click attempt failed: {js_err}", "warning", flight_id)
-
-                if not modify_clicked:
-                    # Save page state for diagnostics
-                    driver.save_screenshot(f"{cap_dir}/02_no_modify_button.png")
-                    page_text = driver.execute_script("return document.body ? document.body.textContent.substring(0, 1000) : ''")
-                    add_log(conn, f"Could not find Modify seats button. Page text: {page_text[:300]}", "warning", flight_id)
-                    log_diagnostic(conn, "seat_modify_not_found", manage_url,
-                                   "Modify seats button on page", "Button not found",
+                    # Modify seats not found on account page
+                    driver.save_screenshot(f"{cap_dir}/02_no_modify_seats.png")
+                    page_text = driver.execute_script("return document.body ? document.body.textContent.substring(0, 800) : ''")
+                    add_log(conn, f"Modify seats button not found on account page. Body: {page_text[:300]}", "warning", flight_id)
+                    log_diagnostic(conn, "seat_modify_not_found", driver.current_url,
+                                   "Modify seats button on account page", str(modify_result)[:300],
                                    response_snapshot=page_text[:500])
                     continue
 
-                # Step 4: Wait for seat map page to load
-                time.sleep(5)
-                driver.save_screenshot(f"{cap_dir}/03_seat_map_loading.png")
+                # Step 5: Look for seat map OR check if we're already on seat map
 
                 seat_loaded = False
                 seat_selectors = [
