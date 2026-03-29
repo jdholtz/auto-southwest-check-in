@@ -614,15 +614,28 @@ def check_fares(conn: sqlite3.Connection) -> None:
 SEAT_UPGRADE_COOLDOWN = 3 * 3600  # 3 hours between successful attempts per flight
 
 
-def attempt_seat_upgrades(conn: sqlite3.Connection) -> None:
+def attempt_seat_upgrades(conn: sqlite3.Connection, force_flight_id: str | None = None) -> None:
     """For A-List accounts, attempt seat upgrade from 48h to 2h before departure.
-    Checks every cycle but only attempts each flight every 4 hours."""
+    If force_flight_id is provided, only check that specific flight (bypasses cooldown)."""
     if not browser_session:
         add_log(conn, "Seat upgrade check: browser session not available", "warning")
         return
 
-    flights = get_flights_for_seat_upgrade(conn)
-    add_log(conn, f"Seat upgrade check: {len(flights)} eligible flights (A-List, auto_upgrade, departing 2-48h)", "info")
+    if force_flight_id:
+        # Manual check for a specific flight - bypass normal query
+        rows = conn.execute(
+            "SELECT f.*, r.confirmation_number, r.first_name, r.last_name "
+            "FROM flights f JOIN reservations r ON r.id = f.reservation_id "
+            "WHERE f.id = ?",
+            (force_flight_id,),
+        ).fetchall()
+        flights = [dict(r) for r in rows]
+        add_log(conn, f"Manual seat check triggered for flight {force_flight_id}", "info")
+    else:
+        flights = get_flights_for_seat_upgrade(conn)
+
+    if not flights:
+        return
 
     if not flights:
         return
@@ -652,18 +665,18 @@ def attempt_seat_upgrades(conn: sqlite3.Connection) -> None:
         route = f"{flight_row['departure_airport']}->{flight_row.get('destination_airport', '?')}"
         current_seat = flight_row.get("assigned_seat", "")
 
-        # 4-hour cooldown between attempts for the same flight
-        last_attempt = flight_row.get("last_seat_upgrade_attempt")
-        if last_attempt:
-            try:
-                last_dt = datetime.fromisoformat(last_attempt)
-                elapsed = (datetime.utcnow() - last_dt).total_seconds()
-                if elapsed < SEAT_UPGRADE_COOLDOWN:
-                    remaining = int((SEAT_UPGRADE_COOLDOWN - elapsed) / 60)
-                    add_log(conn, f"Seat upgrade for {conf_num}: cooldown ({remaining}min remaining). Current seat: {current_seat or 'none'}", "info", flight_id)
-                    continue
-            except Exception:
-                pass
+        # Cooldown between automatic attempts (skipped for manual checks)
+        if not force_flight_id:
+            last_attempt = flight_row.get("last_seat_upgrade_attempt")
+            if last_attempt:
+                try:
+                    last_dt = datetime.fromisoformat(last_attempt)
+                    elapsed = (datetime.utcnow() - last_dt).total_seconds()
+                    if elapsed < SEAT_UPGRADE_COOLDOWN:
+                        logger.debug("Seat upgrade for %s: cooldown (%d min remaining)", conf_num, int((SEAT_UPGRADE_COOLDOWN - elapsed) / 60))
+                        continue
+                except Exception:
+                    pass
 
         add_log(conn, f"Attempting seat upgrade for {conf_num} ({route}). Current seat: {current_seat or 'none'}", "info", flight_id)
 
@@ -672,8 +685,7 @@ def attempt_seat_upgrades(conn: sqlite3.Connection) -> None:
             cap_dir = f"/app/data/captures/{flight_id}"
             os.makedirs(cap_dir, exist_ok=True)
 
-            # Step 1: Log into southwest.com with this account's credentials
-            # Find the account credentials for this flight
+            # Step 1: Find account credentials for this flight
             account_row = conn.execute(
                 "SELECT a.username, a.password FROM accounts a "
                 "JOIN reservations r ON r.account_id = a.id "
@@ -686,23 +698,33 @@ def attempt_seat_upgrades(conn: sqlite3.Connection) -> None:
                 add_log(conn, f"No account found for flight {conf_num}, cannot upgrade seat", "warning", flight_id)
                 continue
 
-            add_log(conn, f"Logging into southwest.com for seat upgrade of {conf_num}", "info", flight_id)
-
-            # Login via browser (this restarts browser fresh and navigates to www.southwest.com)
-            try:
-                browser_session.login_and_get_reservations(
-                    account_row["username"], account_row["password"]
-                )
-            except Exception as login_err:
-                add_log(conn, f"Login failed for seat upgrade: {login_err}", "error", flight_id)
-                continue
-
-            add_log(conn, f"Logged in. Navigating to reservation {conf_num}...", "info", flight_id)
+            # Step 2: Restart browser and log into www.southwest.com directly
+            # (DO NOT use login_and_get_reservations which navigates back to mobile.southwest.com)
+            add_log(conn, f"Logging into www.southwest.com for seat upgrade of {conf_num}", "info", flight_id)
+            browser_session.start()
 
             with browser_session._lock:
                 driver = browser_session._driver
 
-                # Step 2: Navigate to the trip details / manage reservation page
+                # Navigate to login page on www.southwest.com
+                driver.get("https://www.southwest.com/loyalty/myaccount")
+                try:
+                    driver.wait_for_element_visible('input[id="username"]', timeout=30)
+                except Exception:
+                    add_log(conn, f"Login form not found on www.southwest.com", "error", flight_id)
+                    driver.save_screenshot(f"{cap_dir}/00_login_form_missing.png")
+                    continue
+
+                time.sleep(2)
+                driver.type('input[id="username"]', account_row["username"])
+                driver.type('input[id="password"]', f"{account_row['password']}\n")
+
+                # Wait for login to complete
+                time.sleep(8)
+                driver.save_screenshot(f"{cap_dir}/00_after_login.png")
+                add_log(conn, f"Login complete. URL: {driver.current_url}", "info", flight_id)
+
+                # Step 3: Navigate to manage reservation page (STILL on www.southwest.com)
                 manage_url = f"https://www.southwest.com/air/manage-reservation/index.html?confirmationNumber={conf_num}&passengerFirstName={first_name}&passengerLastName={last_name}"
                 driver.get(manage_url)
                 time.sleep(5)
@@ -952,6 +974,22 @@ def attempt_seat_upgrades(conn: sqlite3.Connection) -> None:
 
 
 
+def process_manual_seat_checks(conn: sqlite3.Connection) -> None:
+    """Check for manual seat check requests and execute them."""
+    rows = conn.execute(
+        "SELECT id, message FROM worker_logs WHERE message LIKE '__CHECK_SEATS_%' ORDER BY created_at DESC LIMIT 5"
+    ).fetchall()
+    for row in rows:
+        conn.execute("DELETE FROM worker_logs WHERE id = ?", (row["id"],))
+        conn.commit()
+        # Extract flight_id from marker: __CHECK_SEATS_{flight_id}__
+        marker = row["message"]
+        flight_id = marker.replace("__CHECK_SEATS_", "").replace("__", "")
+        if flight_id:
+            add_log(conn, f"Manual seat check requested for flight {flight_id}", "info")
+            attempt_seat_upgrades(conn, force_flight_id=flight_id)
+
+
 def process_test_notifications(conn: sqlite3.Connection) -> None:
     """Check for test notification requests and send them."""
     rows = conn.execute(
@@ -1023,6 +1061,9 @@ def main_loop() -> None:
 
             # Attempt seat upgrades for A-List accounts (48h before departure)
             attempt_seat_upgrades(conn)
+
+            # Process manual seat check requests
+            process_manual_seat_checks(conn)
 
             # Process test notification requests
             process_test_notifications(conn)

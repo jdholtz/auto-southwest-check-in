@@ -248,6 +248,22 @@ export default function FlightsPage() {
                       <CountdownTimer departureTime={flight.departure_time} status={flight.checkin_status} />
                     </div>
                     <StatusBadge status={flight.checkin_status} />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-xs"
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        await fetch("/api/flights/check-seats", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ flight_id: flight.id }),
+                        });
+                        alert("Seat check queued! Check Activity in ~60 seconds.");
+                      }}
+                    >
+                      Check Seats
+                    </Button>
                   </div>
                 </div>
 
