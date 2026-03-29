@@ -611,19 +611,23 @@ def check_fares(conn: sqlite3.Connection) -> None:
     last_fare_check = time.time()
 
 
+SEAT_UPGRADE_COOLDOWN = 4 * 3600  # 4 hours between attempts per flight
+
+
 def attempt_seat_upgrades(conn: sqlite3.Connection) -> None:
-    """For A-List accounts, attempt seat upgrade 48 hours before departure."""
+    """For A-List accounts, attempt seat upgrade from 48h to 2h before departure.
+    Checks every cycle but only attempts each flight every 4 hours."""
     if not browser_session:
+        add_log(conn, "Seat upgrade check: browser session not available", "warning")
         return
 
     flights = get_flights_for_seat_upgrade(conn)
+    add_log(conn, f"Seat upgrade check: {len(flights)} eligible flights (A-List, auto_upgrade, departing 2-48h)", "info")
+
     if not flights:
         return
 
-    logger.info("Attempting seat upgrades for %d flights", len(flights))
-    add_log(conn, f"Attempting seat upgrades for {len(flights)} A-List flights", "info")
-
-    # Ensure browser is alive and session is fresh for API calls
+    # Ensure browser is alive
     try:
         browser_session.ensure_alive()
     except Exception as e:
@@ -646,8 +650,27 @@ def attempt_seat_upgrades(conn: sqlite3.Connection) -> None:
         first_name = flight_row["first_name"]
         last_name = flight_row["last_name"]
         route = f"{flight_row['departure_airport']}->{flight_row.get('destination_airport', '?')}"
+        current_seat = flight_row.get("assigned_seat", "")
 
-        add_log(conn, f"Attempting seat upgrade for {conf_num} ({route})", "info", flight_id)
+        # 4-hour cooldown between attempts for the same flight
+        last_attempt = flight_row.get("last_seat_upgrade_attempt")
+        if last_attempt:
+            try:
+                last_dt = datetime.fromisoformat(last_attempt)
+                elapsed = (datetime.utcnow() - last_dt).total_seconds()
+                if elapsed < SEAT_UPGRADE_COOLDOWN:
+                    remaining = int((SEAT_UPGRADE_COOLDOWN - elapsed) / 60)
+                    add_log(conn, f"Seat upgrade for {conf_num}: cooldown ({remaining}min remaining). Current seat: {current_seat or 'none'}", "info", flight_id)
+                    continue
+            except Exception:
+                pass
+
+        add_log(conn, f"Attempting seat upgrade for {conf_num} ({route}). Current seat: {current_seat or 'none'}", "info", flight_id)
+
+        # Record attempt time
+        conn.execute("UPDATE flights SET last_seat_upgrade_attempt = ? WHERE id = ?",
+                     (datetime.utcnow().isoformat(), flight_id))
+        conn.commit()
 
         try:
             # Step 1: Get reservation to find seat links

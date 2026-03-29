@@ -117,6 +117,8 @@ def _migrate(conn: sqlite3.Connection) -> None:
         conn.execute("ALTER TABLE flights ADD COLUMN original_price INTEGER")
     if "original_currency" not in flight_cols:
         conn.execute("ALTER TABLE flights ADD COLUMN original_currency TEXT DEFAULT 'USD'")
+    if "last_seat_upgrade_attempt" not in flight_cols:
+        conn.execute("ALTER TABLE flights ADD COLUMN last_seat_upgrade_attempt TEXT")
 
     # Accounts table migrations
     account_cols = [row[1] for row in conn.execute("PRAGMA table_info(accounts)").fetchall()]
@@ -400,10 +402,10 @@ def update_flight_seat(conn: sqlite3.Connection, flight_id: str, seat: str) -> N
 
 
 def get_flights_for_seat_upgrade(conn: sqlite3.Connection) -> list[dict]:
-    """Get flights departing in 47-49 hours linked to A-List accounts with auto_upgrade enabled."""
-    now = datetime.utcnow().isoformat()
-    hours_47 = (datetime.utcnow() + timedelta(hours=47)).isoformat()
-    hours_49 = (datetime.utcnow() + timedelta(hours=49)).isoformat()
+    """Get flights departing in 2-48 hours linked to A-List accounts with auto_upgrade enabled.
+    A-List members can upgrade seats from 48 hours before departure until 2 hours before."""
+    hours_2 = (datetime.utcnow() + timedelta(hours=2)).isoformat()
+    hours_48 = (datetime.utcnow() + timedelta(hours=48)).isoformat()
     rows = conn.execute(
         "SELECT f.*, r.confirmation_number, r.first_name, r.last_name, a.is_alist, a.auto_upgrade_seats "
         "FROM flights f "
@@ -411,9 +413,8 @@ def get_flights_for_seat_upgrade(conn: sqlite3.Connection) -> list[dict]:
         "LEFT JOIN accounts a ON a.id = r.account_id "
         "WHERE f.departure_time BETWEEN ? AND ? "
         "AND a.is_alist = 1 AND a.auto_upgrade_seats = 1 "
-        "AND (f.assigned_seat IS NULL OR f.assigned_seat = '') "
         "ORDER BY f.departure_time ASC",
-        (hours_47, hours_49),
+        (hours_2, hours_48),
     ).fetchall()
     return [dict(r) for r in rows]
 

@@ -133,7 +133,7 @@ export default function ReservationsPage() {
               {reservations.map((res) => (
                 <div key={res.id} className="rounded-lg border border-gray-200">
                   <div
-                    className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50"
+                    className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between p-4 cursor-pointer hover:bg-gray-50"
                     onClick={() => toggleExpand(res.id)}
                   >
                     <div className="flex items-center gap-3">
@@ -186,7 +186,7 @@ export default function ReservationsPage() {
                     </div>
                   </div>
                   {expanded.has(res.id) && res.flights && res.flights.length > 0 && (
-                    <div className="border-t border-gray-100 bg-gray-50 p-4">
+                    <div className="border-t border-gray-100 bg-gray-50 p-4 overflow-x-auto">
                       <table className="w-full text-sm">
                         <thead>
                           <tr className="text-left text-gray-500">

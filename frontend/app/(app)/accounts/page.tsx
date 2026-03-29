@@ -195,9 +195,9 @@ export default function AccountsPage() {
               {accounts.map((account) => (
                 <div
                   key={account.id}
-                  className="flex items-center justify-between rounded-lg border border-gray-200 p-4"
+                  className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between rounded-lg border border-gray-200 p-4"
                 >
-                  <div className="flex items-center gap-4">
+                  <div className="flex flex-wrap items-center gap-3 md:gap-4">
                     <div>
                       {editingName === account.id ? (
                         <div className="flex items-center gap-2">

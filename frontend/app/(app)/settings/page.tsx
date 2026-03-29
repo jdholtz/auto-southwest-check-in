@@ -255,7 +255,7 @@ export default function SettingsPage() {
             Requires a Twilio account (free trial available).
           </p>
           <form onSubmit={addTwilioSms} className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">
                   Twilio Account SID

@@ -155,8 +155,8 @@ export default function FlightsPage() {
                 onClick={() => expandFlight(flight.id)}
               >
                 {/* Row 1: Flight info */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
+                <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                  <div className="flex flex-wrap items-center gap-2 md:gap-4">
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="font-mono text-sm font-medium">
@@ -193,7 +193,7 @@ export default function FlightsPage() {
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-4">
+                  <div className="flex flex-wrap items-center gap-2 md:gap-4">
                     {/* Fare + original price */}
                     <div className="text-right">
                       {editingFare === flight.id ? (
@@ -243,8 +243,8 @@ export default function FlightsPage() {
                 {/* Row 2: Better flight alternative (only when actually cheaper) */}
                 {altIsCheaper && (
                   <div className="mt-3 rounded-lg border border-green-200 bg-green-50 p-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
+                    <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
+                      <div className="flex flex-wrap items-center gap-2 md:gap-3">
                         <span className="text-xs font-semibold text-green-700 uppercase">Better Flight</span>
                         <span className="text-sm font-medium text-green-800">
                           WN {lf.best_flight_number}
@@ -276,7 +276,7 @@ export default function FlightsPage() {
               {/* Expanded detail */}
               {selectedFlight === flight.id && (
                 <div className="border-t border-gray-100 bg-gray-50 p-4">
-                  <div className="grid grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                     {/* Fare History */}
                     <div>
                       <h4 className="font-medium text-sm mb-2">Fare History</h4>
