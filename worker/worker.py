@@ -668,45 +668,105 @@ def attempt_seat_upgrades(conn: sqlite3.Connection) -> None:
         add_log(conn, f"Attempting seat upgrade for {conf_num} ({route}). Current seat: {current_seat or 'none'}", "info", flight_id)
 
         try:
-            # Restart browser fresh for each seat upgrade attempt
-            # (ensures clean WAF state and same-origin for fetch calls)
-            add_log(conn, f"Restarting browser for seat upgrade of {conf_num}", "info", flight_id)
-            browser_session.start()
-            add_log(conn, f"Browser restarted. Headers: {len(browser_session.headers)}. Fetching reservation...", "info", flight_id)
-
-            # Step 1: Get reservation to find seat links
-            res_info = {"firstName": first_name, "lastName": last_name, "recordLocator": conf_num}
-            res_site = VIEW_RESERVATION_URL + conf_num
-            response = browser_session.make_request("POST", res_site, {}, res_info)
-            reservation_info = response.get("viewReservationViewPage", {})
-
-            links = reservation_info.get("_links", {})
-            modify_seats_responsive = links.get("modifySeatsResponsive", {})
-            responsive_url = modify_seats_responsive.get("href", "")
-            token = modify_seats_responsive.get("token", {})
-
-            if not responsive_url:
-                seat_link_keys = [k for k in links if "seat" in k.lower()]
-                add_log(conn, f"No modifySeatsResponsive link for {conf_num}. Available: {seat_link_keys}", "info", flight_id)
-                continue
-
-            # Step 2: Navigate browser to seat selection page
-            from urllib.parse import urlencode
-            if token:
-                url_with_params = f"{responsive_url}?{urlencode(token)}"
-            else:
-                url_with_params = responsive_url
-
-            add_log(conn, f"Navigating to seat selection page for {conf_num}", "info", flight_id)
-
             import os
             cap_dir = f"/app/data/captures/{flight_id}"
             os.makedirs(cap_dir, exist_ok=True)
 
-            with browser_session._lock:
-                browser_session._driver.get(url_with_params)
+            # Step 1: Log into southwest.com with this account's credentials
+            # Find the account credentials for this flight
+            account_row = conn.execute(
+                "SELECT a.username, a.password FROM accounts a "
+                "JOIN reservations r ON r.account_id = a.id "
+                "JOIN flights f ON f.reservation_id = r.id "
+                "WHERE f.id = ?",
+                (flight_id,),
+            ).fetchone()
 
-                # Wait for seat map to render
+            if not account_row:
+                add_log(conn, f"No account found for flight {conf_num}, cannot upgrade seat", "warning", flight_id)
+                continue
+
+            add_log(conn, f"Logging into southwest.com for seat upgrade of {conf_num}", "info", flight_id)
+
+            # Login via browser (this restarts browser fresh and navigates to www.southwest.com)
+            try:
+                browser_session.login_and_get_reservations(
+                    account_row["username"], account_row["password"]
+                )
+            except Exception as login_err:
+                add_log(conn, f"Login failed for seat upgrade: {login_err}", "error", flight_id)
+                continue
+
+            add_log(conn, f"Logged in. Navigating to reservation {conf_num}...", "info", flight_id)
+
+            with browser_session._lock:
+                driver = browser_session._driver
+
+                # Step 2: Navigate to the trip details / manage reservation page
+                manage_url = f"https://www.southwest.com/air/manage-reservation/index.html?confirmationNumber={conf_num}&passengerFirstName={first_name}&passengerLastName={last_name}"
+                driver.get(manage_url)
+                time.sleep(5)
+
+                driver.save_screenshot(f"{cap_dir}/01_reservation_page.png")
+                add_log(conn, f"Reservation page loaded. URL: {driver.current_url}", "info", flight_id)
+
+                # Step 3: Look for "Modify seats" button/link
+                modify_clicked = False
+                modify_selectors = [
+                    "a[href*='seat']",
+                    "button[class*='seat']",
+                    "a:contains('Modify seats')",
+                    "button:contains('Modify seats')",
+                    "a:contains('Modify Seats')",
+                    "a:contains('Change seats')",
+                    "[data-qa='modify-seats']",
+                ]
+                for sel in modify_selectors:
+                    try:
+                        if driver.is_element_visible(sel):
+                            driver.click(sel)
+                            modify_clicked = True
+                            add_log(conn, f"Clicked 'Modify seats' (selector: {sel})", "info", flight_id)
+                            break
+                    except Exception:
+                        continue
+
+                if not modify_clicked:
+                    # Try JavaScript click as fallback
+                    try:
+                        js_result = driver.execute_script("""
+                            var links = document.querySelectorAll('a, button');
+                            for (var i = 0; i < links.length; i++) {
+                                var text = links[i].textContent.toLowerCase().trim();
+                                if (text.includes('modify seat') || text.includes('change seat')) {
+                                    links[i].click();
+                                    return 'clicked: ' + text;
+                                }
+                            }
+                            return 'not found';
+                        """)
+                        if js_result and js_result.startswith("clicked"):
+                            modify_clicked = True
+                            add_log(conn, f"Clicked modify seats via JS: {js_result}", "info", flight_id)
+                        else:
+                            add_log(conn, f"Modify seats button not found. JS result: {js_result}", "warning", flight_id)
+                    except Exception as js_err:
+                        add_log(conn, f"JS click attempt failed: {js_err}", "warning", flight_id)
+
+                if not modify_clicked:
+                    # Save page state for diagnostics
+                    driver.save_screenshot(f"{cap_dir}/02_no_modify_button.png")
+                    page_text = driver.execute_script("return document.body ? document.body.textContent.substring(0, 1000) : ''")
+                    add_log(conn, f"Could not find Modify seats button. Page text: {page_text[:300]}", "warning", flight_id)
+                    log_diagnostic(conn, "seat_modify_not_found", manage_url,
+                                   "Modify seats button on page", "Button not found",
+                                   response_snapshot=page_text[:500])
+                    continue
+
+                # Step 4: Wait for seat map page to load
+                time.sleep(5)
+                driver.save_screenshot(f"{cap_dir}/03_seat_map_loading.png")
+
                 seat_loaded = False
                 seat_selectors = [
                     "[data-seat-number]",
@@ -715,10 +775,13 @@ def attempt_seat_upgrades(conn: sqlite3.Connection) -> None:
                     "[class*='SeatMap']",
                     "[class*='seatMap']",
                     "[class*='seat-map']",
+                    "[class*='seatmap']",
+                    "table[class*='seat']",
+                    "[role='grid']",
                 ]
                 for sel in seat_selectors:
                     try:
-                        browser_session._driver.wait_for_element_visible(sel, timeout=5)
+                        driver.wait_for_element_visible(sel, timeout=5)
                         seat_loaded = True
                         add_log(conn, f"Seat map loaded (selector: {sel})", "info", flight_id)
                         break
@@ -726,96 +789,64 @@ def attempt_seat_upgrades(conn: sqlite3.Connection) -> None:
                         continue
 
                 if not seat_loaded:
-                    # Just wait for the page to settle
-                    time.sleep(8)
-                    add_log(conn, "Seat map selectors not found, waited 8s for page to load", "warning", flight_id)
+                    time.sleep(10)
+                    add_log(conn, f"Seat map selectors not found, waited 10s. URL: {driver.current_url}", "warning", flight_id)
 
-                # Step 3: Capture screenshot and DOM
-                try:
-                    browser_session._driver.save_screenshot(f"{cap_dir}/seat_map_page.png")
-                    dom = browser_session._driver.execute_script("return document.documentElement.outerHTML")
-                    with open(f"{cap_dir}/seat_map_dom.html", "w") as f:
-                        f.write(dom)
-                    add_log(conn, f"Seat map captured to {cap_dir}/", "info", flight_id)
-                    # Record successful attempt time (only after page loads)
-                    conn.execute("UPDATE flights SET last_seat_upgrade_attempt = ? WHERE id = ?",
-                                 (datetime.utcnow().isoformat(), flight_id))
-                    conn.commit()
-                    # Record in checkin_captures so it appears in the UI
-                    manifest = json.dumps({
-                        "flight_id": flight_id, "type": "seat_upgrade",
-                        "files": [
-                            {"name": "seat_map_page.png", "type": "screenshot"},
-                            {"name": "seat_map_dom.html", "type": "dom"},
-                        ],
-                    })
-                    total_size = os.path.getsize(f"{cap_dir}/seat_map_page.png") + os.path.getsize(f"{cap_dir}/seat_map_dom.html")
-                    conn.execute(
-                        "INSERT INTO checkin_captures (flight_id, capture_dir, manifest_json, file_count, total_size_bytes) VALUES (?, ?, ?, ?, ?)",
-                        (flight_id, cap_dir, manifest, 2, total_size),
-                    )
-                    conn.commit()
-                except Exception as cap_err:
-                    add_log(conn, f"Seat map capture error: {cap_err}", "warning", flight_id)
+                # Step 5: Capture the seat map
+                driver.save_screenshot(f"{cap_dir}/04_seat_map.png")
+                dom = driver.execute_script("return document.documentElement.outerHTML")
+                with open(f"{cap_dir}/seat_map_dom.html", "w") as f:
+                    f.write(dom)
+                add_log(conn, f"Seat map captured. URL: {driver.current_url}", "info", flight_id)
 
-                # Step 4: Extract available seats from DOM via JavaScript
-                seats_js = browser_session._driver.execute_script("""
+                # Record cooldown
+                conn.execute("UPDATE flights SET last_seat_upgrade_attempt = ? WHERE id = ?",
+                             (datetime.utcnow().isoformat(), flight_id))
+                conn.commit()
+
+                # Record in captures table
+                manifest = json.dumps({
+                    "flight_id": flight_id, "type": "seat_upgrade",
+                    "files": [
+                        {"name": "01_reservation_page.png", "type": "screenshot"},
+                        {"name": "03_seat_map_loading.png", "type": "screenshot"},
+                        {"name": "04_seat_map.png", "type": "screenshot"},
+                        {"name": "seat_map_dom.html", "type": "dom"},
+                    ],
+                })
+                conn.execute(
+                    "INSERT INTO checkin_captures (flight_id, capture_dir, manifest_json, file_count, total_size_bytes) VALUES (?, ?, ?, ?, ?)",
+                    (flight_id, cap_dir, manifest, 4, 0),
+                )
+                conn.commit()
+
+                # Step 6: Extract seats from DOM
+                seats_js = driver.execute_script("""
                     var seats = [];
-
                     // Strategy 1: data-seat-number attributes
                     document.querySelectorAll('[data-seat-number]').forEach(function(el) {
-                        seats.push({
-                            seat: el.getAttribute('data-seat-number'),
-                            className: el.className,
-                            disabled: el.disabled || el.getAttribute('aria-disabled') === 'true',
-                            text: el.textContent.trim().substring(0, 20),
-                            tag: el.tagName
-                        });
+                        seats.push({seat: el.getAttribute('data-seat-number'), className: el.className, disabled: el.disabled || el.getAttribute('aria-disabled') === 'true', text: el.textContent.trim().substring(0, 20), tag: el.tagName});
                     });
-
-                    // Strategy 2: buttons/divs with seat-like classes
+                    // Strategy 2: buttons/divs with seat classes containing seat IDs
                     if (seats.length === 0) {
-                        document.querySelectorAll('button[class*="seat"], div[class*="seat"]').forEach(function(el) {
+                        document.querySelectorAll('button[class*="seat"], div[class*="seat"], td[class*="seat"]').forEach(function(el) {
                             var text = el.textContent.trim();
                             if (text.match(/^\\d{1,2}[A-F]$/)) {
-                                seats.push({
-                                    seat: text,
-                                    className: el.className,
-                                    disabled: el.disabled || el.getAttribute('aria-disabled') === 'true',
-                                    text: text,
-                                    tag: el.tagName
-                                });
+                                seats.push({seat: text, className: el.className, disabled: el.disabled || el.getAttribute('aria-disabled') === 'true', text: text, tag: el.tagName});
                             }
                         });
                     }
-
-                    // Strategy 3: aria-label containing seat info
+                    // Strategy 3: aria-label with seat info
                     if (seats.length === 0) {
-                        document.querySelectorAll('[aria-label*="Seat"], [aria-label*="seat"]').forEach(function(el) {
+                        document.querySelectorAll('[aria-label*="Seat"], [aria-label*="seat"], [aria-label*="Row"]').forEach(function(el) {
                             var label = el.getAttribute('aria-label') || '';
                             var match = label.match(/(\\d{1,2}[A-F])/);
                             if (match) {
-                                seats.push({
-                                    seat: match[1],
-                                    className: el.className,
-                                    disabled: el.disabled || el.getAttribute('aria-disabled') === 'true',
-                                    text: label.substring(0, 50),
-                                    tag: el.tagName
-                                });
+                                seats.push({seat: match[1], className: el.className, disabled: el.disabled || el.getAttribute('aria-disabled') === 'true', text: label.substring(0, 50), tag: el.tagName});
                             }
                         });
                     }
-
-                    // Collect page metadata for diagnostics
-                    var meta = {
-                        url: window.location.href,
-                        title: document.title,
-                        seatCount: seats.length,
-                        allButtons: document.querySelectorAll('button').length,
-                        allDivs: document.querySelectorAll('div').length,
-                        bodyText: document.body ? document.body.textContent.substring(0, 500) : ''
-                    };
-
+                    var meta = {url: window.location.href, title: document.title, seatCount: seats.length, allButtons: document.querySelectorAll('button').length};
                     return JSON.stringify({seats: seats, meta: meta});
                 """)
 
@@ -826,20 +857,19 @@ def attempt_seat_upgrades(conn: sqlite3.Connection) -> None:
 
                 all_seats = seats_data.get("seats", [])
                 page_meta = seats_data.get("meta", {})
+                add_log(conn, f"Page: {page_meta.get('title', '?')} | Found {len(all_seats)} seat elements | URL: {page_meta.get('url', '?')}", "info", flight_id)
 
-                add_log(conn, f"Page: {page_meta.get('title', '?')} | Found {len(all_seats)} seat elements", "info", flight_id)
-
-                # Save raw seat data for analysis
                 with open(f"{cap_dir}/seat_data.json", "w") as f:
                     json.dump(seats_data, f, indent=2)
 
                 if not all_seats:
-                    add_log(conn, f"No seat elements found. Page body preview: {page_meta.get('bodyText', '')[:200]}", "warning", flight_id)
-                    log_diagnostic(conn, "seat_map_empty", url_with_params,
-                                   "Seat elements on page", f"0 seats found. Buttons: {page_meta.get('allButtons')}, title: {page_meta.get('title')}",
-                                   response_snapshot=page_meta.get("bodyText", "")[:500])
+                    page_text = driver.execute_script("return document.body ? document.body.textContent.substring(0, 500) : ''")
+                    add_log(conn, f"No seat elements found on page. Body preview: {page_text[:200]}", "warning", flight_id)
+                    log_diagnostic(conn, "seat_map_empty", driver.current_url,
+                                   "Seat elements", f"0 found. Buttons: {page_meta.get('allButtons')}",
+                                   response_snapshot=page_text[:500])
                 else:
-                    # Step 5: Filter available seats and score them
+                    # Step 7: Filter and score seats
                     available_seats = []
                     for s in all_seats:
                         seat_id = s.get("seat", "")
@@ -848,95 +878,63 @@ def attempt_seat_upgrades(conn: sqlite3.Connection) -> None:
                         cls = (s.get("className") or "").lower()
                         if "unavailable" in cls or "occupied" in cls or "blocked" in cls:
                             continue
-
-                        # Parse row and letter
-                        row_str = ""
-                        letter = ""
+                        row_str, letter = "", ""
                         for ch in str(seat_id):
-                            if ch.isdigit():
-                                row_str += ch
-                            elif ch.isalpha():
-                                letter = ch.upper()
-                                break
+                            if ch.isdigit(): row_str += ch
+                            elif ch.isalpha(): letter = ch.upper(); break
                         if row_str and letter:
                             row = int(row_str)
                             score = 20
-                            if letter in preferred_letters and row in preferred_rows:
-                                score = 100
-                            elif letter in preferred_letters:
-                                score = 80
-                            elif letter in fallback_letters and row in preferred_rows:
-                                score = 60
-                            elif letter in fallback_letters:
-                                score = 40
-                            available_seats.append({
-                                "seat": seat_id, "row": row, "letter": letter,
-                                "score": score, "className": s.get("className", "")
-                            })
+                            if letter in preferred_letters and row in preferred_rows: score = 100
+                            elif letter in preferred_letters: score = 80
+                            elif letter in fallback_letters and row in preferred_rows: score = 60
+                            elif letter in fallback_letters: score = 40
+                            available_seats.append({"seat": seat_id, "row": row, "letter": letter, "score": score})
 
                     available_seats.sort(key=lambda x: (-x["score"], x["row"]))
-                    add_log(conn, f"Available seats: {len(available_seats)} (top 5: {[s['seat'] for s in available_seats[:5]]})", "info", flight_id)
+                    add_log(conn, f"Available seats: {len(available_seats)} | Top 5: {[s['seat'] for s in available_seats[:5]]}", "info", flight_id)
 
                     if available_seats:
                         best = available_seats[0]
-                        add_log(conn, f"Best seat: {best['seat']} (score {best['score']}), attempting click", "info", flight_id)
+                        add_log(conn, f"Best seat: {best['seat']} (score {best['score']}), clicking...", "info", flight_id)
 
-                        # Step 6: Click the seat
                         clicked = False
-                        click_selectors = [
-                            f"[data-seat-number='{best['seat']}']",
-                            f"button:contains('{best['seat']}')",
-                            f"[aria-label*='{best['seat']}']",
-                        ]
-                        for click_sel in click_selectors:
+                        for click_sel in [f"[data-seat-number='{best['seat']}']", f"button:contains('{best['seat']}')", f"[aria-label*='{best['seat']}']"]:
                             try:
-                                browser_session._driver.click(click_sel)
+                                driver.click(click_sel)
                                 clicked = True
-                                add_log(conn, f"Clicked seat {best['seat']} (selector: {click_sel})", "info", flight_id)
+                                add_log(conn, f"Clicked seat {best['seat']}", "info", flight_id)
                                 break
                             except Exception:
                                 continue
 
                         if clicked:
                             time.sleep(2)
-                            browser_session._driver.save_screenshot(f"{cap_dir}/after_seat_click.png")
+                            driver.save_screenshot(f"{cap_dir}/05_after_click.png")
 
-                            # Step 7: Look for confirm/save button
-                            confirm_selectors = [
-                                "button[class*='confirm']",
-                                "button[class*='save']",
-                                "button[class*='continue']",
-                                "button[class*='submit']",
-                                "button:contains('Confirm')",
-                                "button:contains('Save')",
-                                "button:contains('Continue')",
-                                "button:contains('Done')",
-                            ]
-                            for confirm_sel in confirm_selectors:
+                            for confirm_sel in ["button:contains('Continue')", "button:contains('Confirm')", "button:contains('Save')", "button:contains('Done')", "button[type='submit']"]:
                                 try:
-                                    if browser_session._driver.is_element_visible(confirm_sel):
-                                        browser_session._driver.click(confirm_sel)
-                                        add_log(conn, f"Clicked confirm button: {confirm_sel}", "info", flight_id)
+                                    if driver.is_element_visible(confirm_sel):
+                                        driver.click(confirm_sel)
+                                        add_log(conn, f"Clicked confirm: {confirm_sel}", "info", flight_id)
                                         time.sleep(3)
-                                        browser_session._driver.save_screenshot(f"{cap_dir}/after_confirm.png")
+                                        driver.save_screenshot(f"{cap_dir}/06_after_confirm.png")
                                         break
                                 except Exception:
                                     continue
 
-                            # Update assigned seat
                             update_flight_seat(conn, flight_id, best["seat"])
                             add_log(conn, f"Seat {best['seat']} selected for {conf_num}!", "info", flight_id)
-
                             try:
                                 from notifications import send_notification
-                                send_notification(f"Seat Selected: {conf_num}", f"Seat {best['seat']} selected for flight {route}")
+                                send_notification(f"Seat Selected: {conf_num}", f"Seat {best['seat']} selected for {route}")
                             except Exception:
                                 pass
                         else:
                             add_log(conn, f"Could not click seat {best['seat']}", "warning", flight_id)
 
-                # Step 8: Navigate back to mobile site to restore API session
-                browser_session._driver.get("https://mobile.southwest.com/login?webView=true")
+                # Step 8: Navigate back to mobile site
+                driver.get("https://mobile.southwest.com/login?webView=true")
                 time.sleep(2)
                 browser_session._headers_set = False
                 try:
@@ -944,20 +942,13 @@ def attempt_seat_upgrades(conn: sqlite3.Connection) -> None:
                 except Exception:
                     pass
 
-        except RequestError as e:
-            # Capture browser URL for diagnostics on error "0"
-            browser_url = "unknown"
-            try:
-                browser_url = browser_session._driver.current_url if browser_session._driver else "no driver"
-            except Exception:
-                pass
-            add_log(conn, f"Failed to retrieve reservation for seat upgrade: {e} (browser at: {browser_url})", "error", flight_id)
-            log_diagnostic(conn, "seat_upgrade_error", f"POST {VIEW_RESERVATION_URL}{conf_num}",
-                           "200 OK with reservation", f"{e} (browser: {browser_url})",
-                           response_snapshot=getattr(e, "response_body", "")[:500])
         except Exception as e:
             logger.error("Seat upgrade error for %s: %s", conf_num, e)
             add_log(conn, f"Seat upgrade error: {e}", "error", flight_id)
+            try:
+                browser_session._driver.save_screenshot(f"/app/data/captures/{flight_id}/error.png")
+            except Exception:
+                pass
 
 
 
