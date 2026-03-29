@@ -698,70 +698,83 @@ def attempt_seat_upgrades(conn: sqlite3.Connection, force_flight_id: str | None 
                 add_log(conn, f"No account found for flight {conf_num}, cannot upgrade seat", "warning", flight_id)
                 continue
 
-            # Step 2: Restart browser and log into www.southwest.com with CDP verification
-            add_log(conn, f"Logging into www.southwest.com for seat upgrade of {conf_num}", "info", flight_id)
-            browser_session.start()
+            # Step 2: Navigate to www.southwest.com using EXISTING browser session
+            # DO NOT create a new login - reuse cookies from account processing login
+            # (Creating new logins every attempt triggers Southwest's 403050700 rate limiter)
+            add_log(conn, f"Navigating to southwest.com trips page (reusing session)", "info", flight_id)
 
             with browser_session._lock:
                 driver = browser_session._driver
+                if not driver:
+                    add_log(conn, f"No browser driver available for seat upgrade", "error", flight_id)
+                    continue
 
-                # Set up CDP listener BEFORE navigating (same approach as browser_session.py)
-                login_request_id = None
-                login_status_code = None
+                # Navigate directly to the trips/upcoming page
+                driver.get("https://www.southwest.com/loyalty/myaccount/trips/upcoming")
 
-                def seat_login_listener(data):
-                    nonlocal login_request_id, login_status_code
+                # Wait for page to load - check if we're logged in
+                time.sleep(5)
+                page_text = driver.execute_script("return document.body ? document.body.textContent : ''")
+                is_logged_in = "Hi," in page_text or "Upcoming Trips" in page_text or conf_num in page_text
+
+                if not is_logged_in and ("Log in" in page_text or "username" in page_text.lower()):
+                    add_log(conn, f"Not logged in on www.southwest.com. Need to authenticate first.", "info", flight_id)
+
+                    # Try to log in (but with throttle - max once per 30 minutes)
+                    last_www_login = getattr(browser_session, '_last_www_login', 0)
+                    if time.time() - last_www_login < 1800:  # 30 minute throttle
+                        add_log(conn, f"Login throttled (last attempt {int((time.time() - last_www_login) / 60)}min ago). Skipping.", "warning", flight_id)
+                        continue
+
+                    browser_session._last_www_login = time.time()
+
+                    # Set up CDP listener for login verification
+                    login_request_id = None
+                    login_status_code = None
+
+                    def seat_login_listener(data):
+                        nonlocal login_request_id, login_status_code
+                        try:
+                            response = data["params"]["response"]
+                            if response["url"] == "https://www.southwest.com/api/security/v4/security/token":
+                                login_request_id = data["params"]["requestId"]
+                                login_status_code = response["status"]
+                        except Exception:
+                            pass
+
+                    driver.add_cdp_listener("Network.responseReceived", seat_login_listener)
+                    driver.get("https://www.southwest.com/loyalty/myaccount")
+
                     try:
-                        response = data["params"]["response"]
-                        if response["url"] == "https://www.southwest.com/api/security/v4/security/token":
-                            login_request_id = data["params"]["requestId"]
-                            login_status_code = response["status"]
+                        driver.wait_for_element_visible('input[id="username"]', timeout=30)
                     except Exception:
-                        pass
+                        add_log(conn, f"Login form not found", "error", flight_id)
+                        driver.save_screenshot(f"{cap_dir}/00_no_login_form.png")
+                        continue
 
-                driver.add_cdp_listener("Network.responseReceived", seat_login_listener)
+                    time.sleep(2)
+                    driver.type('input[id="username"]', account_row["username"])
+                    driver.type('input[id="password"]', f"{account_row['password']}\n")
 
-                # Navigate to account page (shows login form when not authenticated)
-                driver.get("https://www.southwest.com/loyalty/myaccount")
-                try:
-                    driver.wait_for_element_visible('input[id="username"]', timeout=30)
-                except Exception:
-                    add_log(conn, f"Login form not found on www.southwest.com", "error", flight_id)
-                    driver.save_screenshot(f"{cap_dir}/00_login_form_missing.png")
-                    continue
+                    # Wait for login response
+                    wait_attempts = 0
+                    while not login_request_id and wait_attempts < 60:
+                        time.sleep(0.5)
+                        wait_attempts += 1
 
-                time.sleep(2)
-                driver.type('input[id="username"]', account_row["username"])
-                driver.type('input[id="password"]', f"{account_row['password']}\n")
+                    if login_status_code != 200:
+                        add_log(conn, f"Login failed with status {login_status_code}", "error", flight_id)
+                        driver.save_screenshot(f"{cap_dir}/00_login_failed.png")
+                        continue
 
-                # Wait for ACTUAL login response via CDP (not a blind sleep)
-                wait_attempts = 0
-                while not login_request_id and wait_attempts < 60:
-                    time.sleep(0.5)
-                    wait_attempts += 1
+                    add_log(conn, f"Login verified (status 200)", "info", flight_id)
+                    time.sleep(3)
 
-                driver.save_screenshot(f"{cap_dir}/00_after_login.png")
+                    # Navigate to trips page after login
+                    driver.get("https://www.southwest.com/loyalty/myaccount/trips/upcoming")
+                    time.sleep(3)
 
-                if not login_request_id:
-                    add_log(conn, f"Login API response not detected after 30s. URL: {driver.current_url}", "error", flight_id)
-                    page_text = driver.execute_script("return document.body ? document.body.textContent.substring(0, 300) : ''")
-                    add_log(conn, f"Page after login attempt: {page_text[:200]}", "warning", flight_id)
-                    continue
-
-                if login_status_code != 200:
-                    add_log(conn, f"Login failed with status {login_status_code}. URL: {driver.current_url}", "error", flight_id)
-                    # Try to get error response body
-                    try:
-                        error_body = driver.execute_cdp_cmd("Network.getResponseBody", {"requestId": login_request_id})
-                        add_log(conn, f"Login error response: {str(error_body.get('body', ''))[:300]}", "error", flight_id)
-                    except Exception:
-                        pass
-                    continue
-
-                add_log(conn, f"Login verified (status 200). Waiting for page to load trips...", "info", flight_id)
-                time.sleep(5)  # Wait for page to render trips after successful login
-                driver.save_screenshot(f"{cap_dir}/01_account_page.png")
-                add_log(conn, f"Account page loaded. URL: {driver.current_url}", "info", flight_id)
+                add_log(conn, f"On trips page. URL: {driver.current_url}", "info", flight_id)
 
                 # Step 3: Click "Trips" tab, then "Details" for our flight, then "Modify seats"
                 # From screenshots: Account page has Trips tab → trip cards → "Details" button → "Manage my trip" → "Modify seats"
