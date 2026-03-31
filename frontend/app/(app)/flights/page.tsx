@@ -59,11 +59,14 @@ interface FlightWithFare {
 
 function formatFare(fare: FareInfo | null): string {
   if (!fare) return "—";
-  const sign = fare.price_change > 0 ? "+" : "";
-  if (fare.currency_code === "PTS" || fare.currency_code === "Points") {
-    return `${sign}${fare.price_change.toLocaleString()} pts`;
-  }
-  return `${sign}$${Math.abs(fare.price_change).toLocaleString()}`;
+  const amount = Math.abs(fare.price_change);
+  const currency = fare.currency_code === "PTS" || fare.currency_code === "Points"
+    ? `${amount.toLocaleString()} pts`
+    : `$${amount.toLocaleString()}`;
+
+  if (fare.price_change < -1) return `▼ ${currency} cheaper`;
+  if (fare.price_change > 1) return `▲ ${currency} more`;
+  return "No change";
 }
 
 function fareColor(fare: FareInfo | null): string {
@@ -287,13 +290,8 @@ export default function FlightsPage() {
                       </div>
                       <div className="text-right">
                         <span className="text-sm font-medium text-green-700">
-                          {formatFare(lf)}
+                          Save ${savings.toLocaleString()}
                         </span>
-                        {savings > 0 && (
-                          <span className="ml-2 text-xs text-green-600">
-                            Save ${savings.toLocaleString()}
-                          </span>
-                        )}
                       </div>
                     </div>
                   </div>
