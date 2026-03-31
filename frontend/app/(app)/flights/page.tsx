@@ -82,6 +82,7 @@ export default function FlightsPage() {
   const [logs, setLogs] = useState<WorkerLog[]>([]);
   const [fareHistory, setFareHistory] = useState<FareInfo[]>([]);
   const [captures, setCaptures] = useState<CaptureEntry[]>([]);
+  const [audits, setAudits] = useState<{ id: number; status: string; started_at: string; steps_json: string; error_message: string; capture_dir: string }[]>([]);
   const [expandError, setExpandError] = useState<string | null>(null);
   const [editingFare, setEditingFare] = useState<string | null>(null);
   const [fareInput, setFareInput] = useState("");
@@ -116,16 +117,18 @@ export default function FlightsPage() {
     setSelectedFlight(flightId);
     setExpandError(null);
     try {
-      const [logsRes, faresRes, capturesRes] = await Promise.all([
+      const [logsRes, faresRes, capturesRes, auditsRes] = await Promise.all([
         fetch(`/api/flights/logs?id=${flightId}`),
         fetch(`/api/flights/fares?id=${flightId}`),
         fetch(`/api/flights/captures?id=${flightId}`),
+        fetch(`/api/flights/audits?id=${flightId}`),
       ]);
       if (!logsRes.ok) setExpandError(`Logs: ${logsRes.status} ${logsRes.statusText}`);
       if (!faresRes.ok) setExpandError((prev) => `${prev ? prev + " | " : ""}Fares: ${faresRes.status}`);
       setLogs(logsRes.ok ? await logsRes.json() : []);
       setFareHistory(faresRes.ok ? await faresRes.json() : []);
       setCaptures(capturesRes.ok ? await capturesRes.json() : []);
+      setAudits(auditsRes.ok ? await auditsRes.json() : []);
     } catch (err) {
       setExpandError(`Network error: ${err}`);
       setLogs([]);
@@ -370,6 +373,52 @@ export default function FlightsPage() {
                       )}
                     </div>
                   </div>
+
+                  {/* Seat Upgrade Audit Trail */}
+                  {audits.length > 0 && (
+                    <div className="mt-4 border-t border-gray-200 pt-4">
+                      <h4 className="font-medium text-sm mb-3">Seat Upgrade Audit Trail</h4>
+                      {audits.map((audit) => {
+                        let steps: { name: string; order: number; duration_ms: number; success: boolean; url?: string; page_title?: string; data?: Record<string, unknown>; console_errors?: string[]; screenshot?: string }[] = [];
+                        try { steps = JSON.parse(audit.steps_json || "[]"); } catch { /* ignore */ }
+                        return (
+                          <div key={audit.id} className="mb-3 rounded border border-gray-200 bg-white text-xs">
+                            <div className="flex items-center justify-between p-2 border-b border-gray-100">
+                              <span className={`font-medium ${audit.status === "success" ? "text-green-600" : audit.status === "failed" ? "text-red-600" : "text-yellow-600"}`}>
+                                {audit.status.toUpperCase()}
+                              </span>
+                              <span className="text-gray-400">{new Date(audit.started_at + "Z").toLocaleString()}</span>
+                            </div>
+                            {audit.error_message && (
+                              <div className="px-2 py-1 bg-red-50 text-red-700 text-xs">{audit.error_message}</div>
+                            )}
+                            <div className="p-2 space-y-1">
+                              {steps.map((step, si) => (
+                                <div key={si} className="flex items-start gap-2">
+                                  <span className={`mt-0.5 ${step.success ? "text-green-500" : step.success === false ? "text-red-500" : "text-gray-400"}`}>
+                                    {step.success ? "✓" : step.success === false ? "✗" : "○"}
+                                  </span>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-medium">{step.name}</span>
+                                      <span className="text-gray-400">{step.duration_ms}ms</span>
+                                      {step.url && <span className="text-gray-300 truncate max-w-[200px]">{step.url}</span>}
+                                    </div>
+                                    {step.console_errors && step.console_errors.length > 0 && (
+                                      <div className="text-red-500 mt-0.5">{step.console_errors[0]}</div>
+                                    )}
+                                    {step.data && Object.keys(step.data).length > 0 && (
+                                      <div className="text-gray-400 mt-0.5">{JSON.stringify(step.data)}</div>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
 
                   {/* Check-In Captures */}
                   {captures.length > 0 && (

@@ -693,6 +693,11 @@ def attempt_seat_upgrades(conn: sqlite3.Connection, force_flight_id: str | None 
 
         add_log(conn, f"Attempting seat upgrade for {conf_num} ({route}). Current seat: {current_seat or 'none'}", "info", flight_id)
 
+        # Initialize audit system
+        from lib.seat_audit import SeatUpgradeAudit
+        audit = SeatUpgradeAudit(flight_id, browser_session, get_db)
+        audit.start()
+
         try:
             import os
             cap_dir = f"/app/data/captures/{flight_id}"
@@ -711,7 +716,8 @@ def attempt_seat_upgrades(conn: sqlite3.Connection, force_flight_id: str | None 
                 add_log(conn, f"No account found for flight {conf_num}, cannot upgrade seat", "warning", flight_id)
                 continue
 
-            # Step 2: Navigate to www.southwest.com using EXISTING browser session
+            # Step 2: Navigate to www.southwest.com
+            audit.begin_step("navigate_trips")
             # DO NOT create a new login - reuse cookies from account processing login
             # (Creating new logins every attempt triggers Southwest's 403050700 rate limiter)
             add_log(conn, f"Navigating to southwest.com trips page (reusing session)", "info", flight_id)
@@ -788,9 +794,10 @@ def attempt_seat_upgrades(conn: sqlite3.Connection, force_flight_id: str | None 
                     time.sleep(3)
 
                 add_log(conn, f"On trips page. URL: {driver.current_url}", "info", flight_id)
+                audit.end_step(success=True, data={"logged_in": is_logged_in})
 
-                # Step 3: Click "Trips" tab, then "Details" for our flight, then "Modify seats"
-                # From screenshots: Account page has Trips tab → trip cards → "Details" button → "Manage my trip" → "Modify seats"
+                # Step 3: Click "Trips" tab
+                audit.begin_step("click_trips_tab")
                 time.sleep(3)
 
                 # Click "Trips" tab if not already active
@@ -816,6 +823,7 @@ def attempt_seat_upgrades(conn: sqlite3.Connection, force_flight_id: str | None 
 
                 driver.save_screenshot(f"{cap_dir}/01_trips_tab.png")
                 add_log(conn, f"Trips tab clicked. URL: {driver.current_url}", "info", flight_id)
+                audit.end_step(success=trips_loaded, data={"conf_found": trips_loaded, "wait_seconds": wait_i + 1 if trips_loaded else 20})
 
                 if not trips_loaded:
                     page_text = driver.execute_script("return document.body ? document.body.textContent.substring(0, 500) : ''")
@@ -828,7 +836,8 @@ def attempt_seat_upgrades(conn: sqlite3.Connection, force_flight_id: str | None 
                     except Exception:
                         pass
 
-                # Click "Details" button on the trip card containing our confirmation number
+                # Click "Details" button on the trip card
+                audit.begin_step("click_details")
                 details_result = driver.execute_script(f"""
                     // Look for our confirmation number on the page, then find "Details" nearby
                     var body = document.body.innerHTML;
@@ -882,10 +891,14 @@ def attempt_seat_upgrades(conn: sqlite3.Connection, force_flight_id: str | None 
                 if not details_result or not str(details_result).startswith("clicked"):
                     driver.save_screenshot(f"{cap_dir}/02_no_details_btn.png")
                     add_log(conn, f"Could not find Details button for {conf_num}", "warning", flight_id)
+                    audit.end_step(success=False, data={"result": str(details_result)[:200]})
+                    audit.save_dom("details_failed_dom.html")
+                    audit.finish(status="failed", error_message="Details button not found")
                     continue
+                audit.end_step(success=True, data={"result": str(details_result)[:100]})
 
-                # Wait for "Manage my trip" page to fully render (SPA - content loads dynamically)
-                # Poll for actual content instead of blind sleep
+                # Wait for "Manage my trip" page to fully render
+                audit.begin_step("wait_manage_trip")
                 manage_loaded = False
                 for wait_i in range(20):  # Up to 20 seconds
                     time.sleep(1)
@@ -911,7 +924,10 @@ def attempt_seat_upgrades(conn: sqlite3.Connection, force_flight_id: str | None 
                 """)
                 add_log(conn, f"Current seat on manage page: {seat_info}", "info", flight_id)
 
+                audit.end_step(success=manage_loaded, data={"current_seat": seat_info})
+
                 # Click "Modify seats" link
+                audit.begin_step("click_modify_seats")
                 modify_result = driver.execute_script("""
                     var links = document.querySelectorAll('a');
                     for (var link of links) {
@@ -944,14 +960,22 @@ def attempt_seat_upgrades(conn: sqlite3.Connection, force_flight_id: str | None 
                 if not modify_result or not str(modify_result).startswith("clicked"):
                     driver.save_screenshot(f"{cap_dir}/03_no_modify_seats.png")
                     add_log(conn, f"Could not find Modify seats link on manage trip page", "warning", flight_id)
+                    audit.end_step(success=False, data={"result": str(modify_result)[:200]})
+                    audit.save_dom("modify_seats_failed_dom.html")
+                    audit.finish(status="failed", error_message="Modify seats link not found")
                     continue
+                audit.end_step(success=True, data={"result": str(modify_result)[:100]})
 
                 # Wait for seat map page to load
+                audit.begin_step("wait_seat_map")
                 time.sleep(8)
                 driver.save_screenshot(f"{cap_dir}/03_seat_map.png")
                 add_log(conn, f"Seat map page loaded. URL: {driver.current_url}", "info", flight_id)
+                audit.end_step(success=True)
+                audit.save_dom("seat_map_dom.html")
 
-                # Step 5: Look for seat map OR check if we're already on seat map
+                # Step 5: Look for seat map
+                audit.begin_step("extract_seats")
 
                 seat_loaded = False
                 seat_selectors = [
@@ -1079,10 +1103,16 @@ def attempt_seat_upgrades(conn: sqlite3.Connection, force_flight_id: str | None 
 
                     available_seats.sort(key=lambda x: (-x["score"], x["row"]))
                     add_log(conn, f"Available seats: {len(available_seats)} | Top 5: {[s['seat'] for s in available_seats[:5]]}", "info", flight_id)
+                    audit.end_step(success=len(available_seats) > 0, data={
+                        "total_found": len(all_seats),
+                        "available": len(available_seats),
+                        "top_5": [{"seat": s["seat"], "score": s["score"]} for s in available_seats[:5]],
+                    })
 
                     if available_seats:
                         best = available_seats[0]
                         add_log(conn, f"Best seat: {best['seat']} (score {best['score']}), clicking...", "info", flight_id)
+                        audit.begin_step("click_seat")
 
                         clicked = False
                         for click_sel in [f"[data-seat-number='{best['seat']}']", f"button:contains('{best['seat']}')", f"[aria-label*='{best['seat']}']"]:
@@ -1111,6 +1141,7 @@ def attempt_seat_upgrades(conn: sqlite3.Connection, force_flight_id: str | None 
 
                             update_flight_seat(conn, flight_id, best["seat"])
                             add_log(conn, f"Seat {best['seat']} selected for {conf_num}!", "info", flight_id)
+                            audit.end_step(success=True, data={"seat": best["seat"], "score": best["score"], "clicked": True, "confirmed": True})
                             try:
                                 from notifications import send_notification
                                 send_notification(f"Seat Selected: {conf_num}", f"Seat {best['seat']} selected for {route}")
@@ -1118,6 +1149,10 @@ def attempt_seat_upgrades(conn: sqlite3.Connection, force_flight_id: str | None 
                                 pass
                         else:
                             add_log(conn, f"Could not click seat {best['seat']}", "warning", flight_id)
+                            audit.end_step(success=False, data={"seat": best["seat"], "clicked": False})
+
+                # Finalize audit before cleanup
+                audit.finish(status="success" if any(s.get("name") == "click_seat" and s.get("success") for s in audit.steps) else "partial")
 
                 # Step 8: Navigate back to mobile site
                 driver.get("https://mobile.southwest.com/login?webView=true")
@@ -1131,6 +1166,7 @@ def attempt_seat_upgrades(conn: sqlite3.Connection, force_flight_id: str | None 
         except Exception as e:
             logger.error("Seat upgrade error for %s: %s", conf_num, e)
             add_log(conn, f"Seat upgrade error: {e}", "error", flight_id)
+            audit.finish(status="failed", error_message=str(e))
             try:
                 browser_session._driver.save_screenshot(f"/app/data/captures/{flight_id}/error.png")
             except Exception:

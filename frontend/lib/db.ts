@@ -88,6 +88,19 @@ function initTables(db: Database.Database) {
       updated_at TEXT DEFAULT (datetime('now'))
     );
 
+    CREATE TABLE IF NOT EXISTS seat_upgrade_audit (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      flight_id TEXT NOT NULL,
+      started_at TEXT,
+      completed_at TEXT,
+      status TEXT DEFAULT 'in_progress',
+      steps_json TEXT,
+      browser_console_json TEXT,
+      capture_dir TEXT,
+      error_message TEXT,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+
     CREATE TABLE IF NOT EXISTS checkin_captures (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       flight_id TEXT NOT NULL,
