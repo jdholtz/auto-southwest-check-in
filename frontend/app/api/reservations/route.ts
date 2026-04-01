@@ -3,30 +3,52 @@ import { getDb } from "@/lib/db";
 
 export function GET() {
   const db = getDb();
-  const reservations = db
+
+  // Single JOIN query instead of fetching all flights separately
+  const rows = db
     .prepare(
-      `SELECT r.*, a.username as account_username
+      `SELECT r.*, a.username as account_username,
+              f.id as flight_id, f.flight_number, f.departure_airport,
+              f.destination_airport, f.departure_time, f.is_international,
+              f.checkin_status, f.checkin_result, f.checkin_attempted_at,
+              f.assigned_seat, f.original_price, f.original_currency
        FROM reservations r
        LEFT JOIN accounts a ON a.id = r.account_id
-       ORDER BY r.created_at DESC`
+       LEFT JOIN flights f ON f.reservation_id = r.id
+       ORDER BY r.created_at DESC, f.departure_time ASC`
     )
-    .all();
+    .all() as Record<string, unknown>[];
 
-  // Attach flights to each reservation
-  const flights = db.prepare("SELECT * FROM flights ORDER BY departure_time ASC").all();
-  const flightsByReservation = new Map<string, unknown[]>();
-  for (const f of flights as { reservation_id: string }[]) {
-    const list = flightsByReservation.get(f.reservation_id) || [];
-    list.push(f);
-    flightsByReservation.set(f.reservation_id, list);
+  // Group flights under their reservation
+  const reservationMap = new Map<string, Record<string, unknown>>();
+  for (const row of rows) {
+    const resId = row.id as string;
+    if (!reservationMap.has(resId)) {
+      const { flight_id, flight_number, departure_airport, destination_airport,
+              departure_time, is_international, checkin_status, checkin_result,
+              checkin_attempted_at, assigned_seat, original_price, original_currency,
+              ...reservation } = row;
+      reservationMap.set(resId, { ...reservation, flights: [] });
+    }
+    if (row.flight_id) {
+      (reservationMap.get(resId)!.flights as unknown[]).push({
+        id: row.flight_id,
+        flight_number: row.flight_number,
+        departure_airport: row.departure_airport,
+        destination_airport: row.destination_airport,
+        departure_time: row.departure_time,
+        is_international: row.is_international,
+        checkin_status: row.checkin_status,
+        checkin_result: row.checkin_result,
+        checkin_attempted_at: row.checkin_attempted_at,
+        assigned_seat: row.assigned_seat,
+        original_price: row.original_price,
+        original_currency: row.original_currency,
+      });
+    }
   }
 
-  const result = (reservations as { id: string }[]).map((r) => ({
-    ...r,
-    flights: flightsByReservation.get(r.id) || [],
-  }));
-
-  return NextResponse.json(result);
+  return NextResponse.json(Array.from(reservationMap.values()));
 }
 
 export async function POST(req: NextRequest) {

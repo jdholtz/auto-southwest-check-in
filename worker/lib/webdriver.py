@@ -163,6 +163,20 @@ class WebDriver:
         )
         logger.debug("Using browser version: %s", driver.caps["browserVersion"])
 
+        # Block images, fonts, and media to reduce bandwidth
+        try:
+            driver.execute_cdp_cmd("Network.enable", {})
+            driver.execute_cdp_cmd(
+                "Network.setBlockedURLs",
+                {"urls": [
+                    "*.png", "*.jpg", "*.jpeg", "*.gif", "*.svg", "*.ico",
+                    "*.woff", "*.woff2", "*.ttf", "*.eot",
+                    "*.mp4", "*.webp", "*.webm", "*.bmp",
+                ]}
+            )
+        except Exception:
+            pass
+
         driver.add_cdp_listener("Network.requestWillBeSent", self._headers_listener)
 
         # Load the login page to get valid headers

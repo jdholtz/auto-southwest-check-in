@@ -33,6 +33,8 @@ from db import (
     update_flight_seat,
     log_diagnostic,
     get_notification_configs,
+    cleanup_old_data,
+    get_stale_capture_dirs,
 )
 from lib.log import get_logger
 from lib.utils import (
@@ -51,12 +53,14 @@ logger = get_logger(__name__)
 VIEW_RESERVATION_URL = "mobile-air-booking/v1/mobile-air-booking/page/view-reservation/"
 POLL_INTERVAL = 60  # seconds
 RETRIEVAL_INTERVAL_DEFAULT = 24 * 3600  # 24 hours in seconds
+CLEANUP_INTERVAL = 24 * 3600  # Run data cleanup once per day
 
 # Shared state
 browser_session: BrowserSession | None = None
 active_handlers: dict[str, CheckInHandler] = {}
 last_account_check: dict[str, float] = {}
 last_reservation_check: dict[str, float] = {}
+last_cleanup_time: float = 0
 shutdown_event = threading.Event()
 
 
@@ -1209,6 +1213,39 @@ def process_test_notifications(conn: sqlite3.Connection) -> None:
             add_log(conn, f"Test notification failed: {e}", "error")
 
 
+def run_daily_cleanup(conn: sqlite3.Connection) -> None:
+    """Run daily data retention cleanup to prevent unbounded storage growth."""
+    global last_cleanup_time
+
+    if time.time() - last_cleanup_time < CLEANUP_INTERVAL:
+        return
+
+    logger.info("Running daily data cleanup")
+    add_log(conn, "Running daily data cleanup", "info")
+
+    counts = cleanup_old_data(conn)
+    total = sum(counts.values())
+    if total > 0:
+        add_log(conn, f"Cleaned up {total} old records: {dict(counts)}", "info")
+        logger.info("Data cleanup removed %d records: %s", total, counts)
+
+    # File system cleanup - delete old capture directories
+    import shutil
+    stale_dirs = get_stale_capture_dirs(conn)
+    removed = 0
+    for capture_dir in stale_dirs:
+        try:
+            if os.path.isdir(capture_dir):
+                shutil.rmtree(capture_dir)
+                removed += 1
+        except Exception as e:
+            logger.warning("Failed to remove capture dir %s: %s", capture_dir, e)
+    if removed:
+        add_log(conn, f"Removed {removed} old capture directories", "info")
+
+    last_cleanup_time = time.time()
+
+
 def cleanup_handlers() -> None:
     """Remove handlers for flights that are no longer pending."""
     conn = get_db()
@@ -1267,6 +1304,9 @@ def main_loop() -> None:
 
             # Process test notification requests
             process_test_notifications(conn)
+
+            # Daily data retention cleanup
+            run_daily_cleanup(conn)
 
             # Clean up completed handlers
             cleanup_handlers()

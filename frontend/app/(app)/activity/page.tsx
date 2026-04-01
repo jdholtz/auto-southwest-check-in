@@ -91,15 +91,31 @@ export default function ActivityPage() {
   }, [diagCategory, diagnostics.length]);
 
   useEffect(() => {
-    if (tab === "activity") {
-      fetchLogs(true);
-      const interval = setInterval(() => fetchLogs(true), 15000);
-      return () => clearInterval(interval);
-    } else {
-      fetchDiagnostics(true);
-      const interval = setInterval(() => fetchDiagnostics(true), 30000);
-      return () => clearInterval(interval);
+    let interval: ReturnType<typeof setInterval>;
+
+    function startPolling() {
+      if (tab === "activity") {
+        fetchLogs(true);
+        interval = setInterval(() => fetchLogs(true), 60000);
+      } else {
+        fetchDiagnostics(true);
+        interval = setInterval(() => fetchDiagnostics(true), 60000);
+      }
     }
+
+    function handleVisibility() {
+      clearInterval(interval);
+      if (document.visibilityState === "visible") {
+        startPolling();
+      }
+    }
+
+    startPolling();
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
   }, [tab, level, diagCategory]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (

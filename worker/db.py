@@ -436,3 +436,55 @@ def get_notification_configs(conn: sqlite3.Connection) -> list[dict]:
         "SELECT * FROM notification_configs WHERE is_active = 1"
     ).fetchall()
     return [dict(r) for r in rows]
+
+
+# ── Data Retention / Cleanup ────────────────────────────────────────────
+
+def cleanup_old_data(conn: sqlite3.Connection) -> dict[str, int]:
+    """Delete old records from log/audit tables. Returns counts of deleted rows."""
+    counts = {}
+
+    cursor = conn.execute(
+        "DELETE FROM worker_logs WHERE created_at < datetime('now', '-30 days')"
+    )
+    counts["worker_logs"] = cursor.rowcount
+
+    cursor = conn.execute(
+        "DELETE FROM diagnostics WHERE created_at < datetime('now', '-30 days')"
+    )
+    counts["diagnostics"] = cursor.rowcount
+
+    cursor = conn.execute(
+        "DELETE FROM fare_history WHERE checked_at < datetime('now', '-90 days')"
+    )
+    counts["fare_history"] = cursor.rowcount
+
+    cursor = conn.execute(
+        "DELETE FROM seat_upgrade_audit WHERE created_at < datetime('now', '-90 days')"
+    )
+    counts["seat_upgrade_audit"] = cursor.rowcount
+
+    cursor = conn.execute(
+        """DELETE FROM checkin_captures WHERE flight_id IN (
+            SELECT id FROM flights WHERE departure_time < datetime('now', '-30 days')
+        )"""
+    )
+    counts["checkin_captures"] = cursor.rowcount
+
+    conn.commit()
+    return counts
+
+
+def get_stale_capture_dirs(conn: sqlite3.Connection) -> list[str]:
+    """Get capture directories for flights that departed >30 days ago."""
+    rows = conn.execute(
+        """SELECT DISTINCT cc.capture_dir FROM checkin_captures cc
+           JOIN flights f ON f.id = cc.flight_id
+           WHERE f.departure_time < datetime('now', '-30 days')
+           UNION
+           SELECT DISTINCT sua.capture_dir FROM seat_upgrade_audit sua
+           JOIN flights f ON f.id = sua.flight_id
+           WHERE f.departure_time < datetime('now', '-30 days')
+           AND sua.capture_dir IS NOT NULL"""
+    ).fetchall()
+    return [r["capture_dir"] for r in rows if r["capture_dir"]]

@@ -100,8 +100,21 @@ export default function FlightsPage() {
 
   useEffect(() => {
     fetchFlights();
-    const interval = setInterval(fetchFlights, 30000);
-    return () => clearInterval(interval);
+    let interval = setInterval(fetchFlights, 60000);
+
+    function handleVisibility() {
+      clearInterval(interval);
+      if (document.visibilityState === "visible") {
+        fetchFlights();
+        interval = setInterval(fetchFlights, 60000);
+      }
+    }
+
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
   }, []);
 
   async function fetchFlights() {

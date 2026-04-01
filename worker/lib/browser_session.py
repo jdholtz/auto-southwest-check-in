@@ -36,7 +36,7 @@ TRIPS_URL = (
 
 INVALID_CREDENTIALS_CODE = 400518024
 WAIT_TIMEOUT_SECS = 180
-SESSION_MAX_AGE = 25 * 60  # 25 minutes before forced restart
+SESSION_MAX_AGE = 2 * 60 * 60  # 2 hours before forced restart (reduced from 25min)  # 25 minutes before forced restart
 
 logger = get_logger(__name__)
 
@@ -133,6 +133,22 @@ class BrowserSession:
         )
         self._driver.set_script_timeout(60)
         logger.info("Browser version: %s", self._driver.caps.get("browserVersion", "unknown"))
+
+        # Block images, fonts, stylesheets, and media to reduce bandwidth
+        # Using CDP URL blocking preserves browser fingerprint for WAF bypass
+        try:
+            self._driver.execute_cdp_cmd("Network.enable", {})
+            self._driver.execute_cdp_cmd(
+                "Network.setBlockedURLs",
+                {"urls": [
+                    "*.png", "*.jpg", "*.jpeg", "*.gif", "*.svg", "*.ico",
+                    "*.woff", "*.woff2", "*.ttf", "*.eot",
+                    "*.mp4", "*.webp", "*.webm", "*.bmp",
+                ]}
+            )
+            logger.info("CDP resource blocking enabled (images, fonts, media)")
+        except Exception as e:
+            logger.debug("Could not set CDP URL blocking: %s", e)
 
         # Add header capture listener
         self._headers_set = False

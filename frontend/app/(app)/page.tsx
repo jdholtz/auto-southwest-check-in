@@ -14,8 +14,21 @@ export default function DashboardPage() {
 
   useEffect(() => {
     fetchDashboard();
-    const interval = setInterval(fetchDashboard, 30000);
-    return () => clearInterval(interval);
+    let interval = setInterval(fetchDashboard, 60000);
+
+    function handleVisibility() {
+      clearInterval(interval);
+      if (document.visibilityState === "visible") {
+        fetchDashboard();
+        interval = setInterval(fetchDashboard, 60000);
+      }
+    }
+
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
   }, []);
 
   async function fetchDashboard() {
