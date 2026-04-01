@@ -707,24 +707,9 @@ def attempt_seat_upgrades(conn: sqlite3.Connection, force_flight_id: str | None 
             cap_dir = f"/app/data/captures/{flight_id}"
             os.makedirs(cap_dir, exist_ok=True)
 
-            # Step 1: Find account credentials for this flight
-            account_row = conn.execute(
-                "SELECT a.username, a.password FROM accounts a "
-                "JOIN reservations r ON r.account_id = a.id "
-                "JOIN flights f ON f.reservation_id = r.id "
-                "WHERE f.id = ?",
-                (flight_id,),
-            ).fetchone()
-
-            if not account_row:
-                add_log(conn, f"No account found for flight {conf_num}, cannot upgrade seat", "warning", flight_id)
-                continue
-
-            # Step 2: Navigate to www.southwest.com
-            audit.begin_step("navigate_trips")
-            # DO NOT create a new login - reuse cookies from account processing login
-            # (Creating new logins every attempt triggers Southwest's 403050700 rate limiter)
-            add_log(conn, f"Navigating to southwest.com trips page (reusing session)", "info", flight_id)
+            # Step 1: Navigate to manage reservation lookup (no login required)
+            audit.begin_step("navigate_manage_reservation")
+            add_log(conn, f"Navigating to manage reservation lookup for {conf_num}", "info", flight_id)
 
             with browser_session._lock:
                 driver = browser_session._driver
@@ -732,193 +717,170 @@ def attempt_seat_upgrades(conn: sqlite3.Connection, force_flight_id: str | None 
                     add_log(conn, f"No browser driver available for seat upgrade", "error", flight_id)
                     continue
 
-                # Navigate directly to the trips/upcoming page
-                driver.get("https://www.southwest.com/loyalty/myaccount/trips/upcoming")
-
-                # Wait for page to load - check if we're logged in
+                driver.get("https://www.southwest.com/air/manage-reservation/index.html")
                 time.sleep(5)
-                page_text = driver.execute_script("return document.body ? document.body.textContent : ''")
-                is_logged_in = "Hi," in page_text or "Upcoming Trips" in page_text or conf_num in page_text
 
-                if not is_logged_in and ("Log in" in page_text or "username" in page_text.lower()):
-                    add_log(conn, f"Not logged in on www.southwest.com. Need to authenticate first.", "info", flight_id)
-
-                    # Try to log in (but with throttle - max once per 30 minutes)
-                    last_www_login = getattr(browser_session, '_last_www_login', 0)
-                    if time.time() - last_www_login < 1800:  # 30 minute throttle
-                        add_log(conn, f"Login throttled (last attempt {int((time.time() - last_www_login) / 60)}min ago). Skipping.", "warning", flight_id)
-                        continue
-
-                    browser_session._last_www_login = time.time()
-
-                    # Set up CDP listener for login verification
-                    login_request_id = None
-                    login_status_code = None
-
-                    def seat_login_listener(data):
-                        nonlocal login_request_id, login_status_code
-                        try:
-                            response = data["params"]["response"]
-                            if response["url"] == "https://www.southwest.com/api/security/v4/security/token":
-                                login_request_id = data["params"]["requestId"]
-                                login_status_code = response["status"]
-                        except Exception:
-                            pass
-
-                    driver.add_cdp_listener("Network.responseReceived", seat_login_listener)
-                    driver.get("https://www.southwest.com/loyalty/myaccount")
-
+                # Find and fill the confirmation number field
+                conf_input_sel = None
+                for sel in [
+                    'input[id="confirmationNumber"]',
+                    'input[name="confirmationNumber"]',
+                    'input[id*="onfirmation"]',
+                    'input[name*="onfirmation"]',
+                    'input[placeholder*="onfirmation"]',
+                    'input[aria-label*="onfirmation"]',
+                ]:
                     try:
-                        driver.wait_for_element_visible('input[id="username"]', timeout=30)
-                    except Exception:
-                        add_log(conn, f"Login form not found", "error", flight_id)
-                        driver.save_screenshot(f"{cap_dir}/00_no_login_form.png")
-                        continue
-
-                    time.sleep(2)
-                    driver.type('input[id="username"]', account_row["username"])
-                    driver.type('input[id="password"]', f"{account_row['password']}\n")
-
-                    # Wait for login response
-                    wait_attempts = 0
-                    while not login_request_id and wait_attempts < 60:
-                        time.sleep(0.5)
-                        wait_attempts += 1
-
-                    if login_status_code != 200:
-                        add_log(conn, f"Login failed with status {login_status_code}", "error", flight_id)
-                        driver.save_screenshot(f"{cap_dir}/00_login_failed.png")
-                        continue
-
-                    add_log(conn, f"Login verified (status 200)", "info", flight_id)
-                    time.sleep(3)
-
-                    # Navigate to trips page after login
-                    driver.get("https://www.southwest.com/loyalty/myaccount/trips/upcoming")
-                    time.sleep(3)
-
-                add_log(conn, f"On trips page. URL: {driver.current_url}", "info", flight_id)
-                audit.end_step(success=True, data={"logged_in": is_logged_in})
-
-                # Step 3: Click "Trips" tab
-                audit.begin_step("click_trips_tab")
-                time.sleep(3)
-
-                # Click "Trips" tab if not already active
-                driver.execute_script("""
-                    var links = document.querySelectorAll('a, button');
-                    for (var i = 0; i < links.length; i++) {
-                        if (links[i].textContent.trim() === 'Trips') {
-                            links[i].click();
-                            break;
-                        }
-                    }
-                """)
-
-                # Wait for trips content to render (SPA loads asynchronously)
-                trips_loaded = False
-                for wait_i in range(20):  # Up to 20 seconds
-                    time.sleep(1)
-                    page_html = driver.execute_script("return document.body ? document.body.innerHTML : ''")
-                    if conf_num in page_html:
-                        trips_loaded = True
-                        add_log(conn, f"Trips content loaded after {wait_i + 1}s (found {conf_num})", "info", flight_id)
+                        driver.wait_for_element_visible(sel, timeout=5)
+                        conf_input_sel = sel
                         break
-
-                driver.save_screenshot(f"{cap_dir}/01_trips_tab.png")
-                add_log(conn, f"Trips tab clicked. URL: {driver.current_url}", "info", flight_id)
-                audit.end_step(success=trips_loaded, data={"conf_found": trips_loaded, "wait_seconds": wait_i + 1 if trips_loaded else 20})
-
-                if not trips_loaded:
-                    page_text = driver.execute_script("return document.body ? document.body.textContent.substring(0, 500) : ''")
-                    add_log(conn, f"Trips content not loaded after 20s. Page text: {page_text[:300]}", "warning", flight_id)
-                    # Save DOM for analysis
-                    try:
-                        dom = driver.execute_script("return document.documentElement.outerHTML")
-                        with open(f"{cap_dir}/01_trips_dom.html", "w") as f:
-                            f.write(dom)
                     except Exception:
-                        pass
+                        continue
 
-                # Click "Details" button on the trip card
-                audit.begin_step("click_details")
-                details_result = driver.execute_script(f"""
-                    // Look for our confirmation number on the page, then find "Details" nearby
-                    var body = document.body.innerHTML;
-                    if (!body.includes('{conf_num}')) {{
-                        return 'conf_num {conf_num} not found on page';
-                    }}
+                if not conf_input_sel:
+                    # Fallback: find inputs by scanning the page
+                    conf_input_sel = driver.execute_script("""
+                        var inputs = document.querySelectorAll('input[type="text"], input:not([type])');
+                        for (var input of inputs) {
+                            var label = (input.getAttribute('aria-label') || '') +
+                                        (input.getAttribute('placeholder') || '') +
+                                        (input.getAttribute('name') || '') +
+                                        (input.getAttribute('id') || '');
+                            if (label.toLowerCase().includes('confirm')) {
+                                return '#' + input.id || '[name="' + input.name + '"]';
+                            }
+                        }
+                        // Return info about what inputs exist for diagnostics
+                        var info = [];
+                        inputs.forEach(function(inp) {
+                            info.push(inp.id || inp.name || inp.placeholder || inp.type || 'unknown');
+                        });
+                        return null;
+                    """)
 
-                    // Strategy: Find all elements, walk up to find a trip card, then find Details within it
-                    var allText = document.querySelectorAll('*');
-                    for (var el of allText) {{
-                        // Look for a small element that directly contains just the confirmation number
-                        if (el.children.length === 0 && el.textContent.trim().includes('{conf_num}')) {{
-                            // Walk up the DOM to find the trip card container
-                            var container = el;
-                            for (var p = 0; p < 15; p++) {{
-                                if (!container.parentElement) break;
-                                container = container.parentElement;
-                                // Look for "Details" button in this container
-                                var btns = container.querySelectorAll('a, button');
-                                for (var btn of btns) {{
-                                    if (btn.textContent.trim() === 'Details') {{
-                                        btn.click();
-                                        return 'clicked Details for {conf_num}';
-                                    }}
-                                }}
-                            }}
-                        }}
-                    }}
-
-                    // Fallback: just click the first "Details" button on the page
-                    var allBtns = document.querySelectorAll('a, button');
-                    for (var b of allBtns) {{
-                        if (b.textContent.trim() === 'Details') {{
-                            b.click();
-                            return 'clicked first Details button';
-                        }}
-                    }}
-
-                    // Diagnostics: list all button/link texts
-                    var texts = [];
-                    var items = document.querySelectorAll('a, button');
-                    for (var j = 0; j < Math.min(items.length, 30); j++) {{
-                        var t = items[j].textContent.trim().substring(0, 30);
-                        if (t) texts.push(t);
-                    }}
-                    return 'Details not found. Links: ' + texts.join(' | ');
-                """)
-
-                add_log(conn, f"Details click: {str(details_result)[:200]}", "info", flight_id)
-
-                if not details_result or not str(details_result).startswith("clicked"):
-                    driver.save_screenshot(f"{cap_dir}/02_no_details_btn.png")
-                    add_log(conn, f"Could not find Details button for {conf_num}", "warning", flight_id)
-                    audit.end_step(success=False, data={"result": str(details_result)[:200]})
-                    audit.save_dom("details_failed_dom.html")
-                    audit.finish(status="failed", error_message="Details button not found")
+                if not conf_input_sel:
+                    driver.save_screenshot(f"{cap_dir}/00_no_form.png")
+                    audit.save_dom("manage_reservation_form_dom.html")
+                    add_log(conn, f"Could not find confirmation number input on manage reservation page", "error", flight_id)
+                    audit.end_step(success=False, data={"error": "form not found"})
+                    audit.finish(status="failed", error_message="Manage reservation form not found")
                     continue
-                audit.end_step(success=True, data={"result": str(details_result)[:100]})
 
-                # Wait for "Manage my trip" page to fully render
-                audit.begin_step("wait_manage_trip")
-                manage_loaded = False
-                for wait_i in range(20):  # Up to 20 seconds
+                add_log(conn, f"Found form field: {conf_input_sel}", "info", flight_id)
+                audit.end_step(success=True, data={"form_field": conf_input_sel})
+
+                # Step 2: Fill form and submit
+                audit.begin_step("fill_and_submit_form")
+
+                # Find first name and last name fields
+                first_name_sel = None
+                last_name_sel = None
+                for sel_pair in [
+                    ('input[id="passengerFirstName"]', 'input[id="passengerLastName"]'),
+                    ('input[name="passengerFirstName"]', 'input[name="passengerLastName"]'),
+                    ('input[id*="irstName"]', 'input[id*="astName"]'),
+                    ('input[name*="irstName"]', 'input[name*="astName"]'),
+                    ('input[placeholder*="irst name"]', 'input[placeholder*="ast name"]'),
+                    ('input[aria-label*="irst name"]', 'input[aria-label*="ast name"]'),
+                ]:
+                    try:
+                        driver.find_element(sel_pair[0])
+                        driver.find_element(sel_pair[1])
+                        first_name_sel = sel_pair[0]
+                        last_name_sel = sel_pair[1]
+                        break
+                    except Exception:
+                        continue
+
+                if not first_name_sel or not last_name_sel:
+                    driver.save_screenshot(f"{cap_dir}/00_no_name_fields.png")
+                    audit.save_dom("manage_reservation_names_dom.html")
+                    add_log(conn, f"Could not find first/last name fields", "error", flight_id)
+                    audit.end_step(success=False, data={"error": "name fields not found"})
+                    audit.finish(status="failed", error_message="Name fields not found on manage reservation form")
+                    continue
+
+                # Clear and type into form fields
+                driver.type(conf_input_sel, conf_num)
+                time.sleep(0.5)
+                driver.type(first_name_sel, first_name)
+                time.sleep(0.5)
+                driver.type(last_name_sel, last_name)
+                time.sleep(0.5)
+
+                driver.save_screenshot(f"{cap_dir}/01_form_filled.png")
+
+                # Click submit button
+                submit_clicked = False
+                for submit_sel in [
+                    'button[type="submit"]',
+                    'button[id*="etrieve"]',
+                    'button[id*="ubmit"]',
+                ]:
+                    try:
+                        if driver.is_element_visible(submit_sel):
+                            driver.click(submit_sel)
+                            submit_clicked = True
+                            break
+                    except Exception:
+                        continue
+
+                if not submit_clicked:
+                    # Fallback: find button by text content
+                    submit_clicked = driver.execute_script("""
+                        var buttons = document.querySelectorAll('button, input[type="submit"]');
+                        for (var btn of buttons) {
+                            var text = btn.textContent.trim().toLowerCase();
+                            if (text.includes('retrieve') || text.includes('look up') ||
+                                text.includes('submit') || text.includes('search')) {
+                                btn.click();
+                                return true;
+                            }
+                        }
+                        return false;
+                    """)
+
+                if not submit_clicked:
+                    driver.save_screenshot(f"{cap_dir}/01_no_submit.png")
+                    audit.save_dom("manage_reservation_submit_dom.html")
+                    add_log(conn, f"Could not find submit button", "error", flight_id)
+                    audit.end_step(success=False, data={"error": "submit button not found"})
+                    audit.finish(status="failed", error_message="Submit button not found")
+                    continue
+
+                add_log(conn, f"Form submitted for {conf_num} ({first_name} {last_name})", "info", flight_id)
+
+                # Wait for the reservation details page to load
+                details_loaded = False
+                for wait_i in range(25):  # Up to 25 seconds
                     time.sleep(1)
                     page_text = driver.execute_script("return document.body ? document.body.textContent : ''")
-                    if "Modify seats" in page_text or "Manage my trip" in page_text or "Seat Assignments" in page_text:
-                        manage_loaded = True
+                    current_url = driver.current_url
+                    # Check for trip detail page indicators
+                    if any(indicator in page_text for indicator in [
+                        "Modify seats", "Manage my trip", "Seat Assignments",
+                        "Flight details", "Change seats", conf_num,
+                    ]):
+                        details_loaded = True
+                        add_log(conn, f"Reservation details loaded after {wait_i + 1}s. URL: {current_url}", "info", flight_id)
+                        break
+                    # Check for errors
+                    if "unable to retrieve" in page_text.lower() or "not found" in page_text.lower():
+                        add_log(conn, f"Reservation lookup error: {page_text[:300]}", "error", flight_id)
                         break
 
-                driver.save_screenshot(f"{cap_dir}/02_manage_trip.png")
-                current_url = driver.current_url
-                add_log(conn, f"Manage trip page {'loaded' if manage_loaded else 'timeout (20s)'}. URL: {current_url}", "info", flight_id)
+                driver.save_screenshot(f"{cap_dir}/02_reservation_details.png")
+                audit.end_step(success=details_loaded, data={
+                    "url": driver.current_url,
+                    "wait_seconds": wait_i + 1 if details_loaded else 25,
+                })
 
-                if not manage_loaded:
+                if not details_loaded:
                     page_text = driver.execute_script("return document.body ? document.body.textContent.substring(0, 500) : ''")
-                    add_log(conn, f"Page content after 20s wait: {page_text[:300]}", "warning", flight_id)
-                    # Don't give up - still try to find the link
+                    add_log(conn, f"Reservation details not loaded after 25s. Page text: {page_text[:300]}", "warning", flight_id)
+                    audit.save_dom("reservation_details_failed_dom.html")
+                    audit.finish(status="failed", error_message="Reservation details page did not load")
+                    continue
 
                 # Extract current seat assignment from this page
                 seat_info = driver.execute_script("""
@@ -926,9 +888,7 @@ def attempt_seat_upgrades(conn: sqlite3.Connection, force_flight_id: str | None 
                     var seatMatch = text.match(/Seat\\s+(\\d{1,2}[A-F]),?\\s*(\\w+)?/i);
                     return seatMatch ? seatMatch[0] : 'not found';
                 """)
-                add_log(conn, f"Current seat on manage page: {seat_info}", "info", flight_id)
-
-                audit.end_step(success=manage_loaded, data={"current_seat": seat_info})
+                add_log(conn, f"Current seat on details page: {seat_info}", "info", flight_id)
 
                 # Click "Modify seats" link
                 audit.begin_step("click_modify_seats")

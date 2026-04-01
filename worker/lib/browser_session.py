@@ -36,7 +36,7 @@ TRIPS_URL = (
 
 INVALID_CREDENTIALS_CODE = 400518024
 WAIT_TIMEOUT_SECS = 180
-SESSION_MAX_AGE = 2 * 60 * 60  # 2 hours before forced restart (reduced from 25min)  # 25 minutes before forced restart
+SESSION_MAX_AGE = 2 * 60 * 60  # 2 hours before forced restart
 
 logger = get_logger(__name__)
 
