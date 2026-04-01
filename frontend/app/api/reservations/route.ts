@@ -20,15 +20,21 @@ export function GET() {
     .all() as Record<string, unknown>[];
 
   // Group flights under their reservation
+  const flightKeys = [
+    "flight_id", "flight_number", "departure_airport", "destination_airport",
+    "departure_time", "is_international", "checkin_status", "checkin_result",
+    "checkin_attempted_at", "assigned_seat", "original_price", "original_currency",
+  ];
   const reservationMap = new Map<string, Record<string, unknown>>();
   for (const row of rows) {
     const resId = row.id as string;
     if (!reservationMap.has(resId)) {
-      const { flight_id, flight_number, departure_airport, destination_airport,
-              departure_time, is_international, checkin_status, checkin_result,
-              checkin_attempted_at, assigned_seat, original_price, original_currency,
-              ...reservation } = row;
-      reservationMap.set(resId, { ...reservation, flights: [] });
+      const reservation: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(row)) {
+        if (!flightKeys.includes(k)) reservation[k] = v;
+      }
+      reservation.flights = [];
+      reservationMap.set(resId, reservation);
     }
     if (row.flight_id) {
       (reservationMap.get(resId)!.flights as unknown[]).push({
