@@ -459,32 +459,39 @@ def cleanup_old_data(conn: sqlite3.Connection) -> dict[str, int]:
     )
     counts["fare_history"] = cursor.rowcount
 
+    # Captures and audits are large (JSON blobs, screenshot references) — 5 days
     cursor = conn.execute(
-        "DELETE FROM seat_upgrade_audit WHERE created_at < datetime('now', '-90 days')"
+        "DELETE FROM seat_upgrade_audit WHERE created_at < datetime('now', '-5 days')"
     )
     counts["seat_upgrade_audit"] = cursor.rowcount
 
     cursor = conn.execute(
-        """DELETE FROM checkin_captures WHERE flight_id IN (
-            SELECT id FROM flights WHERE departure_time < datetime('now', '-30 days')
-        )"""
+        "DELETE FROM checkin_captures WHERE created_at < datetime('now', '-5 days')"
     )
     counts["checkin_captures"] = cursor.rowcount
 
     conn.commit()
+
+    # VACUUM to reclaim disk space (deleted rows don't shrink the file otherwise)
+    total = sum(counts.values())
+    if total > 0:
+        try:
+            conn.execute("VACUUM")
+        except Exception:
+            pass  # VACUUM can fail if another connection holds a lock
+
     return counts
 
 
 def get_stale_capture_dirs(conn: sqlite3.Connection) -> list[str]:
-    """Get capture directories for flights that departed >30 days ago."""
+    """Get capture directories for captures/audits older than 5 days."""
     rows = conn.execute(
         """SELECT DISTINCT cc.capture_dir FROM checkin_captures cc
-           JOIN flights f ON f.id = cc.flight_id
-           WHERE f.departure_time < datetime('now', '-30 days')
+           WHERE cc.created_at < datetime('now', '-5 days')
+           AND cc.capture_dir IS NOT NULL
            UNION
            SELECT DISTINCT sua.capture_dir FROM seat_upgrade_audit sua
-           JOIN flights f ON f.id = sua.flight_id
-           WHERE f.departure_time < datetime('now', '-30 days')
+           WHERE sua.created_at < datetime('now', '-5 days')
            AND sua.capture_dir IS NOT NULL"""
     ).fetchall()
     return [r["capture_dir"] for r in rows if r["capture_dir"]]

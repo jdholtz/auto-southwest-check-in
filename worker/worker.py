@@ -1189,19 +1189,54 @@ def run_daily_cleanup(conn: sqlite3.Connection) -> None:
         add_log(conn, f"Cleaned up {total} old records: {dict(counts)}", "info")
         logger.info("Data cleanup removed %d records: %s", total, counts)
 
-    # File system cleanup - delete old capture directories
+    # File system cleanup - delete old capture directories linked to DB records
     import shutil
     stale_dirs = get_stale_capture_dirs(conn)
-    removed = 0
+    removed_dirs = 0
     for capture_dir in stale_dirs:
         try:
             if os.path.isdir(capture_dir):
                 shutil.rmtree(capture_dir)
-                removed += 1
+                removed_dirs += 1
         except Exception as e:
             logger.warning("Failed to remove capture dir %s: %s", capture_dir, e)
-    if removed:
-        add_log(conn, f"Removed {removed} old capture directories", "info")
+
+    # Filesystem sweep: delete ANY capture files older than 5 days
+    # This catches files from repeated seat upgrade attempts on active flights
+    # that aren't yet linked to "old" DB records
+    captures_base = "/app/data/captures"
+    cutoff = time.time() - (5 * 24 * 3600)
+    removed_files = 0
+    removed_empty = 0
+    if os.path.isdir(captures_base):
+        for dirpath, dirnames, filenames in os.walk(captures_base, topdown=False):
+            for fname in filenames:
+                fpath = os.path.join(dirpath, fname)
+                try:
+                    if os.path.getmtime(fpath) < cutoff:
+                        os.remove(fpath)
+                        removed_files += 1
+                except Exception:
+                    pass
+            # Remove empty directories after deleting files
+            try:
+                if dirpath != captures_base and not os.listdir(dirpath):
+                    os.rmdir(dirpath)
+                    removed_empty += 1
+            except Exception:
+                pass
+
+    cleanup_msg = []
+    if removed_dirs:
+        cleanup_msg.append(f"{removed_dirs} stale capture dirs")
+    if removed_files:
+        cleanup_msg.append(f"{removed_files} files older than 5 days")
+    if removed_empty:
+        cleanup_msg.append(f"{removed_empty} empty dirs")
+    if cleanup_msg:
+        msg = f"File cleanup: {', '.join(cleanup_msg)}"
+        add_log(conn, msg, "info")
+        logger.info(msg)
 
     last_cleanup_time = time.time()
 
